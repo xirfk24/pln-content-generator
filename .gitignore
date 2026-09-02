@@ -28,6 +28,13 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# opencode skill data
+.opencode/
+
+# build scripts & test results
+scripts/
+test-results/
+
 # vercel
 .vercel
 
