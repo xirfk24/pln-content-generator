@@ -40,10 +40,12 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
+	verifier := auth.NewVerifier(pool, cfg.SupabaseURL, cfg.SupabaseJWTSecret)
+
 	api := r.Group("/api")
 
 	// Auth-aware endpoints
-	authed := api.Group("", auth.Middleware(pool, cfg.SupabaseJWTSecret))
+	authed := api.Group("", verifier.Middleware())
 	{
 		authed.POST("/auth/logout", h.Logout)
 		authed.GET("/auth/me", h.Me)

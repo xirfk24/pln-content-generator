@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -17,15 +18,24 @@ type ctxKey string
 
 const userKey ctxKey = "user"
 
-// Middleware verifies Supabase access token (Bearer) and loads the profile.
-// Sets user in context. On invalid/missing token aborts with 401.
-func Middleware(pool *pgxpool.Pool, jwtSecret string) gin.HandlerFunc {
+type Verifier struct {
+	pool       *pgxpool.Pool
+	jwtSecret  string       // legacy HS256 (optional)
+	jwks       *jwksCache   // ES256 signing keys (current Supabase default)
+}
+
+func NewVerifier(pool *pgxpool.Pool, supabaseURL, jwtSecret string) *Verifier {
+	v := &Verifier{pool: pool, jwtSecret: jwtSecret}
+	if supabaseURL != "" {
+		v.jwks = newJWKSCache(supabaseURL)
+	}
+	return v
+}
+
+// Middleware verifies the Supabase access token (Bearer) and loads the profile.
+func (v *Verifier) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		user, err := resolveUser(c, pool, jwtSecret)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		user := v.resolve(c)
 		if user == nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
@@ -35,27 +45,17 @@ func Middleware(pool *pgxpool.Pool, jwtSecret string) gin.HandlerFunc {
 	}
 }
 
-// OptionalMiddleware attaches the user when a valid token is present,
-// but lets anonymous requests through (matches old RLS-permissive routes).
-func OptionalMiddleware(pool *pgxpool.Pool, jwtSecret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, _ := resolveUser(c, pool, jwtSecret)
-		if user != nil {
-			c.Set(string(userKey), user)
-		}
-		c.Next()
-	}
-}
-
+// FromContext returns the authenticated profile, if any.
 func FromContext(c *gin.Context) *models.Profile {
-	v, ok := c.Get(string(userKey))
+	val, ok := c.Get(string(userKey))
 	if !ok {
 		return nil
 	}
-	p, _ := v.(*models.Profile)
+	p, _ := val.(*models.Profile)
 	return p
 }
 
+// RequireRole aborts unless the user's role is in the allowed set.
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := FromContext(c)
@@ -76,30 +76,64 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
-func resolveUser(c *gin.Context, pool *pgxpool.Pool, jwtSecret string) (*models.Profile, error) {
+func (v *Verifier) resolve(c *gin.Context) *models.Profile {
 	header := c.GetHeader("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
-		return nil, nil
+	if !strings.HasPrefix(header, "Bearer ") {
+		return nil
 	}
 	tokenStr := strings.TrimPrefix(header, "Bearer ")
 
-	userID, err := verifyToken(tokenStr, jwtSecret)
+	userID, err := v.verifyToken(tokenStr)
 	if err != nil {
-		return nil, err
+		log.Printf("token verify failed: %v", err)
+		return nil
 	}
-	return loadProfile(c.Request.Context(), pool, userID)
+
+	p, err := loadProfile(c.Request.Context(), v.pool, userID)
+	if err != nil {
+		log.Printf("profile load failed for user %s: %v", userID, err)
+		return nil
+	}
+	return p
 }
 
-func verifyToken(tokenStr, jwtSecret string) (string, error) {
-	if jwtSecret == "" {
-		return "", errors.New("SUPABASE_JWT_SECRET not configured")
-	}
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+// verifyToken supports both current ES256 signing keys (via JWKS) and the
+// legacy HS256 JWT secret, so it works on old and new Supabase projects.
+func (v *Verifier) verifyToken(tokenStr string) (string, error) {
+	var kid, alg string
+	unverified, _, err := jwt.NewParser().ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err == nil {
+		if h, ok := unverified.Header["kid"].(string); ok {
+			kid = h
 		}
-		return []byte(jwtSecret), nil
-	}, jwt.WithValidMethods([]string{"HS256", "HS384", "HS512"}), jwt.WithExpirationRequired())
+		if a, ok := unverified.Header["alg"].(string); ok {
+			alg = a
+		}
+	}
+
+	keyFunc := func(t *jwt.Token) (interface{}, error) {
+		switch {
+		case alg == "ES256" || t.Method.Alg() == "ES256":
+			if v.jwks == nil {
+				return nil, errors.New("ES256 token but SUPABASE_URL not configured")
+			}
+			if kid == "" {
+				return nil, errors.New("ES256 token without kid header")
+			}
+			return v.jwks.get(kid)
+		case alg == "HS256" || t.Method.Alg() == "HS256":
+			if v.jwtSecret == "" {
+				return nil, errors.New("HS256 token but SUPABASE_JWT_SECRET not configured")
+			}
+			return []byte(v.jwtSecret), nil
+		default:
+			return nil, errors.New("unsupported alg: " + alg)
+		}
+	}
+
+	token, err := jwt.Parse(tokenStr, keyFunc,
+		jwt.WithValidMethods([]string{"ES256", "HS256"}),
+		jwt.WithExpirationRequired())
 	if err != nil || !token.Valid {
 		return "", errors.New("invalid token")
 	}
