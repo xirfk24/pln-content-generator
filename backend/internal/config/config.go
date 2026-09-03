@@ -3,17 +3,27 @@ package config
 import (
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port             string
-	DatabaseURL      string
-	SupabaseURL      string
+	Port              string
+	DatabaseURL       string
+	SupabaseURL       string
 	SupabaseJWTSecret string
-	AllowedOrigins   []string
+	AllowedOrigins    []string
 }
 
 func Load() *Config {
+	// Load .env next to the working dir (backend/.env); ignore if missing.
+	for _, p := range []string{".env", "../.env"} {
+		if _, err := os.Stat(p); err == nil {
+			_ = godotenv.Overload(p)
+			break
+		}
+	}
+
 	return &Config{
 		Port:              getEnv("PORT", "8080"),
 		DatabaseURL:       mustEnv("DATABASE_URL"),
@@ -33,7 +43,7 @@ func getEnv(key, fallback string) string {
 func mustEnv(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
-		panic("missing required env: " + key)
+		panic("missing required env: " + key + " (set it in backend/.env — see .env.example)")
 	}
 	return v
 }
