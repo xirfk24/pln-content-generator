@@ -41,12 +41,12 @@ export function AIResultCard({
     : null
 
   return (
-    <div className="rounded-lg border border-primary-border bg-primary-soft">
-      <div className="flex items-center justify-between border-b border-primary-border px-4 py-3">
+    <div className="rounded-lg border border-primary bg-primary-soft">
+      <div className="flex items-center justify-between border-b border-primary px-4 py-3">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-ink">{title}</span>
-          <span className="rounded bg-neutral-border px-1.5 py-0.5 text-[10px] font-medium uppercase text-ink-secondary">
+          <span className="rounded bg-border-strong px-1.5 py-0.5 text-micro font-medium uppercase text-ink-secondary">
             Demo Mode
           </span>
         </div>

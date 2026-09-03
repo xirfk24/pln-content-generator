@@ -9,20 +9,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        /* ── Surfaces ── */
         background: "var(--background)",
-        surface: "var(--surface)",
-        "surface-muted": "var(--surface-muted)",
-        border: "var(--border)",
-        "border-strong": "var(--border-strong)",
-        ink: "var(--text)",
-        "ink-secondary": "var(--text-secondary)",
-        "ink-muted": "var(--text-muted)",
+        surface: {
+          DEFAULT: "var(--surface)",
+          muted: "var(--surface-muted)",
+          hover: "var(--surface-hover)",
+        },
+        border: {
+          DEFAULT: "var(--border)",
+          strong: "var(--border-strong)",
+        },
+        /* ── Text (ink) ── */
+        ink: {
+          DEFAULT: "var(--text)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
+        },
+        /* ── Brand ── */
         primary: {
           DEFAULT: "var(--primary)",
           hover: "var(--primary-hover)",
           soft: "var(--primary-soft)",
           border: "var(--primary-border)",
         },
+        /* ── Semantic ── */
         success: {
           DEFAULT: "var(--success)",
           soft: "var(--success-soft)",
@@ -44,11 +55,6 @@ const config: Config = {
           soft: "var(--info-soft)",
           border: "var(--info-border)",
         },
-        neutral: {
-          DEFAULT: "var(--neutral)",
-          soft: "var(--neutral-soft)",
-          border: "var(--neutral-border)",
-        },
       },
       borderRadius: {
         xs: "var(--radius-xs)",
@@ -61,12 +67,13 @@ const config: Config = {
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
       },
-      spacing: {
-        xs: "var(--space-xs)",
-        sm: "var(--space-sm)",
-        md: "var(--space-md)",
-        lg: "var(--space-lg)",
-        xl: "var(--space-xl)",
+      fontSize: {
+        /* Custom type-scale steps */
+        base: ["var(--font-size-base)", { lineHeight: "var(--line-normal)" }],
+        sm: ["var(--font-size-sm)", { lineHeight: "var(--line-normal)" }],
+        xs: ["var(--font-size-xs)", { lineHeight: "var(--line-snug)" }],
+        "card-title": ["var(--font-size-card-title)", { lineHeight: "var(--line-snug)" }],
+        micro: ["var(--font-size-micro)", { lineHeight: "var(--line-snug)" }],
       },
     },
   },

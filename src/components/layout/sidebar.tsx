@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Lightbulb,
   Calendar,
   FileText,
   CheckSquare,
@@ -39,12 +38,6 @@ type NavGroup = {
 
 const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  {
-    name: 'Content',
-    children: [
-      { name: 'Ideas', href: '/content/ideas', icon: Lightbulb },
-    ],
-  },
   {
     name: 'Planning',
     children: [
@@ -163,7 +156,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             return (
               <div key={item.name}>
                 {!collapsed && (
-                  <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                  <p className="mb-1 px-3 text-micro font-semibold uppercase tracking-wider text-ink-muted">
                     {item.name}
                   </p>
                 )}
@@ -227,7 +220,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 hidden h-screen border-r border-border bg-white transition-all duration-300 lg:block',
+          'fixed left-0 top-0 z-40 hidden h-screen border-r border-border bg-surface transition-all duration-300 lg:block',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -243,7 +236,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             aria-hidden="true"
           />
           <aside
-            className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-white shadow-lg"
+            className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-surface shadow-lg"
             role="dialog"
             aria-modal="true"
             aria-label="Sidebar menu"

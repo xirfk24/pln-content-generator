@@ -10,8 +10,8 @@ const buttonVariants = cva(
         default: 'bg-primary text-white shadow-sm hover:bg-primary-hover',
         destructive: 'bg-danger text-white shadow-sm hover:bg-danger-hover',
         outline:
-          'border border-border-strong bg-white text-ink hover:bg-surface-muted hover:text-ink',
-        secondary: 'bg-surface-muted text-ink hover:bg-neutral-border/40',
+          'border border-border-strong bg-surface text-ink hover:bg-surface-muted hover:text-ink',
+        secondary: 'bg-surface-muted text-ink hover:bg-surface-hover',
         ghost: 'text-ink-secondary hover:bg-surface-muted hover:text-ink',
         link: 'text-primary underline-offset-4 hover:underline',
       },

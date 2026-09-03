@@ -161,7 +161,7 @@ export default function AIInsightsPage() {
                 <ul className="space-y-1.5">
                   {section.items.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-ink-secondary">
-                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink-muted" />
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink-muted/40" />
                       {item}
                     </li>
                   ))}

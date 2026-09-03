@@ -12,8 +12,6 @@ export type ContentStatus =
   | 'RESCHEDULED'
   | 'NOT_REALIZED'
 
-export type IdeaStatus = 'DRAFT' | 'SELECTED' | 'CONVERTED' | 'ARCHIVED'
-
 export type PublicationStatus = 'PLANNED' | 'PUBLISHED' | 'DELAYED' | 'CANCELLED'
 
 export type ApprovalAction =
@@ -54,21 +52,6 @@ export interface Platform {
   name: string
   icon: string | null
   created_at: string
-}
-
-export interface ContentIdea {
-  id: string
-  title: string
-  description: string | null
-  pillar_id: string
-  target_audience: string | null
-  source: string | null
-  notes: string | null
-  status: IdeaStatus
-  created_by: string
-  created_at: string
-  updated_at: string
-  pillar?: Pillar
 }
 
 export interface Content {

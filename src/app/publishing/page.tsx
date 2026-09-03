@@ -266,14 +266,14 @@ export default function PublishingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Publishing Tracker</h1>
           <p className="mt-1 text-sm text-ink-secondary">
             Track content publications across platforms
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
+        <Button onClick={() => setAddOpen(true)} className="self-start sm:self-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add Publication
         </Button>
@@ -285,7 +285,7 @@ export default function PublishingPage() {
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-40"
+              className="w-full sm:w-40"
             >
               <option value="">All Status</option>
               {PUBLICATION_STATUSES.map((s) => (

@@ -1,4 +1,4 @@
-import { UserRole, ContentStatus, IdeaStatus, PublicationStatus } from '@/types'
+import { UserRole, ContentStatus, PublicationStatus } from '@/types'
 
 export const USER_ROLES: UserRole[] = ['ADMIN', 'STAFF', 'REVIEWER', 'APPROVER']
 
@@ -46,15 +46,6 @@ export const CONTENT_STATUS_COLORS: Record<ContentStatus, string> = {
   PUBLISHED: 'bg-success-soft text-success',
   RESCHEDULED: 'bg-warning-soft text-warning',
   NOT_REALIZED: 'bg-surface-muted text-ink-secondary',
-}
-
-export const IDEA_STATUSES: IdeaStatus[] = ['DRAFT', 'SELECTED', 'CONVERTED', 'ARCHIVED']
-
-export const IDEA_STATUS_LABELS: Record<IdeaStatus, string> = {
-  DRAFT: 'Draft',
-  SELECTED: 'Selected',
-  CONVERTED: 'Converted',
-  ARCHIVED: 'Archived',
 }
 
 export const PUBLICATION_STATUSES: PublicationStatus[] = ['PLANNED', 'PUBLISHED', 'DELAYED', 'CANCELLED']

@@ -109,7 +109,7 @@ export default function AdminUsersPage() {
                         <Select
                           value={user.role}
                           onChange={(e) => updateUser(user.id, { role: e.target.value })}
-                          className="w-40"
+                          className="w-full sm:w-40"
                           aria-label={`Change role for ${user.email ?? user.id}`}
                         >
                           {ROLES.map((role) => (

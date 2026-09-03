@@ -27,7 +27,7 @@ export function EmptyState({
       {actionHref ? (
         <Link
           href={actionHref}
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-hover"
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-surface shadow-sm transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {actionLabel}
@@ -36,7 +36,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={actionOnClick}
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-hover"
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-surface shadow-sm transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {actionLabel}
@@ -57,7 +57,7 @@ export function EmptyState({
           <Icon className="h-6 w-6 text-ink-muted" aria-hidden="true" />
         </div>
       )}
-      <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+      <h3 className="text-card-title font-semibold text-ink">{title}</h3>
       <p className="mt-1 max-w-sm text-sm text-ink-secondary">{description}</p>
       {action}
     </div>

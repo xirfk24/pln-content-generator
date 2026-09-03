@@ -110,7 +110,7 @@ export function AIImprovePanel({
           <div className="space-y-3">
             <div>
               <p className="mb-1 text-xs font-medium text-ink-secondary">Improved Content</p>
-              <div className="whitespace-pre-wrap rounded-md bg-white p-3 text-sm">
+              <div className="whitespace-pre-wrap rounded-md bg-surface p-3 text-sm">
                 {result.improvedContent}
               </div>
             </div>

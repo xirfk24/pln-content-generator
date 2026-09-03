@@ -54,25 +54,6 @@ function NewContentForm() {
       .then(res => res.json())
       .then(data => setMasterData(data))
       .catch(console.error)
-
-    const ideaId = searchParams.get('idea')
-    if (ideaId) {
-      fetch(`/api/content-ideas/${ideaId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.idea) {
-            setForm(prev => ({
-              ...prev,
-              title: data.idea.title,
-              topic: data.idea.title,
-              pillar_id: data.idea.pillar_id || '',
-              brief: data.idea.description || '',
-              target_audience: data.idea.target_audience || '',
-            }))
-          }
-        })
-        .catch(console.error)
-    }
   }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {

@@ -24,9 +24,6 @@ interface CurrentUser {
 
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
-  '/content/ideas': 'Content Ideas',
-  '/content/ideas/ai': 'AI Idea Generator',
-  '/content/ideas/new': 'New Content Idea',
   '/content/calendar': 'Content Calendar',
   '/content/planning': 'Content Planning',
   '/content/planning/new': 'New Content',
@@ -47,9 +44,6 @@ const ROUTE_TITLES: Record<string, string> = {
 function usePageTitle(pathname: string): string {
   return React.useMemo(() => {
     if (ROUTE_TITLES[pathname]) return ROUTE_TITLES[pathname]
-    if (pathname.startsWith('/content/ideas/')) {
-      return pathname.endsWith('/edit') ? 'Edit Idea' : 'Idea Detail'
-    }
     if (pathname.startsWith('/content/planning/')) return 'Content Detail'
     if (pathname.startsWith('/content/')) {
       return pathname.endsWith('/edit') ? 'Edit Content' : 'Content Detail'
@@ -99,7 +93,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur transition-all duration-300 sm:px-6',
+        'fixed top-0 right-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur transition-all duration-300 sm:px-6',
         sidebarCollapsed ? 'left-16' : 'left-64'
       )}
     >
@@ -113,7 +107,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <h2 className="truncate text-[15px] font-semibold text-ink sm:text-base">
+        <h2 className="truncate text-card-title font-semibold text-ink sm:text-base">
           {pageTitle}
         </h2>
       </div>

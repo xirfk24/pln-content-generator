@@ -118,7 +118,7 @@ export function AIReviewPanel({
               }`}
             >
               <span className="text-lg font-bold">{result.overallScore}</span>
-              <span className="text-[10px]">/100</span>
+              <span className="text-micro">/100</span>
             </div>
             <div>
               <p className="font-medium">Overall Score</p>
@@ -136,7 +136,7 @@ export function AIReviewPanel({
             {result.categories.map((cat) => (
               <div
                 key={cat.name}
-                className="flex items-start justify-between gap-2 rounded-md bg-white p-2"
+                className="flex items-start justify-between gap-2 rounded-md bg-surface p-2"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{cat.name}</p>

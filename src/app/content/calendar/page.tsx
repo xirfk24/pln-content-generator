@@ -102,12 +102,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Content Calendar</h1>
           <p className="mt-1 text-sm text-ink-secondary">Visual overview of scheduled content</p>
         </div>
-        <Button variant="outline" onClick={goToToday}>Today</Button>
+        <Button variant="outline" onClick={goToToday} className="self-start sm:self-auto">Today</Button>
       </div>
 
       <Card>
@@ -130,9 +130,10 @@ export default function CalendarPage() {
               <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
             </div>
           ) : (
-            <div className="grid grid-cols-7">
+            <div className="overflow-x-auto">
+              <div className="grid min-w-[768px] grid-cols-7">
               {DAYS.map((day) => (
-                <div key={day} className="border-b bg-surface-muted p-2 text-center text-xs font-medium text-ink-secondary">
+                <div key={day} className="truncate border-b bg-surface-muted p-2 text-center text-xs font-medium text-ink-secondary">
                   {day}
                 </div>
               ))}
@@ -144,7 +145,7 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={index}
-                    className={`min-h-28 border-b border-r p-1 last:border-r-0 ${!day.isCurrentMonth ? 'bg-surface-muted' : 'bg-white'} ${isToday(day.date) ? 'bg-primary-soft' : ''}`}
+                    className={`min-h-28 border-b border-r p-1 last:border-r-0 ${!day.isCurrentMonth ? 'bg-surface-muted' : 'bg-surface'} ${isToday(day.date) ? 'bg-primary-soft' : ''}`}
                   >
                     <div className={`mb-1 text-xs ${day.isCurrentMonth ? 'text-ink' : 'text-ink-muted'} ${isToday(day.date) ? 'font-bold text-primary' : ''}`}>
                       {day.date.getDate()}
@@ -168,6 +169,7 @@ export default function CalendarPage() {
                   </div>
                 )
               })}
+              </div>
             </div>
           )}
         </CardContent>

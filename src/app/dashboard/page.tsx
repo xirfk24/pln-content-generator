@@ -13,9 +13,7 @@ import {
   Legend,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
+  LabelList,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
@@ -31,21 +29,12 @@ import {
 import { FilterBar, EMPTY_FILTERS, type FilterValues } from '@/components/analytics/filter-bar'
 import { SkeletonCard, SkeletonKPI } from '@/components/ui/skeleton'
 import { ENGAGEMENT_FORMULA } from '@/constants'
-
-/* Chart colors aligned with design tokens (globals.css) */
-const CHART = {
-  primary: '#1d4ed8',
-  success: '#067647',
-  warning: '#b54708',
-  info: '#175cd3',
-  neutral: '#98a2b3',
-}
-
-const STATUS_COLORS = [
-  '#1d4ed8', '#b54708', '#b42318', '#067647',
-  '#175cd3', '#7c3aed', '#0e7490', '#4d7c0f',
-  '#c2410c', '#475467',
-]
+import {
+  AXIS_PROPS,
+  GRID_PROPS,
+  ChartTooltip,
+  formatNumber,
+} from '@/lib/charts'
 
 interface DashboardData {
   kpis: {
@@ -79,6 +68,39 @@ interface DashboardData {
     views: number
     engagementRate: number
   }>
+}
+
+function KpiCard({
+  title,
+  icon: Icon,
+  iconClass,
+  value,
+  hint,
+  hintTitle,
+}: {
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  iconClass?: string
+  value: string
+  hint?: string
+  hintTitle?: string
+}) {
+  return (
+    <Card className="transition-shadow hover:shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className={`h-4 w-4 ${iconClass || 'text-ink-muted'}`} aria-hidden="true" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
+        {hint && (
+          <p className="mt-0.5 text-xs text-ink-muted" title={hintTitle}>
+            {hint}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function DashboardPage() {
@@ -147,98 +169,52 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Content</CardTitle>
-                <FileText className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{data.kpis.content.total}</div>
-                <p className="text-xs text-ink-muted">
-                  {data.kpis.content.published} published
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-                <Eye className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.performance.totalViews.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Engagement Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.performance.avgEngagementRate.toFixed(2)}%
-                </div>
-                <p className="text-xs text-ink-muted" title={ENGAGEMENT_FORMULA}>
-                  avg per publication
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Pending Action</CardTitle>
-                <ClipboardCheck className="h-4 w-4 text-warning" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.content.pendingReview + data.kpis.content.approved}
-                </div>
-                <p className="text-xs text-ink-muted">
-                  {data.kpis.content.pendingReview} review, {data.kpis.content.approved} approve
-                </p>
-              </CardContent>
-            </Card>
+            <KpiCard
+              title="Total Content"
+              icon={FileText}
+              value={String(data.kpis.content.total)}
+              hint={`${data.kpis.content.published} published`}
+            />
+            <KpiCard
+              title="Total Views"
+              icon={Eye}
+              value={data.kpis.performance.totalViews.toLocaleString()}
+            />
+            <KpiCard
+              title="Engagement Rate"
+              icon={TrendingUp}
+              value={`${data.kpis.performance.avgEngagementRate.toFixed(2)}%`}
+              hint="avg per publication"
+              hintTitle={ENGAGEMENT_FORMULA}
+            />
+            <KpiCard
+              title="Pending Action"
+              icon={ClipboardCheck}
+              iconClass="text-warning"
+              value={String(data.kpis.content.pendingReview + data.kpis.content.approved)}
+              hint={`${data.kpis.content.pendingReview} review, ${data.kpis.content.approved} approve`}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
-                <Heart className="h-4 w-4 text-danger" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.performance.totalLikes.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
-                <MessageCircle className="h-4 w-4 text-info" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.performance.totalComments.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Shares</CardTitle>
-                <Share2 className="h-4 w-4 text-success" aria-hidden="true" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {data.kpis.performance.totalShares.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
+            <KpiCard
+              title="Total Likes"
+              icon={Heart}
+              iconClass="text-danger"
+              value={data.kpis.performance.totalLikes.toLocaleString()}
+            />
+            <KpiCard
+              title="Total Comments"
+              icon={MessageCircle}
+              iconClass="text-info"
+              value={data.kpis.performance.totalComments.toLocaleString()}
+            />
+            <KpiCard
+              title="Total Shares"
+              icon={Share2}
+              iconClass="text-success"
+              value={data.kpis.performance.totalShares.toLocaleString()}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -250,25 +226,39 @@ export default function DashboardPage() {
                 {data.statusBreakdown.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-muted">No data</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie
-                        data={data.statusBreakdown}
-                        dataKey="count"
-                        nameKey="label"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={85}
-                        label={(entry) => `${entry.name}: ${entry.value}`}
-                        labelLine={false}
-                      >
-                        {data.statusBreakdown.map((_, i) => (
-                          <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <>
+                    <div role="img" aria-label="Bar chart of content count by status">
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={data.statusBreakdown} layout="vertical" margin={{ left: 8, right: 24 }}>
+                          <CartesianGrid {...GRID_PROPS} horizontal={false} />
+                          <XAxis type="number" {...AXIS_PROPS} allowDecimals={false} />
+                          <YAxis
+                            type="category"
+                            dataKey="label"
+                            width={128}
+                            {...AXIS_PROPS}
+                            tick={{ ...AXIS_PROPS.tick, fontSize: 11 }}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                            content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
+                          />
+                          <Bar dataKey="count" name="Content" fill="#2563eb" radius={[0, 4, 4, 0]} barSize={16}>
+                            <LabelList
+                              dataKey="count"
+                              position="right"
+                              style={{ fontSize: 11, fill: '#4b5563' }}
+                            />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <ul className="sr-only">
+                      {data.statusBreakdown.map((s) => (
+                        <li key={s.status}>{`${s.label}: ${s.count} content`}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -281,15 +271,27 @@ export default function DashboardPage() {
                 {data.platformPerformance.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-muted">No data</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={data.platformPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="platform" fontSize={12} />
-                      <YAxis fontSize={12} />
-                      <Tooltip />
-                      <Bar dataKey="views" fill={CHART.primary} name="Views" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <>
+                    <div role="img" aria-label="Bar chart of views by platform">
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={data.platformPerformance} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid {...GRID_PROPS} />
+                          <XAxis dataKey="platform" {...AXIS_PROPS} tick={{ ...AXIS_PROPS.tick, fontSize: 11 }} />
+                          <YAxis {...AXIS_PROPS} tickFormatter={formatNumber} width={56} />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                            content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
+                          />
+                          <Bar dataKey="views" name="Views" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <ul className="sr-only">
+                      {data.platformPerformance.map((p) => (
+                        <li key={p.platform}>{`${p.platform}: ${formatNumber(p.views)} views`}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -305,43 +307,55 @@ export default function DashboardPage() {
               {data.monthlyTrend.length === 0 ? (
                 <p className="py-8 text-center text-sm text-ink-muted">No data</p>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={data.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" fontSize={12} />
-                    <YAxis yAxisId="left" fontSize={12} />
-                    <YAxis yAxisId="right" orientation="right" fontSize={12} />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="planned"
-                      stroke={CHART.neutral}
-                      name="Planned"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="published"
-                      stroke={CHART.success}
-                      name="Published"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="views"
-                      stroke={CHART.primary}
-                      name="Views"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <>
+                  <div role="img" aria-label="Line chart of planned, published, and views per month">
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={data.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid {...GRID_PROPS} />
+                        <XAxis dataKey="label" {...AXIS_PROPS} />
+                        <YAxis yAxisId="left" {...AXIS_PROPS} width={48} />
+                        <YAxis yAxisId="right" orientation="right" {...AXIS_PROPS} tickFormatter={formatNumber} width={64} />
+                        <Tooltip
+                          content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="planned"
+                          stroke="#9ca3af"
+                          name="Planned"
+                          strokeWidth={2}
+                          strokeDasharray="5 4"
+                          dot={false}
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="published"
+                          stroke="#059669"
+                          name="Published"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="views"
+                          stroke="#2563eb"
+                          name="Views"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <ul className="sr-only">
+                    {data.monthlyTrend.map((m) => (
+                      <li key={m.label}>{`${m.label}: planned ${m.planned}, published ${m.published}, views ${formatNumber(m.views)}`}</li>
+                    ))}
+                  </ul>
+                </>
               )}
             </CardContent>
           </Card>
@@ -368,11 +382,12 @@ export default function DashboardPage() {
                             i === 0
                               ? 'bg-warning-soft text-warning'
                               : i === 1
-                                ? 'bg-surface-muted text-ink-secondary'
+                                ? 'bg-primary-soft text-primary'
                                 : i === 2
-                                  ? 'bg-warning-soft text-warning'
+                                  ? 'bg-info-soft text-info'
                                   : 'bg-surface-muted text-ink-muted'
                           }`}
+                          aria-hidden="true"
                         >
                           {i + 1}
                         </span>

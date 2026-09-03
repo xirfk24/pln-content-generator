@@ -14,9 +14,18 @@ import {
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2 } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 import { FilterBar, EMPTY_FILTERS, type FilterValues } from '@/components/analytics/filter-bar'
+import { SkeletonCard, SkeletonKPI } from '@/components/ui/skeleton'
 import { ENGAGEMENT_FORMULA } from '@/constants'
+import {
+  AXIS_PROPS,
+  GRID_PROPS,
+  CHART_COLORS,
+  ChartTooltip,
+  formatNumber,
+  formatPercent,
+} from '@/lib/charts'
 
 interface AnalyticsData {
   platformPerformance: Array<{
@@ -93,10 +102,10 @@ export default function AnalyticsOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Analytics Overview</h1>
-        <p className="mt-1 text-sm text-ink-secondary">Content and performance analytics</p>
-      </div>
+      <PageHeader
+        title="Analytics Overview"
+        description="Content and performance analytics"
+      />
 
       <Card>
         <CardContent className="p-4">
@@ -105,8 +114,17 @@ export default function AnalyticsOverviewPage() {
       </Card>
 
       {loading || !data ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <SkeletonKPI />
+            <SkeletonKPI />
+            <SkeletonKPI />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SkeletonCard className="h-80" />
+            <SkeletonCard className="h-80" />
+          </div>
+          <SkeletonCard className="h-72" />
         </div>
       ) : (
         <>
@@ -119,18 +137,30 @@ export default function AnalyticsOverviewPage() {
                 {data.platformPerformance.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-muted">No data</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={data.platformPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="platform" fontSize={12} />
-                      <YAxis fontSize={12} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="views" fill="#3b82f6" name="Views" />
-                      <Bar dataKey="likes" fill="#ef4444" name="Likes" />
-                      <Bar dataKey="shares" fill="#10b981" name="Shares" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <>
+                    <div role="img" aria-label="Grouped bar chart of views, likes, and shares by platform">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={data.platformPerformance} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid {...GRID_PROPS} />
+                          <XAxis dataKey="platform" {...AXIS_PROPS} tick={{ ...AXIS_PROPS.tick, fontSize: 11 }} />
+                          <YAxis {...AXIS_PROPS} tickFormatter={formatNumber} width={56} />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                            content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                          <Bar dataKey="views" name="Views" fill={CHART_COLORS.primary} radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="likes" name="Likes" fill={CHART_COLORS.danger} radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="shares" name="Shares" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <ul className="sr-only">
+                      {data.platformPerformance.map((p) => (
+                        <li key={p.platform}>{`${p.platform}: ${formatNumber(p.views)} views, ${formatNumber(p.likes)} likes, ${formatNumber(p.shares)} shares`}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -143,15 +173,27 @@ export default function AnalyticsOverviewPage() {
                 {data.platformPerformance.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-muted">No data</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={data.platformPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="platform" fontSize={12} />
-                      <YAxis fontSize={12} unit="%" />
-                      <Tooltip formatter={(v) => `${Number(v).toFixed(2)}%`} />
-                      <Bar dataKey="engagementRate" fill="#8b5cf6" name="Engagement Rate" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <>
+                    <div role="img" aria-label="Bar chart of engagement rate by platform">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={data.platformPerformance} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid {...GRID_PROPS} />
+                          <XAxis dataKey="platform" {...AXIS_PROPS} tick={{ ...AXIS_PROPS.tick, fontSize: 11 }} />
+                          <YAxis {...AXIS_PROPS} unit="%" {...AXIS_PROPS} width={48} />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                            content={(props) => <ChartTooltip {...props} formatter={formatPercent} />}
+                          />
+                          <Bar dataKey="engagementRate" name="Engagement Rate" fill={CHART_COLORS.violet} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <ul className="sr-only">
+                      {data.platformPerformance.map((p) => (
+                        <li key={p.platform}>{`${p.platform}: ${formatPercent(p.engagementRate)} engagement rate`}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -167,15 +209,19 @@ export default function AnalyticsOverviewPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
+                    <caption className="sr-only">
+                      Content count, published count, views, average views, engagement, and
+                      engagement rate per pillar
+                    </caption>
                     <thead className="border-b bg-surface-muted">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pillar</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Content</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Avg Views</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Engagement</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Eng. Rate</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pillar</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Content</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Avg Views</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Engagement</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Eng. Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -184,12 +230,12 @@ export default function AnalyticsOverviewPage() {
                           <td className="px-4 py-3">
                             <Badge variant="outline">{p.pillar}</Badge>
                           </td>
-                          <td className="px-4 py-3 text-sm">{p.contentCount}</td>
-                          <td className="px-4 py-3 text-sm">{p.publishedCount}</td>
-                          <td className="px-4 py-3 text-sm">{p.views.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm">{p.avgViews.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm">{p.totalEngagement.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-success">
+                          <td className="px-4 py-3 text-right text-sm">{p.contentCount}</td>
+                          <td className="px-4 py-3 text-right text-sm">{p.publishedCount}</td>
+                          <td className="px-4 py-3 text-right text-sm">{p.views.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-sm">{p.avgViews.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-sm">{p.totalEngagement.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium text-success">
                             {p.avgEngagementRate.toFixed(2)}%
                           </td>
                         </tr>
@@ -211,42 +257,50 @@ export default function AnalyticsOverviewPage() {
                 <p className="py-8 text-center text-sm text-ink-muted">No data</p>
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={data.monthlyTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" fontSize={12} />
-                      <YAxis fontSize={12} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="planned" fill="#94a3b8" name="Planned" />
-                      <Bar dataKey="published" fill="#10b981" name="Published" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div role="img" aria-label="Bar chart comparing planned and published content per month">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={data.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid {...GRID_PROPS} />
+                        <XAxis dataKey="label" {...AXIS_PROPS} />
+                        <YAxis {...AXIS_PROPS} allowDecimals={false} width={48} />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                          content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                        <Bar dataKey="planned" name="Planned" fill={CHART_COLORS.neutral} radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="published" name="Published" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
 
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full">
+                      <caption className="sr-only">
+                        Planned, published, and realization rate per month
+                      </caption>
                       <thead className="border-b bg-surface-muted">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Month</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Realization Rate</th>
+                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Month</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realization Rate</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {data.monthlyTrend.map((m) => (
                           <tr key={m.label}>
                             <td className="px-4 py-2 text-sm">{m.label}</td>
-                            <td className="px-4 py-2 text-sm">{m.planned}</td>
-                            <td className="px-4 py-2 text-sm">{m.published}</td>
-                            <td className="px-4 py-2 text-sm">
+                            <td className="px-4 py-2 text-right text-sm">{m.planned}</td>
+                            <td className="px-4 py-2 text-right text-sm">{m.published}</td>
+                            <td className="px-4 py-2 text-right text-sm">
                               <span
                                 className={
                                   m.realizationRate >= 80
-                                    ? 'text-success'
+                                    ? 'font-medium text-success'
                                     : m.realizationRate >= 50
-                                      ? 'text-warning'
-                                      : 'text-danger'
+                                      ? 'font-medium text-warning'
+                                      : 'font-medium text-danger'
                                 }
                               >
                                 {m.realizationRate.toFixed(0)}%

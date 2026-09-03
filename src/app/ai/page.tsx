@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Sparkles, Lightbulb, Plus, Wand2, ShieldCheck, BarChart3, CheckCircle2 } from 'lucide-react'
+import { Loader2, Sparkles, Wand2, ShieldCheck, BarChart3 } from 'lucide-react'
 import { AIResultCard, AIError } from '@/components/ai/ai-result-card'
 
 interface Recommendation {
@@ -20,12 +19,6 @@ interface Recommendation {
 }
 
 const FEATURES = [
-  {
-    href: '/content/ideas/ai',
-    icon: Lightbulb,
-    title: 'Idea Generator',
-    description: 'Generate content ideas by pillar and platform',
-  },
   {
     href: '/content/planning/new',
     icon: Wand2,
@@ -47,12 +40,10 @@ const FEATURES = [
 ]
 
 export default function AIAssistantPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
-  const [createdTitles, setCreatedTitles] = useState<string[]>([])
 
   async function runRecommendations() {
     setLoading(true)
@@ -69,41 +60,10 @@ export default function AIAssistantPage() {
 
       setRecommendations(data.result.recommendations)
       setGeneratedAt(data.generatedAt)
-      setCreatedTitles([])
     } catch {
       setError('Network error. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function createIdeaFromRecommendation(rec: Recommendation) {
-    try {
-      const masterRes = await fetch('/api/master-data')
-      const master = await masterRes.json()
-
-      const pillar = (master.pillars || []).find(
-        (p: { id: string; name: string }) => p.name === rec.suggestedPillar
-      )
-
-      const res = await fetch('/api/content-ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: rec.title,
-          description: rec.reason,
-          pillar_id: pillar?.id,
-          target_audience: 'Masyarakat umum',
-          source: 'AI Recommendation',
-          notes: `Format: ${rec.suggestedFormat} | Platform: ${rec.suggestedPlatform} | Objective: ${rec.expectedObjective}`,
-        }),
-      })
-
-      if (res.ok) {
-        setCreatedTitles((prev) => [...prev, rec.title])
-      }
-    } catch {
-      setError('Failed to create idea from recommendation')
     }
   }
 
@@ -139,8 +99,7 @@ export default function AIAssistantPage() {
           <CardTitle>AI Recommendations</CardTitle>
           <CardDescription>
             Analyze historical content performance and generate recommendations
-            for new content. Recommendations can be turned into Content Ideas
-            with one click.
+            for new content.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -184,9 +143,8 @@ export default function AIAssistantPage() {
         >
           <div className="space-y-4">
             {recommendations.map((rec, index) => {
-              const created = createdTitles.includes(rec.title)
               return (
-                <div key={index} className="rounded-lg border bg-white p-4">
+                <div key={index} className="rounded-lg border bg-surface p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-ink">{rec.title}</h3>
                     <Badge variant="info">
@@ -215,42 +173,11 @@ export default function AIAssistantPage() {
                     <span className="text-ink-muted">Objective:</span>{' '}
                     {rec.expectedObjective}
                   </p>
-
-                  <div className="mt-3">
-                    {created ? (
-                      <span className="inline-flex items-center gap-1 text-sm text-success">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Idea created
-                      </span>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => createIdeaFromRecommendation(rec)}
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Create Content Idea
-                      </Button>
-                    )}
-                  </div>
                 </div>
               )
             })}
           </div>
         </AIResultCard>
-      )}
-
-      {createdTitles.length > 0 && (
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <p className="text-sm text-ink-secondary">
-              {createdTitles.length} idea(s) created from recommendations.
-            </p>
-            <Button size="sm" onClick={() => router.push('/content/ideas')}>
-              View Ideas
-            </Button>
-          </CardContent>
-        </Card>
       )}
     </div>
   )

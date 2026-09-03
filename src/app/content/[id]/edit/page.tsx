@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,8 +19,8 @@ interface MasterData {
   platforms: Array<{ id: string; name: string }>
 }
 
-export default function EditContentPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditContentPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [masterData, setMasterData] = useState<MasterData>({pillars: [], categories: [], platforms: []})

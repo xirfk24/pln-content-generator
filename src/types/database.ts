@@ -76,41 +76,6 @@ export interface Database {
           icon?: string | null
         }
       }
-      content_ideas: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          pillar_id: string | null
-          target_audience: string | null
-          source: string | null
-          notes: string | null
-          status: string
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          pillar_id?: string | null
-          target_audience?: string | null
-          source?: string | null
-          notes?: string | null
-          status?: string
-          created_by?: string | null
-        }
-        Update: {
-          title?: string
-          description?: string | null
-          pillar_id?: string | null
-          target_audience?: string | null
-          source?: string | null
-          notes?: string | null
-          status?: string
-        }
-      }
       contents: {
         Row: {
           id: string

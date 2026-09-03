@@ -1,8 +1,5 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import type { ContentIdea } from '@/types'
-
 export interface AIdeaGenerationInput {
   pillar: string
   platform: string
@@ -22,41 +19,6 @@ export async function generateIdeas(input: AIdeaGenerationInput) {
     objective: input.objective,
     count: input.count || 5,
   })
-}
-
-export async function saveGeneratedIdea(idea: {
-  title: string
-  description: string
-  pillar_id?: string
-  target_audience: string
-  suggested_format: string
-}): Promise<ContentIdea | null> {
-  const supabase = createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  
-  const { data, error } = await supabase
-    .from('content_ideas')
-    .insert({
-      title: idea.title,
-      description: idea.description,
-      pillar_id: idea.pillar_id,
-      target_audience: idea.target_audience,
-      source: 'AI Generated',
-      notes: `Suggested format: ${idea.suggested_format}`,
-      created_by: user.id,
-      status: 'DRAFT',
-    })
-    .select('*, pillar:pillars(*)')
-    .single()
-  
-  if (error) {
-    console.error('Error saving generated idea:', error)
-    return null
-  }
-  
-  return data
 }
 
 export async function generateContent(input: {

@@ -11,16 +11,13 @@ import {
   Globe,
   CalendarOff,
   XCircle,
-  Lightbulb,
-  Check,
-  Archive,
   Clock3,
   Ban,
   type LucideIcon,
 } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
-import { CONTENT_STATUS_LABELS, IDEA_STATUS_LABELS, PUBLICATION_STATUS_LABELS } from '@/constants'
-import type { ContentStatus, IdeaStatus, PublicationStatus } from '@/types'
+import { CONTENT_STATUS_LABELS, PUBLICATION_STATUS_LABELS } from '@/constants'
+import type { ContentStatus, PublicationStatus } from '@/types'
 
 type Variant = NonNullable<BadgeProps['variant']>
 
@@ -40,13 +37,6 @@ const CONTENT_MAP: Record<
   NOT_REALIZED: { variant: 'default', icon: XCircle, label: CONTENT_STATUS_LABELS.NOT_REALIZED },
 }
 
-const IDEA_MAP: Record<IdeaStatus, { variant: Variant; icon: LucideIcon; label: string }> = {
-  DRAFT: { variant: 'secondary', icon: Lightbulb, label: IDEA_STATUS_LABELS.DRAFT },
-  SELECTED: { variant: 'info', icon: Check, label: IDEA_STATUS_LABELS.SELECTED },
-  CONVERTED: { variant: 'success', icon: Send, label: IDEA_STATUS_LABELS.CONVERTED },
-  ARCHIVED: { variant: 'default', icon: Archive, label: IDEA_STATUS_LABELS.ARCHIVED },
-}
-
 const PUB_MAP: Record<PublicationStatus, { variant: Variant; icon: LucideIcon; label: string }> = {
   PLANNED: { variant: 'secondary', icon: Clock3, label: PUBLICATION_STATUS_LABELS.PLANNED },
   PUBLISHED: { variant: 'success', icon: Globe, label: PUBLICATION_STATUS_LABELS.PUBLISHED },
@@ -55,17 +45,15 @@ const PUB_MAP: Record<PublicationStatus, { variant: Variant; icon: LucideIcon; l
 }
 
 interface StatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  status: ContentStatus | IdeaStatus | PublicationStatus
-  kind?: 'content' | 'idea' | 'publication'
+  status: ContentStatus | PublicationStatus
+  kind?: 'content' | 'publication'
 }
 
 export function StatusBadge({ status, kind = 'content', className, ...props }: StatusBadgeProps) {
   const def =
-    kind === 'idea'
-      ? IDEA_MAP[status as IdeaStatus]
-      : kind === 'publication'
-        ? PUB_MAP[status as PublicationStatus]
-        : CONTENT_MAP[status as ContentStatus]
+    kind === 'publication'
+      ? PUB_MAP[status as PublicationStatus]
+      : CONTENT_MAP[status as ContentStatus]
 
   if (!def) {
     return (

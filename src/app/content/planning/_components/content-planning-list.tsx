@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Search, Eye, Edit, FileText, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import { SkeletonTable } from '@/components/ui/skeleton'
 import type { Content, Publication } from '@/types'
 
 /** Ambil URL publikasi pertama yang published (kalau ada) */
@@ -21,6 +22,9 @@ function getPublishedUrl(content: Content): string | null {
   )
   return published?.url || null
 }
+
+const TH_BASE =
+  'whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary'
 
 export default function ContentPlanningList() {
   const [contents, setContents] = useState<Content[]>([])
@@ -75,13 +79,7 @@ export default function ContentPlanningList() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-ink-muted" aria-label="Loading content" />
-      </div>
-    )
-  }
+  const hasFilters = search || statusFilter || pillarFilter || platformFilter
 
   return (
     <div className="space-y-4">
@@ -101,11 +99,11 @@ export default function ContentPlanningList() {
                 aria-label="Search content"
               />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-44"
+                className="w-full sm:w-44"
                 aria-label="Filter by status"
               >
                 <option value="">All Status</option>
@@ -120,7 +118,7 @@ export default function ContentPlanningList() {
               <Select
                 value={pillarFilter}
                 onChange={(e) => setPillarFilter(e.target.value)}
-                className="w-40"
+                className="w-full sm:w-40"
                 aria-label="Filter by pillar"
               >
                 <option value="">All Pillars</option>
@@ -131,7 +129,7 @@ export default function ContentPlanningList() {
               <Select
                 value={platformFilter}
                 onChange={(e) => setPlatformFilter(e.target.value)}
-                className="w-40"
+                className="w-full sm:w-40"
                 aria-label="Filter by platform"
               >
                 <option value="">All Platforms</option>
@@ -144,12 +142,22 @@ export default function ContentPlanningList() {
         </div>
       </Card>
 
-      {contents.length === 0 ? (
+      {loading ? (
+        <Card>
+          <div className="flex items-center justify-center border-b border-border py-3" role="status" aria-live="polite">
+            <Loader2 className="h-4 w-4 animate-spin text-ink-muted" aria-hidden="true" />
+            <span className="ml-2 text-sm text-ink-secondary">Loading content...</span>
+          </div>
+          <div className="p-4">
+            <SkeletonTable rows={6} cols={5} />
+          </div>
+        </Card>
+      ) : contents.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No content found"
           description={
-            search || statusFilter || pillarFilter || platformFilter
+            hasFilters
               ? 'Try adjusting your search or filters.'
               : 'Start planning your first content.'
           }
@@ -160,18 +168,22 @@ export default function ContentPlanningList() {
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full">
+            <caption className="sr-only">
+              Content plan list with week, day, date, category, platform, pillar, topic, PIC,
+              status, and actions
+            </caption>
             <thead className="border-b border-border bg-surface-muted">
               <tr>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Week</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Day</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Date</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Kategori</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Platform</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Pillar</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Topic &amp; Title</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">PIC</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Status</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">Actions</th>
+                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>Week</th>
+                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>Day</th>
+                <th scope="col" className={TH_BASE}>Date</th>
+                <th scope="col" className={TH_BASE}>Kategori</th>
+                <th scope="col" className={TH_BASE}>Platform</th>
+                <th scope="col" className={`hidden lg:table-cell ${TH_BASE}`}>Pillar</th>
+                <th scope="col" className={TH_BASE}>Topic &amp; Title</th>
+                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>PIC</th>
+                <th scope="col" className={TH_BASE}>Status</th>
+                <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -179,10 +191,10 @@ export default function ContentPlanningList() {
                 const day = (content as Content & { day?: string | null }).day
                 return (
                   <tr key={content.id} className="transition-colors hover:bg-surface-muted/60">
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
                       {content.planned_week ?? '-'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
                       {day || '-'}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
@@ -194,7 +206,7 @@ export default function ContentPlanningList() {
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
                       {content.platform?.name || '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="hidden px-4 py-3 text-sm lg:table-cell">
                       <Badge variant="outline">{content.pillar?.name || '-'}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm">
@@ -223,7 +235,7 @@ export default function ContentPlanningList() {
                       })()}
                       <div className="text-xs text-ink-muted">{content.topic}</div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
                       {content.pic || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm">

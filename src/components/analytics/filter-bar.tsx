@@ -54,7 +54,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           type="date"
           value={filters.date_from}
           onChange={(e) => set('date_from', e.target.value)}
-          className="w-40"
+          className="w-full sm:w-40"
         />
       </div>
 
@@ -67,7 +67,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           type="date"
           value={filters.date_to}
           onChange={(e) => set('date_to', e.target.value)}
-          className="w-40"
+          className="w-full sm:w-40"
         />
       </div>
 
@@ -79,7 +79,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           id="filter-platform"
           value={filters.platform_id}
           onChange={(e) => set('platform_id', e.target.value)}
-          className="w-40"
+          className="w-full sm:w-40"
         >
           <option value="">All</option>
           {masterData.platforms.map((p) => (
@@ -98,7 +98,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           id="filter-pillar"
           value={filters.pillar_id}
           onChange={(e) => set('pillar_id', e.target.value)}
-          className="w-40"
+          className="w-full sm:w-40"
         >
           <option value="">All</option>
           {masterData.pillars.map((p) => (
@@ -118,7 +118,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
             id="filter-status"
             value={filters.status}
             onChange={(e) => set('status', e.target.value)}
-            className="w-44"
+            className="w-full sm:w-44"
           >
             <option value="">All</option>
             <option value="DRAFT">Draft</option>

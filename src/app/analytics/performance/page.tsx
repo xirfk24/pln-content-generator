@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2 } from 'lucide-react'
 import { FilterBar, EMPTY_FILTERS, type FilterValues } from '@/components/analytics/filter-bar'
+import { SkeletonTable } from '@/components/ui/skeleton'
 import { ENGAGEMENT_FORMULA } from '@/constants'
 
 type RankMetric = 'views' | 'engagementRate' | 'likes' | 'shares'
@@ -114,8 +114,8 @@ export default function PerformanceAnalyticsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
+            <div className="p-1">
+              <SkeletonTable rows={6} cols={6} />
             </div>
           ) : rows.length === 0 ? (
             <p className="py-12 text-center text-sm text-ink-muted">
@@ -124,24 +124,43 @@ export default function PerformanceAnalyticsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
+                <caption className="sr-only">
+                  Top content ranked by {rankMetric} with views, likes, comments, shares, saves,
+                  reach, and engagement rate
+                </caption>
                 <thead className="border-b bg-surface-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Likes</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Comments</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Shares</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Saves</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Reach</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Eng. Rate</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">#</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Title</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Likes</th>
+                    <th scope="col" className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary md:table-cell">Comments</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Shares</th>
+                    <th scope="col" className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary md:table-cell">Saves</th>
+                    <th scope="col" className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary md:table-cell">Reach</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Eng. Rate</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {rows.map((row, i) => (
                     <tr key={row.contentId} className="hover:bg-surface-muted">
-                      <td className="px-4 py-3 text-sm font-medium text-ink-secondary">{i + 1}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                            i === 0
+                              ? 'bg-warning-soft text-warning'
+                              : i === 1
+                                ? 'bg-primary-soft text-primary'
+                                : i === 2
+                                  ? 'bg-info-soft text-info'
+                                  : 'bg-surface-muted text-ink-muted'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {i + 1}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/content/${row.contentId}`}
@@ -155,10 +174,10 @@ export default function PerformanceAnalyticsPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-sm">{row.views.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right text-sm">{row.likes.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right text-sm">{row.comments.toLocaleString()}</td>
+                      <td className="hidden px-4 py-3 text-right text-sm md:table-cell">{row.comments.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right text-sm">{row.shares.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right text-sm">{row.saves.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right text-sm">{row.reach.toLocaleString()}</td>
+                      <td className="hidden px-4 py-3 text-right text-sm md:table-cell">{row.saves.toLocaleString()}</td>
+                      <td className="hidden px-4 py-3 text-right text-sm md:table-cell">{row.reach.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-success">
                         {row.engagementRate.toFixed(2)}%
                       </td>

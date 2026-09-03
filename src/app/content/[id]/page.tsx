@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,8 +27,8 @@ const ACTION_LABELS: Record<string, string> = {
   RESUBMITTED: 'Resubmitted',
 }
 
-export default function ContentDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function ContentDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const [content, setContent] = useState<ContentWithPubs | null>(null)
   const [approvals, setApprovals] = useState<ApprovalHistory[]>([])
   const [loading, setLoading] = useState(true)
@@ -180,7 +180,7 @@ export default function ContentDetailPage({ params }: { params: Promise<{ id: st
                     const engagement = metrics ? calculateEngagementRate(metrics) : null
                     return (
                       <div key={pub.id} className="rounded-lg border p-4">
-                        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{pub.platform?.name || '-'}</span>
                             <StatusBadge status={pub.status} kind="publication" />
@@ -331,7 +331,7 @@ export default function ContentDetailPage({ params }: { params: Promise<{ id: st
                   {approvals.map((approval, index) => (
                     <div key={approval.id} className="relative flex gap-3 pb-6 last:pb-0">
                       {index < approvals.length - 1 && (
-                        <div className="absolute left-[7px] top-5 h-full w-px bg-neutral-border" />
+                        <div className="absolute left-[7px] top-5 h-full w-px bg-border-strong" />
                       )}
                       <div className={`relative mt-1 h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 ${
                         approval.action.includes('APPROVED') ? 'border-success bg-success' :

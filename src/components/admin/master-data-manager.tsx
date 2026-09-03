@@ -155,7 +155,7 @@ export function MasterDataManager({
       />
 
       {error && (
-        <div className="rounded-md border border-danger-border bg-danger-soft p-3 text-sm text-danger">
+        <div className="rounded-md border border-danger bg-danger-soft p-3 text-sm text-danger">
           {error}
         </div>
       )}

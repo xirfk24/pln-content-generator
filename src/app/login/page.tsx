@@ -99,13 +99,13 @@ export default function LoginPage() {
                     setEmail(email)
                     setPassword('demo1234')
                   }}
-                  className="block w-full cursor-pointer rounded px-2 py-1 text-left transition-colors hover:bg-primary-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="block w-full cursor-pointer rounded px-2 py-1 text-left transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <span className="font-medium">{email}</span> — {label}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-primary/70">
+            <p className="mt-2 text-micro text-primary/70">
               Click an account to autofill. Requires demo-users.sql to be run.
             </p>
           </div>
