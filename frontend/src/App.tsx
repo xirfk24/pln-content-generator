@@ -1,0 +1,100 @@
+import { useEffect, useState, type ReactNode } from 'react'
+import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
+import { createClient } from '@/lib/supabase/client'
+import { MainLayout } from '@/components/layout/main-layout'
+
+import HomePage from './pages/home'
+import LoginPage from './pages/login'
+import LogoutPage from './pages/logout'
+import UnauthorizedPage from './pages/unauthorized'
+import DashboardPage from './pages/dashboard'
+import ContentPlanningPage from './pages/content-planning'
+import ContentNewPage from './pages/content-new'
+import ContentCalendarPage from './pages/content-calendar'
+import ContentDetailPage from './pages/content-detail'
+import ContentEditPage from './pages/content-edit'
+import AnalyticsPage from './pages/analytics'
+import AnalyticsInsightsPage from './pages/analytics-insights'
+import AnalyticsPerformancePage from './pages/analytics-performance'
+import WorkflowApprovalPage from './pages/workflow-approval'
+import WorkflowTasksPage from './pages/workflow-tasks'
+import PublishingPage from './pages/publishing'
+import AIPage from './pages/ai'
+import ReportsPage from './pages/reports'
+import AdminUsersPage from './pages/admin-users'
+import AdminCategoriesPage from './pages/admin-categories'
+import AdminPillarsPage from './pages/admin-pillars'
+import AdminPlatformsPage from './pages/admin-platforms'
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const [checking, setChecking] = useState(true)
+  const [authed, setAuthed] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthed(Boolean(data.session))
+      setChecking(false)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthed(Boolean(session))
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-ink-secondary">Loading...</p>
+      </div>
+    )
+  }
+  if (!authed) {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
+function AppLayout() {
+  return (
+    <RequireAuth>
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
+    </RequireAuth>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/logout" element={<LogoutPage />} />
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+      <Route element={<AppLayout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/content/planning" element={<ContentPlanningPage />} />
+        <Route path="/content/planning/new" element={<ContentNewPage />} />
+        <Route path="/content/calendar" element={<ContentCalendarPage />} />
+        <Route path="/content/:id" element={<ContentDetailPage />} />
+        <Route path="/content/:id/edit" element={<ContentEditPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/analytics/insights" element={<AnalyticsInsightsPage />} />
+        <Route path="/analytics/performance" element={<AnalyticsPerformancePage />} />
+        <Route path="/workflow/approval" element={<WorkflowApprovalPage />} />
+        <Route path="/workflow/tasks" element={<WorkflowTasksPage />} />
+        <Route path="/publishing" element={<PublishingPage />} />
+        <Route path="/ai" element={<AIPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+        <Route path="/admin/pillars" element={<AdminPillarsPage />} />
+        <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  )
+}

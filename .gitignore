@@ -41,3 +41,11 @@ test-results/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# monorepo: vite + go
+/frontend/node_modules
+/frontend/dist
+/frontend/.env.local
+/backend/server
+/backend/.env
+*.log
