@@ -1,13 +1,29 @@
 # PLN Content Management System
 
-AI-Powered Content Management & Intelligence System — a full-stack internal web application for managing the complete content lifecycle: from idea, planning, approval workflow, publishing, performance monitoring, analytics, to AI-assisted recommendations.
+AI-Powered Content Management & Intelligence System — full-stack internal web application for managing the complete content lifecycle: planning, approval workflow, publishing, performance monitoring, analytics, and AI-assisted recommendations.
 
-> **AI Assistant — Demo Mode**: all AI features currently use a `MockAIProvider` that simulates realistic, input-aware responses. No external AI service is connected. See [AI Architecture](#ai-architecture-mock--future-gemini).
+Stack: **Vite + React** frontend, **Go (gin + pgx)** backend, **Supabase** (Postgres + Auth). Migration story & setup details: [MIGRATION.md](./MIGRATION.md).
+
+## Quick Start (dev)
+
+```bash
+# backend — http://localhost:8080
+cd backend
+cp .env.example .env        # isi DATABASE_URL + SUPABASE_JWT_SECRET
+go run ./cmd/server
+
+# frontend — http://localhost:3001 (proxy /api -> :8080)
+cd frontend
+cp .env.example .env.local  # isi VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+npm install
+npm run dev
+```
+
+Login memakai akun Supabase yang sama seperti sebelumnya (auth tidak berpindah). Role & permission (`ADMIN/STAFF/REVIEWER/APPROVER`) di-enforce di middleware Go.
 
 ## Features
 
 ### Content Management
-- **Content Ideas** — CRUD, search/filter, convert idea into a content plan (preserves source reference), AI idea generator
 - **Content Planning** — full CRUD with search, status/pillar/platform filters; fields: topic, title, pillar, category, platform, format, brief, target audience, planned date/week, PIC, priority
 - **Content Calendar** — month grid with status color-coding, prev/next/today navigation, status legend
 
@@ -25,192 +41,39 @@ AI-Powered Content Management & Intelligence System — a full-stack internal we
 
 ### Performance & Analytics
 - Manual performance metrics per publication (views, likes, comments, shares, saves, reach) — upsert per date, numeric validation
-- Engagement rate: `(Likes + Comments + Shares + Saves) / Reach × 100` (documented in UI tooltips; reach=0 guarded)
+- Engagement rate: `(Likes + Comments + Shares + Saves) / Reach × 100`
 - **Dashboard** — real DB data, filterable (date range, platform, pillar, status): content KPIs, performance KPIs, status pie, platform bars, planned-vs-published trend, top content
 - **Analytics Overview** — per-platform charts, per-pillar table, monthly realization rate
-- **Performance Analytics** — top content ranking by views / engagement rate / likes / shares
-- **Reports** — filtered table preview + CSV export (Excel-compatible, BOM)
+- **Topic Recap** — pillar-code (A–Z) recap table matching the ops spreadsheet template
 
-### AI Assistant (Demo Mode — Mock Provider)
-1. **Idea Generator** — contextual ideas by pillar/platform/audience; save as draft or create content
-2. **Content Generator** — title/hook/brief/caption/CTA from topic parameters
-3. **Content Improvement** — input-aware suggestions (checks CTA, hook, length, emoji, numbers) with "Apply to Brief"
-4. **AI Review** — pre-submit quality scoring (5 categories, issues, suggestions); advisory only
-5. **Performance Analysis** — analyzes the current filtered analytics snapshot
-6. **Recommendations** — one click turns a recommendation into a Content Idea (completes the analytics → idea loop)
+### Reports
+- Filterable content report; CSV export (Excel-friendly, BOM + escaped)
 
-All AI interactions are logged to `ai_requests` / `ai_outputs`.
+### Admin
+- Master data CRUD: pillars, categories, platforms
+- User management: roles, active status
 
-## Tech Stack
+### AI (Mock Mode)
+> **Demo Mode**: all AI features use a mock provider that simulates realistic, input-aware responses. No external AI service connected. Swap provider in `backend/internal/ai/` (interface mirrors the old `AIProvider`).
+- Content generator (structured: title/hook/brief/caption/CTA/hashtags)
+- Content improvement + review scoring (clarity/tone/audience/CTA/engagement)
+- Performance analysis + recommendations (logged to `ai_requests`/`ai_outputs`)
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 14 (App Router), TypeScript (strict), Tailwind CSS, Recharts, lucide-react |
-| Backend | Next.js Route Handlers + Server Actions (services layer) |
-| Database | PostgreSQL on Supabase |
-| Auth | Supabase Auth (cookie-based session via `@supabase/ssr`) |
-| AI | Provider abstraction — `MockAIProvider` (Gemini-ready) |
-| Deployment | Vercel |
-
-## Architecture
+## Repo Layout
 
 ```
-UI (client components / pages)
-  ↓ fetch
-API Route Handlers (/src/app/api/**)
-  ↓
-Services (/src/services/**)  ← all business logic, Supabase queries
-  ↓
-Supabase (PostgreSQL + RLS)
-
-AI path:
-UI → API route → AIProvider interface → MockAIProvider
-                                     (future: GeminiAIProvider)
+backend/    Go REST API (gin, pgx, golang-jwt)
+frontend/   React SPA (Vite, react-router, Tailwind, shadcn-style UI)
+supabase/   DB schema, migrations, seed, demo-user script
 ```
 
-Key directories:
+## Architecture Notes
 
-```
-src/
-├── app/                  # pages + API routes
-├── components/           # ui/, layout/, workflow/, analytics/, ai/, admin/
-├── lib/
-│   ├── supabase/         # server & browser clients
-│   ├── auth/             # session middleware, permissions, page guards
-│   ├── ai/               # AIProvider interface + MockAIProvider
-│   └── utils/            # cn, dates, engagement rate, week number
-├── services/             # content, content-ideas, content-details,
-│                         # approval, publications, metrics,
-│                         # analytics, admin, ai-logging
-├── types/                # domain types + database types
-└── constants/            # statuses, workflow maps, labels, formulas
-supabase/
-├── schema.sql            # tables, RLS, triggers, indexes
-└── seed.sql              # realistic Indonesian demo data
-```
+- **Auth**: Supabase Auth (supabase-js client-side). Go verifies the access token (HS256 JWT, `SUPABASE_JWT_SECRET`) and loads `profiles.role`. Admin routes require `ADMIN`.
+- **DB access**: Go connects directly to Postgres via `DATABASE_URL` (pgx). RLS is bypassed (postgres user) — permission enforcement lives in Go middleware. Keep `DATABASE_URL` secret.
+- **Workflow state machine**: 1:1 port of the old `src/constants/workflow.ts` (see `backend/internal/handlers/workflow.go`).
 
-## Database Schema
+## History
 
-| Table | Purpose |
-|---|---|
-| `profiles` | Extends `auth.users` — full_name, role (ADMIN/STAFF/REVIEWER/APPROVER), is_active |
-| `pillars`, `categories`, `platforms` | Master data |
-| `content_ideas` | Ideas (DRAFT/SELECTED/CONVERTED/ARCHIVED) |
-| `contents` | Single source of truth; 10 lifecycle statuses; `source_idea_id` traceability |
-| `publications` | Per-platform publishing (planned vs actual date, URL, status) |
-| `performance_metrics` | Metrics per publication per recorded date |
-| `approval_histories` | Full workflow audit trail (action, from/to status, comment, performer) |
-| `ai_requests` / `ai_outputs` | AI interaction logs |
-
-Row-Level Security policies enforce read/write rules per role. `updated_at` triggers on mutable tables. Audit fields (`created_by`, `updated_by`, timestamps) on relevant tables.
-
-## User Roles
-
-| Role | Key permissions |
-|---|---|
-| ADMIN | Everything: user & master data management, all content, workflow, analytics, AI |
-| STAFF | Create ideas/content, submit/resubmit, publications, metrics, dashboards, AI |
-| REVIEWER | Review submitted content, request revision, approval history |
-| APPROVER | Final approval / rejection, approval history |
-
-Authorization is enforced server-side (route handlers, services with role checks, RLS, and server-side page guards for `/admin`). The sidebar nav is also filtered per role (UX only, not the security boundary).
-
-## Setup Instructions
-
-### Prerequisites
-- Node.js 18+
-- A Supabase project
-
-### Steps
-
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment** — copy `.env.example` to `.env.local` and fill in:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=<your project URL>
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your anon key>
-   SUPABASE_SERVICE_ROLE_KEY=<your service role key>
-   GEMINI_API_KEY=          # future, leave empty
-   ```
-
-3. **Create the database schema** — in Supabase Dashboard → SQL Editor, run in order:
-   - `supabase/schema.sql` — tables, RLS, triggers, indexes
-   - `supabase/seed.sql` — demo content data
-
-4. **Create demo accounts** (uses the Supabase Admin API — safe, unlike manual `auth.users` inserts which corrupt the auth schema):
-
-   ```bash
-   bash scripts/create-demo-users.sh
-   ```
-
-   All passwords: `demo1234`.
-
-   | Email | Name | Role |
-   |---|---|---|
-   | `admin@pln.co.id` | Admin Utama | ADMIN |
-   | `staff1@pln.co.id` | Budi Santoso | STAFF |
-   | `staff2@pln.co.id` | Siti Rahayu | STAFF |
-   | `reviewer@pln.co.id` | Agus Wibowo | REVIEWER |
-   | `approver@pln.co.id` | Dewi Kusuma | APPROVER |
-
-   The demo users share UUIDs with the seeded `profiles` rows, so all `created_by` / `performed_by` references resolve correctly.
-
-5. **Run the app**
-   ```bash
-   npm run dev
-   ```
-   Open http://localhost:3000 and sign in.
-
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon key (browser-safe) |
-| `SUPABASE_SERVICE_ROLE_KEY` | server only | Service role key — never exposed to client |
-| `GEMINI_API_KEY` | future | Gemini API key — only when integrating Gemini |
-
-## AI Architecture (Mock → Future Gemini)
-
-All AI calls go through one interface (`src/lib/ai/types.ts`):
-
-```typescript
-interface AIProvider {
-  generateIdeas(...)
-  generateContent(...)
-  improveContent(...)
-  reviewContent(...)
-  analyzePerformance(...)
-  generateRecommendations(...)
-}
-```
-
-The factory in `src/lib/ai/index.ts` currently returns `MockAIProvider`:
-
-```typescript
-// TODO: Replace MockAIProvider with GeminiAIProvider.
-export function getAIProvider(): AIProvider {
-  return new MockAIProvider()
-}
-```
-
-**To integrate Gemini later:** create `src/lib/ai/gemini-provider.ts` implementing `AIProvider` (calling the Gemini API with `GEMINI_API_KEY` server-side), then change the factory to return `GeminiAIProvider`. No UI or service changes are needed — the UI never knows which provider is active.
-
-## Deployment (Vercel)
-
-1. Push the repository to GitHub.
-2. Import it in Vercel.
-3. Add environment variables (Project → Settings → Environment Variables).
-4. Deploy. Route handlers run as serverless functions automatically.
-
-## Verification Commands
-
-```bash
-npx tsc --noEmit   # typecheck
-npm run lint       # eslint
-npm run build      # production build
-npm run dev        # dev server
-```
+- `legacy/nextjs` branch — full snapshot of the previous Next.js 14 app.
+- Migration commit — see [MIGRATION.md](./MIGRATION.md).
