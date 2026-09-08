@@ -367,6 +367,9 @@ func (h *Handler) platformPerformance(f analyticsFilters) []platformPerfRow {
 
 	out := make([]platformPerfRow, 0, len(rows))
 	for _, name := range order {
+		if name == "Unknown" {
+			continue
+		}
 		row := rows[name]
 		row.EngagementRate = 0
 		if row.Reach > 0 {
@@ -445,6 +448,9 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 
 	out := make([]pillarPerfRow, 0, len(rows))
 	for _, name := range order {
+		if name == "Unknown" {
+			continue
+		}
 		row := rows[name]
 		if row.PublishedCount > 0 {
 			row.AvgViews = int(float64(row.Views)/float64(row.PublishedCount) + 0.5)
