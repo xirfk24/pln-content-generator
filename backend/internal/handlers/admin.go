@@ -13,11 +13,16 @@ type masterInput struct {
 }
 
 // Generic master-data CRUD used by admin routes.
+// hasIcon=true means the table has an "icon" column (e.g. platforms).
+// Tables with icon typically don't have a "description" column, so we
+// conditionally include/exclude both columns based on flags.
 func (h *Handler) ListMaster(table string, hasIcon bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// platforms: id, name, icon, created_at (no description)
+		// categories/pillars: id, name, description, created_at (no icon)
 		cols := "id, name, description, created_at"
 		if hasIcon {
-			cols = "id, name, description, icon, created_at"
+			cols = "id, name, icon, created_at"
 		}
 		rows, err := h.Pool.Query(h.ctx(), "SELECT "+cols+" FROM "+table+" ORDER BY name")
 		if err != nil {
@@ -29,22 +34,24 @@ func (h *Handler) ListMaster(table string, hasIcon bool) gin.HandlerFunc {
 		items := []map[string]any{}
 		for rows.Next() {
 			var id, name string
-			var desc *string
 			var created timeDb
-			var icon *string
 			var scanErr error
+			item := map[string]any{}
 			if hasIcon {
-				scanErr = rows.Scan(&id, &name, &desc, &icon, &created)
+				var icon *string
+				scanErr = rows.Scan(&id, &name, &icon, &created)
+				item["icon"] = icon
 			} else {
+				var desc *string
 				scanErr = rows.Scan(&id, &name, &desc, &created)
+				item["description"] = desc
 			}
 			if scanErr != nil {
 				continue
 			}
-			item := map[string]any{"id": id, "name": name, "description": desc, "created_at": created}
-			if hasIcon {
-				item["icon"] = icon
-			}
+			item["id"] = id
+			item["name"] = name
+			item["created_at"] = created
 			items = append(items, item)
 		}
 		c.JSON(http.StatusOK, gin.H{"items": items})
@@ -62,10 +69,12 @@ func (h *Handler) CreateMaster(table string, hasIcon bool) gin.HandlerFunc {
 		var id string
 		var err error
 		if hasIcon {
+			// platforms: name, icon (no description)
 			err = h.Pool.QueryRow(h.ctx(),
-				"INSERT INTO "+table+" (name, description, icon) VALUES ($1,$2,$3) RETURNING id",
-				*in.Name, in.Description, in.Icon).Scan(&id)
+				"INSERT INTO "+table+" (name, icon) VALUES ($1,$2) RETURNING id",
+				*in.Name, in.Icon).Scan(&id)
 		} else {
+			// categories/pillars: name, description (no icon)
 			err = h.Pool.QueryRow(h.ctx(),
 				"INSERT INTO "+table+" (name, description) VALUES ($1,$2) RETURNING id",
 				*in.Name, in.Description).Scan(&id)
@@ -74,7 +83,13 @@ func (h *Handler) CreateMaster(table string, hasIcon bool) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"item": map[string]any{"id": id, "name": *in.Name, "description": in.Description}})
+		item := map[string]any{"id": id, "name": *in.Name}
+		if hasIcon {
+			item["icon"] = in.Icon
+		} else {
+			item["description"] = in.Description
+		}
+		c.JSON(http.StatusOK, gin.H{"item": item})
 	}
 }
 
@@ -96,7 +111,9 @@ func (h *Handler) UpdateMaster(table string, hasIcon bool) gin.HandlerFunc {
 		if in.Name != nil {
 			add("name", *in.Name)
 		}
-		if in.Description != nil {
+		// Only update description for tables that have it (categories, pillars)
+		// platforms table has no description column
+		if !hasIcon && in.Description != nil {
 			add("description", *in.Description)
 		}
 		if hasIcon && in.Icon != nil {
