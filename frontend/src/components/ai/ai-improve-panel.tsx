@@ -37,6 +37,7 @@ export function AIImprovePanel({
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ImproveResult | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
   const [type, setType] = useState<ImprovementType>('all')
 
   async function runImprove() {
@@ -68,6 +69,7 @@ export function AIImprovePanel({
 
       setResult(data.result)
       setGeneratedAt(data.generatedAt)
+      setModel(data.model || null)
     } catch {
       setError('Network error. Please try again.')
     } finally {
@@ -105,6 +107,7 @@ export function AIImprovePanel({
         <AIResultCard
           title="AI Content Improvement"
           generatedAt={generatedAt}
+          model={model}
           onRegenerate={runImprove}
           onDismiss={() => setResult(null)}
         >

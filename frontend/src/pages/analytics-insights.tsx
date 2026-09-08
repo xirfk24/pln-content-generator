@@ -27,6 +27,7 @@ export default function AIInsightsPage() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
   const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS)
   const [masterData, setMasterData] = useState<{
     pillars: Array<{ id: string; name: string }>
@@ -60,6 +61,7 @@ export default function AIInsightsPage() {
 
       setResult(data.result)
       setGeneratedAt(data.generatedAt)
+      setModel(data.model || null)
     } catch {
       setError('Network error. Please try again.')
     } finally {
@@ -132,6 +134,7 @@ export default function AIInsightsPage() {
           <AIResultCard
             title="AI Performance Analysis"
             generatedAt={generatedAt}
+          model={model}
             onRegenerate={runAnalysis}
             onDismiss={() => setResult(null)}
           >

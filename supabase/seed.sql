@@ -24,9 +24,7 @@ INSERT INTO platforms (id, name, icon) VALUES
   ('33333333-3333-3333-3333-333333333002', 'TikTok', 'tiktok'),
   ('33333333-3333-3333-3333-333333333003', 'Facebook', 'facebook'),
   ('33333333-3333-3333-3333-333333333004', 'YouTube', 'youtube'),
-  ('33333333-3333-3333-3333-333333333005', 'Twitter/X', 'twitter'),
-  ('33333333-3333-3333-3333-333333333006', 'LinkedIn', 'linkedin'),
-  ('33333333-3333-3333-3333-333333333007', 'Website', 'globe');
+  ('33333333-3333-3333-3333-333333333005', 'Twitter/X', 'twitter');
 
 -- Demo Users (profiles)
 -- Note: Actual auth users need to be created via Supabase Auth
@@ -34,9 +32,7 @@ INSERT INTO platforms (id, name, icon) VALUES
 INSERT INTO profiles (id, email, full_name, role, is_active) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'admin@pln.co.id', 'Admin Utama', 'ADMIN', TRUE),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'staff1@pln.co.id', 'Budi Santoso', 'STAFF', TRUE),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'staff2@pln.co.id', 'Siti Rahayu', 'STAFF', TRUE),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'reviewer@pln.co.id', 'Agus Wibowo', 'REVIEWER', TRUE),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5', 'approver@pln.co.id', 'Dewi Kusuma', 'APPROVER', TRUE);
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'staff2@pln.co.id', 'Siti Rahayu', 'STAFF', TRUE);
 
 -- Content Ideas
 INSERT INTO content_ideas (id, title, description, pillar_id, target_audience, source, status, created_by) VALUES

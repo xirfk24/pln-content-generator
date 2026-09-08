@@ -2,10 +2,9 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Roles (for reference, actual roles stored in user metadata)
--- ADMIN: Full access
--- STAFF: Content creation and editing
--- REVIEWER: Review content
--- APPROVER: Final approval
+-- ADMIN: Gatekeeper — approve/reject, master data, dashboard evaluation
+--         (Asman Komunikasi & MSB Komunikasi/TJSL)
+-- STAFF: Operator — draft, brief, AI assist, submit, publication proof
 
 -- Pillars (Content Themes)
 CREATE TABLE pillars (
@@ -39,7 +38,7 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
   full_name VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('ADMIN', 'STAFF', 'REVIEWER', 'APPROVER')),
+  role VARCHAR(20) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('ADMIN', 'STAFF')),
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -231,8 +230,8 @@ CREATE POLICY "Staff and admins can insert contents" ON contents
   FOR INSERT WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF']));
 CREATE POLICY "Workflow roles can update contents" ON contents
   FOR UPDATE
-  USING (public.has_role(ARRAY['ADMIN','STAFF','REVIEWER','APPROVER']))
-  WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF','REVIEWER','APPROVER']));
+USING (public.has_role(ARRAY['ADMIN','STAFF']))
+WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF']));
 CREATE POLICY "Admins can delete contents" ON contents
   FOR DELETE USING (public.has_role(ARRAY['ADMIN']));
 

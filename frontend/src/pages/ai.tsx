@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Sparkles, Wand2, ShieldCheck, BarChart3 } from 'lucide-react'
-import { AIResultCard, AIError } from '@/components/ai/ai-result-card'
+import { AIResultCard, AIError, formatModelLabel } from '@/components/ai/ai-result-card'
 
 interface Recommendation {
   title: string
@@ -45,6 +45,7 @@ export default function AIAssistantPage() {
   const [error, setError] = useState<string | null>(null)
   const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
 
   async function runRecommendations() {
     setLoading(true)
@@ -61,6 +62,7 @@ export default function AIAssistantPage() {
 
       setRecommendations(data.result.recommendations)
       setGeneratedAt(data.generatedAt)
+      setModel(data.model || null)
     } catch {
       setError('Network error. Please try again.')
     } finally {
@@ -76,8 +78,9 @@ export default function AIAssistantPage() {
           AI Assistant
         </h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          AI Assistant — Demo Mode. Responses are simulated; no external AI
-          service is connected.
+          {model && model !== 'mock-provider-v1'
+            ? `AI Assistant — powered by ${formatModelLabel(model)}.`
+            : 'AI Assistant — Demo Mode. Responses are simulated; no external AI service is connected.'}
         </p>
       </div>
 
@@ -139,6 +142,7 @@ export default function AIAssistantPage() {
         <AIResultCard
           title="AI Recommendations"
           generatedAt={generatedAt}
+          model={model}
           onRegenerate={runRecommendations}
           onDismiss={() => setRecommendations(null)}
         >

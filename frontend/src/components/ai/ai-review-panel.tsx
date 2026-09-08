@@ -45,6 +45,7 @@ export function AIReviewPanel({
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ReviewResult | null>(null)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(null)
 
   async function runReview() {
     if (!content.trim()) {
@@ -75,6 +76,7 @@ export function AIReviewPanel({
 
       setResult(data.result)
       setGeneratedAt(data.generatedAt)
+      setModel(data.model || null)
     } catch {
       setError('Network error. Please try again.')
     } finally {
@@ -105,6 +107,7 @@ export function AIReviewPanel({
         <AIResultCard
           title="AI Content Review"
           generatedAt={generatedAt}
+          model={model}
           onRegenerate={runReview}
           onDismiss={() => setResult(null)}
         >

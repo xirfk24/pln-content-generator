@@ -86,11 +86,9 @@ export default function LoginPage() {
             </p>
             <div className="mt-2 space-y-1 text-xs text-primary">
               {[
-                ['admin@pln.co.id', 'Admin Utama (ADMIN)'],
-                ['staff1@pln.co.id', 'Budi Santoso (STAFF)'],
-                ['staff2@pln.co.id', 'Siti Rahayu (STAFF)'],
-                ['reviewer@pln.co.id', 'Agus Wibowo (REVIEWER)'],
-                ['approver@pln.co.id', 'Dewi Kusuma (APPROVER)'],
+                ['admin@pln.co.id', 'Admin Utama (ADMIN — Gatekeeper)'],
+                ['staff1@pln.co.id', 'Budi Santoso (STAFF — Operator)'],
+                ['staff2@pln.co.id', 'Siti Rahayu (STAFF — Operator)'],
               ].map(([email, label]) => (
                 <button
                   key={email}

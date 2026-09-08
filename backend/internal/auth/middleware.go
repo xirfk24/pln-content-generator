@@ -157,5 +157,8 @@ func loadProfile(ctx context.Context, pool *pgxpool.Pool, userID string) (*model
 	if err != nil {
 		return nil, err
 	}
+	if p.IsActive != nil && !*p.IsActive {
+		return nil, errors.New("user is inactive")
+	}
 	return p, nil
 }

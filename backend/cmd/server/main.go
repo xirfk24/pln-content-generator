@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"pln-backend/internal/ai"
 	"pln-backend/internal/auth"
 	"pln-backend/internal/config"
 	"pln-backend/internal/db"
@@ -27,7 +28,7 @@ func main() {
 		log.Println("WARNING: SUPABASE_JWT_SECRET not set — all authenticated routes will reject requests")
 	}
 
-	h := handlers.New(pool, cfg.SupabaseJWTSecret)
+	h := handlers.New(pool, cfg.SupabaseJWTSecret, ai.NewProvider(cfg.GeminiAPIKey))
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()

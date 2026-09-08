@@ -63,8 +63,7 @@ export default function ApprovalPage() {
     )
   }
 
-  const canReview = role === 'REVIEWER' || role === 'ADMIN'
-  const canApprove = role === 'APPROVER' || role === 'ADMIN'
+  const isAdmin = role === 'ADMIN'
 
   return (
     <div className="space-y-6">
@@ -75,12 +74,12 @@ export default function ApprovalPage() {
         </p>
       </div>
 
-      {!canReview && !canApprove ? (
+      {!isAdmin ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Inbox className="mx-auto mb-3 h-10 w-10 text-ink-muted" />
             <p className="text-ink-secondary">
-              Your role does not have review or approval permissions.
+              Your role does not have approval permissions.
             </p>
           </CardContent>
         </Card>
@@ -144,11 +143,11 @@ export default function ApprovalPage() {
                       </Button>
                     </Link>
 
-                    {content.status === 'PENDING_REVIEW' && canReview && (
+                    {content.status === 'PENDING_REVIEW' && isAdmin && (
                       <>
                         <WorkflowActionButton
                           contentId={content.id}
-                          action="REVIEW_APPROVED"
+                          action="APPROVED"
                           variant="default"
                           onDone={loadQueue}
                         />
@@ -161,7 +160,7 @@ export default function ApprovalPage() {
                       </>
                     )}
 
-                    {content.status === 'APPROVED' && canApprove && (
+                    {content.status === 'APPROVED' && isAdmin && (
                       <>
                         <WorkflowActionButton
                           contentId={content.id}

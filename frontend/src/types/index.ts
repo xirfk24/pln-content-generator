@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'STAFF' | 'REVIEWER' | 'APPROVER'
+export type UserRole = 'ADMIN' | 'STAFF'
 
 export type ContentStatus =
   | 'DRAFT'
@@ -16,12 +16,14 @@ export type PublicationStatus = 'PLANNED' | 'PUBLISHED' | 'DELAYED' | 'CANCELLED
 
 export type ApprovalAction =
   | 'SUBMITTED'
-  | 'REVIEWED'
   | 'REVISION_REQUESTED'
-  | 'REVIEW_APPROVED'
+  | 'APPROVED'
   | 'FINAL_APPROVED'
   | 'REJECTED'
   | 'RESUBMITTED'
+  // legacy actions (kept for displaying old approval history rows)
+  | 'REVIEWED'
+  | 'REVIEW_APPROVED'
 
 export interface User {
   id: string

@@ -12,6 +12,7 @@ type Config struct {
 	DatabaseURL       string
 	SupabaseURL       string
 	SupabaseJWTSecret string
+	GeminiAPIKey      string
 	AllowedOrigins    []string
 }
 
@@ -29,6 +30,7 @@ func Load() *Config {
 		DatabaseURL:       mustEnv("DATABASE_URL"),
 		SupabaseURL:       getEnv("SUPABASE_URL", ""),
 		SupabaseJWTSecret: getEnv("SUPABASE_JWT_SECRET", ""),
+		GeminiAPIKey:      getEnv("GEMINI_API_KEY", ""),
 		AllowedOrigins:    strings.Split(getEnv("ALLOWED_ORIGINS", "http://localhost:3001,http://localhost:5173"), ","),
 	}
 }

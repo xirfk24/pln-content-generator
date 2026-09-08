@@ -19,7 +19,7 @@ interface UserProfile {
   created_at: string
 }
 
-const ROLES: UserRole[] = ['ADMIN', 'STAFF', 'REVIEWER', 'APPROVER']
+const ROLES: UserRole[] = ['ADMIN', 'STAFF']
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([])

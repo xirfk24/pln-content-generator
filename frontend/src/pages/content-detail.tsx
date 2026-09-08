@@ -258,12 +258,11 @@ export default function ContentDetailPage() {
                     </>
                   )}
 
-                {content.status === 'PENDING_REVIEW' &&
-                  (userRole === 'ADMIN' || userRole === 'REVIEWER') && (
+                {content.status === 'PENDING_REVIEW' && userRole === 'ADMIN' && (
                     <>
                       <WorkflowActionButton
                         contentId={content.id}
-                        action="REVIEW_APPROVED"
+                        action="APPROVED"
                         size="default"
                         onDone={load}
                       />
@@ -277,8 +276,7 @@ export default function ContentDetailPage() {
                     </>
                   )}
 
-                {content.status === 'APPROVED' &&
-                  (userRole === 'ADMIN' || userRole === 'APPROVER') && (
+                {content.status === 'APPROVED' && userRole === 'ADMIN' && (
                     <>
                       <WorkflowActionButton
                         contentId={content.id}
@@ -308,13 +306,11 @@ export default function ContentDetailPage() {
                   </p>
                 )}
 
-                {content.status === 'PENDING_REVIEW' &&
-                  !(userRole === 'ADMIN' || userRole === 'REVIEWER') && (
-                    <p className="text-sm text-ink-secondary">Waiting for reviewer.</p>
+                {content.status === 'PENDING_REVIEW' && userRole !== 'ADMIN' && (
+                    <p className="text-sm text-ink-secondary">Waiting for approval.</p>
                   )}
 
-                {content.status === 'APPROVED' &&
-                  !(userRole === 'ADMIN' || userRole === 'APPROVER') && (
+                {content.status === 'APPROVED' && userRole !== 'ADMIN' && (
                     <p className="text-sm text-ink-secondary">Waiting for final approval.</p>
                   )}
               </div>

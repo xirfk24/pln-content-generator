@@ -43,8 +43,8 @@ CREATE POLICY "Staff and admins can insert contents" ON contents
   FOR INSERT WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF']));
 
 CREATE POLICY "Workflow roles can update contents" ON contents
-  FOR UPDATE USING (public.has_role(ARRAY['ADMIN','STAFF','REVIEWER','APPROVER']))
-  WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF','REVIEWER','APPROVER']));
+FOR UPDATE USING (public.has_role(ARRAY['ADMIN','STAFF']))
+WITH CHECK (public.has_role(ARRAY['ADMIN','STAFF']));
 
 CREATE POLICY "Admins can delete contents" ON contents
   FOR DELETE USING (public.has_role(ARRAY['ADMIN']));

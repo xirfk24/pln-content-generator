@@ -28,7 +28,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <main
         className={cn(
           'min-h-screen pt-16 transition-all duration-300',
-          sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+          sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60'
         )}
       >
         <div className="mx-auto max-w-screen-2xl p-4 md:p-6">{children}</div>

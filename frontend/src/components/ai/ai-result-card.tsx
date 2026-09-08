@@ -7,14 +7,26 @@ import { useState } from 'react'
 interface AIResultCardProps {
   title: string
   generatedAt: string | Date | null
+  model?: string | null
   onRegenerate?: () => void
   onDismiss?: () => void
   children: React.ReactNode
 }
 
+const MOCK_MODEL = 'mock-provider-v1'
+
+export function formatModelLabel(model?: string | null): string {
+  if (!model) return 'Demo Mode'
+  if (model === MOCK_MODEL) return 'Demo Mode'
+  return model
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export function AIResultCard({
   title,
   generatedAt,
+  model,
   onRegenerate,
   onDismiss,
   children,
@@ -46,8 +58,14 @@ export function AIResultCard({
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-ink">{title}</span>
-          <span className="rounded bg-border-strong px-1.5 py-0.5 text-micro font-medium uppercase text-ink-secondary">
-            Demo Mode
+          <span
+            className={`rounded px-1.5 py-0.5 text-micro font-medium uppercase ${
+              model && model !== MOCK_MODEL
+                ? 'bg-success-soft text-success'
+                : 'bg-border-strong text-ink-secondary'
+            }`}
+          >
+            {formatModelLabel(model)}
           </span>
         </div>
         <div className="flex items-center gap-1">

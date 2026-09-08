@@ -43,8 +43,10 @@ func (h *Handler) AIGenerateContent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "topic is required"})
 		return
 	}
-	out := ai.GenerateContent(in)
-	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt()})
+	out := h.AI.GenerateContent(in)
+	reqID := h.logAIRequest(c, "CONTENT_GENERATION", in)
+	h.logAIOutput(reqID, out, h.AI.Model())
+	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt(), "model": h.AI.Model()})
 }
 
 // POST /api/ai/improve-content
@@ -54,10 +56,10 @@ func (h *Handler) AIImproveContent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
-	out := ai.ImproveContent(in)
+	out := h.AI.ImproveContent(in)
 	reqID := h.logAIRequest(c, "CONTENT_IMPROVEMENT", in)
-	h.logAIOutput(reqID, out, "mock-provider-v1")
-	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt()})
+	h.logAIOutput(reqID, out, h.AI.Model())
+	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt(), "model": h.AI.Model()})
 }
 
 // POST /api/ai/review-content
@@ -67,10 +69,10 @@ func (h *Handler) AIReviewContent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
-	out := ai.ReviewContent(in)
+	out := h.AI.ReviewContent(in)
 	reqID := h.logAIRequest(c, "CONTENT_REVIEW", in)
-	h.logAIOutput(reqID, out, "mock-provider-v1")
-	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt()})
+	h.logAIOutput(reqID, out, h.AI.Model())
+	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt(), "model": h.AI.Model()})
 }
 
 // POST /api/ai/analyze-performance
@@ -87,10 +89,10 @@ func (h *Handler) AIAnalyzePerformance(c *gin.Context) {
 	totalLikes := toInt(perfMap["totalLikes"])
 	avgRate := toFloat(perfMap["avgEngagementRate"])
 
-	out := ai.AnalyzePerformance(avgRate, totalViews, totalLikes, totalContent, published)
+	out := h.AI.AnalyzePerformance(avgRate, totalViews, totalLikes, totalContent, published)
 	reqID := h.logAIRequest(c, "PERFORMANCE_ANALYSIS", gin.H{"filters": f})
-	h.logAIOutput(reqID, out, "mock-provider-v1")
-	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt()})
+	h.logAIOutput(reqID, out, h.AI.Model())
+	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt(), "model": h.AI.Model()})
 }
 
 // POST /api/ai/recommendations
@@ -102,10 +104,10 @@ func (h *Handler) AIRecommendations(c *gin.Context) {
 			underperforming = append(underperforming, p.Pillar)
 		}
 	}
-	out := ai.GenerateRecommendations(underperforming)
+	out := h.AI.GenerateRecommendations(underperforming)
 	reqID := h.logAIRequest(c, "RECOMMENDATION", nil)
-	h.logAIOutput(reqID, out, "mock-provider-v1")
-	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt()})
+	h.logAIOutput(reqID, out, h.AI.Model())
+	c.JSON(http.StatusOK, gin.H{"result": out, "generatedAt": ai.GeneratedAt(), "model": h.AI.Model()})
 }
 
 func toInt(v any) int {

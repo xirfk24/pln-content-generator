@@ -18,6 +18,9 @@ type workflowActionDef struct {
 	RequiresComment     bool
 }
 
+// Two-tier workflow:
+// - STAFF (Operator): draft, brief, submit, respond to revision
+// - ADMIN (Gatekeeper): approve / reject
 var workflowActions = map[string]workflowActionDef{
 	"SUBMITTED": {
 		Label:               "Submit for Review",
@@ -31,34 +34,28 @@ var workflowActions = map[string]workflowActionDef{
 		AllowedFromStatuses: []string{"REVISION_REQUIRED"},
 		ToStatus:            "PENDING_REVIEW",
 	},
-	"REVIEWED": {
-		Label:               "Mark as Reviewed",
-		AllowedRoles:        []string{"ADMIN", "REVIEWER"},
+	"APPROVED": {
+		Label:               "Approve",
+		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
-		ToStatus:            "PENDING_REVIEW",
+		ToStatus:            "APPROVED",
 	},
 	"REVISION_REQUESTED": {
 		Label:               "Request Revision",
-		AllowedRoles:        []string{"ADMIN", "REVIEWER"},
+		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
 		ToStatus:            "REVISION_REQUIRED",
 		RequiresComment:     true,
 	},
-	"REVIEW_APPROVED": {
-		Label:               "Approve Review",
-		AllowedRoles:        []string{"ADMIN", "REVIEWER"},
-		AllowedFromStatuses: []string{"PENDING_REVIEW"},
-		ToStatus:            "APPROVED",
-	},
 	"FINAL_APPROVED": {
 		Label:               "Final Approval",
-		AllowedRoles:        []string{"ADMIN", "APPROVER"},
+		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"APPROVED"},
 		ToStatus:            "READY_TO_PUBLISH",
 	},
 	"REJECTED": {
 		Label:               "Reject",
-		AllowedRoles:        []string{"ADMIN", "APPROVER"},
+		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"APPROVED", "READY_TO_PUBLISH"},
 		ToStatus:            "REVISION_REQUIRED",
 		RequiresComment:     true,
@@ -66,9 +63,8 @@ var workflowActions = map[string]workflowActionDef{
 }
 
 var approvalQueueStatuses = map[string][]string{
-	"REVIEWER": {"PENDING_REVIEW"},
-	"APPROVER": {"APPROVED"},
-	"ADMIN":    {"PENDING_REVIEW", "APPROVED"},
+	"ADMIN": {"PENDING_REVIEW", "APPROVED"},
+	"STAFF": {},
 }
 
 type workflowBody struct {

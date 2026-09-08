@@ -82,7 +82,7 @@ type RecommendationOutput struct {
 	Recommendations []Recommendation `json:"recommendations"`
 }
 
-const modelUsed = "mock-provider-v1"
+const mockModel = "mock-provider-v1"
 
 var hooks = []string{
 	"Masih borong listrik tiap bulan?",
@@ -121,7 +121,7 @@ var (
 	whitespaceRe = regexp.MustCompile(`\s+`)
 )
 
-func GenerateContent(in GenerateContentInput) GenerateContentOutput {
+func mockGenerateContent(in GenerateContentInput) GenerateContentOutput {
 	kw := keywordsFor(in.Pillar)
 	tone := in.Tone
 	if tone == "" {
@@ -145,7 +145,7 @@ func GenerateContent(in GenerateContentInput) GenerateContentOutput {
 	}
 }
 
-func ImproveContent(in ImproveContentInput) ImproveContentOutput {
+func mockImproveContent(in ImproveContentInput) ImproveContentOutput {
 	improvements := []string{}
 	suggestions := []string{}
 
@@ -191,7 +191,7 @@ func statusFor(score int) string {
 	return "poor"
 }
 
-func ReviewContent(in ReviewContentInput) ReviewContentOutput {
+func mockReviewContent(in ReviewContentInput) ReviewContentOutput {
 	original := in.Content
 	trimmed := strings.TrimSpace(original)
 	wordCount := 1
@@ -276,7 +276,7 @@ func ReviewContent(in ReviewContentInput) ReviewContentOutput {
 	}
 }
 
-func AnalyzePerformance(avgRate float64, totalViews, totalLikes, totalContent, published int) PerformanceAnalysisOutput {
+func mockAnalyzePerformance(avgRate float64, totalViews, totalLikes, totalContent, published int) PerformanceAnalysisOutput {
 	findings := []string{
 		fmt.Sprintf("Total %d konten dengan %d sudah dipublikasikan", totalContent, published),
 		fmt.Sprintf("Akumulasi %d views dan %d likes", totalViews, totalLikes),
@@ -300,7 +300,7 @@ func AnalyzePerformance(avgRate float64, totalViews, totalLikes, totalContent, p
 	}
 }
 
-func GenerateRecommendations(underperforming []string) RecommendationOutput {
+func mockGenerateRecommendations(underperforming []string) RecommendationOutput {
 	recs := []Recommendation{}
 	for _, pillar := range underperforming {
 		recs = append(recs, Recommendation{
@@ -329,3 +329,30 @@ func GenerateRecommendations(underperforming []string) RecommendationOutput {
 
 // GeneratedAt returns a fresh timestamp for responses.
 func GeneratedAt() time.Time { return time.Now() }
+
+// MockProvider is the deterministic fallback implementation.
+type MockProvider struct{}
+
+func NewMockProvider() *MockProvider { return &MockProvider{} }
+
+func (m *MockProvider) Model() string { return mockModel }
+
+func (m *MockProvider) GenerateContent(in GenerateContentInput) GenerateContentOutput {
+	return mockGenerateContent(in)
+}
+
+func (m *MockProvider) ImproveContent(in ImproveContentInput) ImproveContentOutput {
+	return mockImproveContent(in)
+}
+
+func (m *MockProvider) ReviewContent(in ReviewContentInput) ReviewContentOutput {
+	return mockReviewContent(in)
+}
+
+func (m *MockProvider) AnalyzePerformance(avgRate float64, totalViews, totalLikes, totalContent, published int) PerformanceAnalysisOutput {
+	return mockAnalyzePerformance(avgRate, totalViews, totalLikes, totalContent, published)
+}
+
+func (m *MockProvider) GenerateRecommendations(underperforming []string) RecommendationOutput {
+	return mockGenerateRecommendations(underperforming)
+}

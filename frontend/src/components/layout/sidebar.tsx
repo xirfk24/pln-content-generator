@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   Menu,
   X,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     name: 'Workflow',
     children: [
       { name: 'My Tasks', href: '/workflow/tasks', icon: CheckSquare, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Review & Approval', href: '/workflow/approval', icon: ShieldCheck, roles: ['ADMIN', 'REVIEWER', 'APPROVER'] },
+      { name: 'Review & Approval', href: '/workflow/approval', icon: ShieldCheck, roles: ['ADMIN'] },
     ],
   },
   {
@@ -89,6 +90,15 @@ function filterByRole<T extends { roles?: UserRole[] }>(items: T[], role: UserRo
   return items.filter((item) => !item.roles || item.roles.includes(role))
 }
 
+/** Deep blue PLN corporate sidebar theme */
+const sidebarBg = 'bg-[#1A3A6B]'
+const sidebarText = 'text-white/70'
+const sidebarGroupLabel = 'text-white/40'
+const sidebarHover = 'hover:bg-white/10'
+const sidebarActive = 'bg-white/15 font-semibold text-white'
+const sidebarActiveIcon = 'text-white'
+const sidebarBorder = 'border-white/10'
+
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
@@ -111,22 +121,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
 
   const content = (labelId?: string) => (
     <>
-      <div className="flex h-16 items-center justify-between border-b px-4">
+      {/* Logo / Brand area */}
+      <div className={cn('flex h-16 items-center justify-between border-b px-4', sidebarBorder)}>
         {!collapsed && (
           <Link
             href="/dashboard"
-            className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             onClick={onMobileClose}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary shadow-sm">
-              <span className="text-xs font-bold text-white">PLN</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm">
+              <span className="text-xs font-bold text-[#1A3A6B]">PLN</span>
             </div>
-            <span className="font-semibold text-ink">Content Manager</span>
+            <span className="font-semibold text-white">Content Manager</span>
           </Link>
         )}
         {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary shadow-sm">
-            <span className="text-xs font-bold text-white">PLN</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm">
+            <span className="text-xs font-bold text-[#1A3A6B]">PLN</span>
           </div>
         )}
         <Button
@@ -134,7 +145,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           size="icon"
           onClick={onToggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={cn('hidden lg:inline-flex', !collapsed && 'ml-auto')}
+          className={cn('hidden lg:inline-flex text-white/70 hover:bg-white/10 hover:text-white', !collapsed && 'ml-auto')}
         >
           {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
@@ -143,13 +154,14 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           size="icon"
           onClick={onMobileClose}
           aria-label="Close menu"
-          className="ml-auto lg:hidden"
+          className="ml-auto text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
         >
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-4 overflow-y-auto p-2 pb-16" aria-label={labelId}>
+      {/* Navigation */}
+      <nav className="flex-1 space-y-4 overflow-y-auto p-2 pb-4" aria-label={labelId}>
         {items.map((item) => {
           if ('children' in item) {
             const children = filterByRole(item.children, role)
@@ -157,7 +169,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             return (
               <div key={item.name}>
                 {!collapsed && (
-                  <p className="mb-1 px-3 text-micro font-semibold uppercase tracking-wider text-ink-muted">
+                  <p className={cn('mb-1 px-3 text-micro font-semibold uppercase tracking-wider', sidebarGroupLabel)}>
                     {item.name}
                   </p>
                 )}
@@ -172,13 +184,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       title={collapsed ? child.name : undefined}
                       className={cn(
                         'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                        isActive
-                          ? 'bg-primary-soft font-semibold text-primary'
-                          : 'font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink'
+                        isActive ? sidebarActive : cn(sidebarText, sidebarHover, 'font-medium')
                       )}
                     >
                       <child.icon
-                        className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-primary')}
+                        className={cn('h-4 w-4 flex-shrink-0', isActive ? sidebarActiveIcon : 'text-white/60')}
                         aria-hidden="true"
                       />
                       {!collapsed && <span>{child.name}</span>}
@@ -199,13 +209,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
               title={collapsed ? item.name : undefined}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-primary-soft font-semibold text-primary'
-                  : 'font-medium text-ink-secondary hover:bg-surface-muted hover:text-ink'
+                isActive ? sidebarActive : cn(sidebarText, sidebarHover, 'font-medium')
               )}
             >
               <item.icon
-                className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-primary')}
+                className={cn('h-4 w-4 flex-shrink-0', isActive ? sidebarActiveIcon : 'text-white/60')}
                 aria-hidden="true"
               />
               {!collapsed && <span>{item.name}</span>}
@@ -213,6 +221,31 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           )
         })}
       </nav>
+
+      {/* Bottom section */}
+      <div className={cn('border-t p-3', sidebarBorder)}>
+        {!collapsed ? (
+          <div className="space-y-3">
+            <a
+              href="/api/reports?format=csv"
+              className="flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              Export Report
+            </a>
+            <p className="text-center text-micro text-white/40">&copy; 2025 PLN Content Manager</p>
+          </div>
+        ) : (
+          <a
+            href="/api/reports?format=csv"
+            className="flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            title="Export Report"
+            aria-label="Export Report"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        )}
+      </div>
     </>
   )
 
@@ -221,8 +254,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 hidden h-screen border-r border-border bg-surface transition-all duration-300 lg:block',
-          collapsed ? 'w-16' : 'w-64'
+          'fixed left-0 top-0 z-40 hidden h-screen border-r transition-all duration-300 lg:flex lg:flex-col',
+          sidebarBg,
+          collapsed ? 'w-16' : 'w-60'
         )}
       >
         {content('Main navigation')}
@@ -237,7 +271,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             aria-hidden="true"
           />
           <aside
-            className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-surface shadow-lg"
+            className={cn('fixed left-0 top-0 flex h-screen w-60 flex-col border-r shadow-lg', sidebarBg)}
             role="dialog"
             aria-modal="true"
             aria-label="Sidebar menu"

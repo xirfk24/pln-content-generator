@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"pln-backend/internal/ai"
 	"pln-backend/internal/auth"
 	"pln-backend/internal/models"
 )
@@ -14,10 +15,11 @@ import (
 type Handler struct {
 	Pool      *pgxpool.Pool
 	JWTSecret string
+	AI        ai.Provider
 }
 
-func New(pool *pgxpool.Pool, jwtSecret string) *Handler {
-	return &Handler{Pool: pool, JWTSecret: jwtSecret}
+func New(pool *pgxpool.Pool, jwtSecret string, aiProvider ai.Provider) *Handler {
+	return &Handler{Pool: pool, JWTSecret: jwtSecret, AI: aiProvider}
 }
 
 // GET /api/auth/me

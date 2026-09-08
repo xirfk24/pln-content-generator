@@ -1,12 +1,10 @@
 import { UserRole, ContentStatus, PublicationStatus } from '@/types'
 
-export const USER_ROLES: UserRole[] = ['ADMIN', 'STAFF', 'REVIEWER', 'APPROVER']
+export const USER_ROLES: UserRole[] = ['ADMIN', 'STAFF']
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: 'Administrator',
-  STAFF: 'Staff / Editor',
-  REVIEWER: 'Reviewer',
-  APPROVER: 'Approver',
+  ADMIN: 'Administrator (Gatekeeper)',
+  STAFF: 'Staff / Operator',
 }
 
 export const CONTENT_STATUSES: ContentStatus[] = [
