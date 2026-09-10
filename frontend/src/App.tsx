@@ -21,6 +21,8 @@ import WorkflowTasksPage from './pages/workflow-tasks'
 import PublishingPage from './pages/publishing'
 import AIPage from './pages/ai'
 import ReportsPage from './pages/reports'
+import RecapPage from './pages/recap'
+import ContentImportPage from './pages/content-import'
 import AdminUsersPage from './pages/admin-users'
 import AdminCategoriesPage from './pages/admin-categories'
 import AdminPillarsPage from './pages/admin-pillars'
@@ -88,6 +90,8 @@ export default function App() {
         <Route path="/publishing" element={<PublishingPage />} />
         <Route path="/ai" element={<AIPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/recap" element={<RecapPage />} />
+        <Route path="/content/import" element={<ContentImportPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/categories" element={<AdminCategoriesPage />} />
         <Route path="/admin/pillars" element={<AdminPillarsPage />} />

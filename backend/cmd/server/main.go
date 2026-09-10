@@ -53,6 +53,7 @@ func main() {
 
 		authed.GET("/contents", h.ListContents)
 		authed.POST("/contents", h.CreateContent)
+		authed.POST("/contents/import", h.ImportContents)
 		authed.GET("/contents/calendar", h.Calendar)
 		authed.GET("/contents/:id", h.GetContent)
 		authed.PUT("/contents/:id", h.UpdateContent)
@@ -71,6 +72,8 @@ func main() {
 		authed.GET("/analytics/topic-recap", h.TopicRecap)
 		authed.GET("/dashboard", h.Dashboard)
 		authed.GET("/reports", h.Reports)
+		authed.GET("/recap/years", h.RecapYears)
+		authed.GET("/recap", h.Recap)
 		authed.GET("/master-data", h.MasterData)
 
 		authed.GET("/workflow/approval-queue", h.ApprovalQueue)

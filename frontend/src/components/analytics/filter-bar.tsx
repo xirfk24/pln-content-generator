@@ -92,7 +92,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
 
       <div>
         <label htmlFor="filter-pillar" className="mb-1 block text-xs text-ink-muted">
-          Pillar
+          Tema
         </label>
         <Select
           id="filter-pillar"

@@ -7,6 +7,7 @@ import { usePathname } from '@/compat/next'
 import {
   LayoutDashboard,
   Calendar,
+  CalendarRange,
   FileText,
   CheckSquare,
   Send,
@@ -20,6 +21,7 @@ import {
   Menu,
   X,
   Download,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -45,6 +47,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     children: [
       { name: 'Calendar', href: '/content/calendar', icon: Calendar },
       { name: 'Content Plan', href: '/content/planning', icon: FileText },
+      { name: 'Import', href: '/content/import', icon: Upload },
     ],
   },
   {
@@ -66,6 +69,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
       { name: 'Overview', href: '/analytics', icon: BarChart3 },
       { name: 'Performance', href: '/analytics/performance', icon: BarChart3 },
       { name: 'AI Insights', href: '/analytics/insights', icon: Bot },
+      { name: 'Rekap Konten', href: '/recap', icon: CalendarRange },
       { name: 'Reports', href: '/reports', icon: FileBarChart },
     ],
   },
@@ -78,7 +82,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     roles: ['ADMIN'],
     children: [
       { name: 'Users', href: '/admin/users', icon: Users },
-      { name: 'Pillars', href: '/admin/pillars', icon: Settings },
+      { name: 'Tema', href: '/admin/pillars', icon: Settings },
       { name: 'Categories', href: '/admin/categories', icon: Settings },
       { name: 'Platforms', href: '/admin/platforms', icon: Settings },
     ],

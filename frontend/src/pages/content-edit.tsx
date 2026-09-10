@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Loader2, Sparkles } from 'lucide-react'
-import { CONTENT_FORMATS, CONTENT_PRIORITIES, CONTENT_STATUS_LABELS } from '@/constants'
+import { CONTENT_FORMATS, CONTENT_PRIORITIES, CONTENT_STATUS_LABELS, CONTENT_PURPOSES, CONTENT_PURPOSE_LABELS, POSTING_CATEGORIES, POSTING_CATEGORY_LABELS } from '@/constants'
 import { AIImprovePanel } from '@/components/ai/ai-improve-panel'
 import { Select } from '@/components/ui/select'
 import type { Content } from '@/types'
@@ -37,9 +37,13 @@ export default function EditContentPage() {
     target_audience: '',
     planned_date: '',
     reference: '',
+    brief_link: '',
+    result_link: '',
     pic: '',
     priority: 'MEDIUM',
     status: 'DRAFT',
+    content_purpose: '',
+    posting_category: '',
   })
 
   useEffect(() => {
@@ -64,9 +68,13 @@ export default function EditContentPage() {
             target_audience: c.target_audience || '',
             planned_date: c.planned_date || '',
             reference: (c as Content & { reference?: string | null }).reference || '',
+            brief_link: (c as Content & { brief_link?: string | null }).brief_link || '',
+            result_link: (c as Content & { result_link?: string | null }).result_link || '',
             pic: c.pic || '',
             priority: c.priority || 'MEDIUM',
             status: c.status || 'DRAFT',
+            content_purpose: (c as Content & { content_purpose?: string | null }).content_purpose || '',
+            posting_category: (c as Content & { posting_category?: string | null }).posting_category || '',
           })
         }
       })
@@ -95,11 +103,10 @@ export default function EditContentPage() {
   }
 
   async function handleGenerateWithAI() {
-    const pillar = masterData.pillars.find(p => p.id === form.pillar_id)
     const platform = masterData.platforms.find(p => p.id === form.platform_id)
 
-    if (!pillar || !platform || !form.topic) {
-      alert('Please fill pillar, platform, and topic first')
+    if (!platform || !form.topic) {
+      alert('Please fill platform and topic first')
       return
     }
 
@@ -110,7 +117,7 @@ export default function EditContentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: form.topic,
-          pillar: pillar.name,
+          pillar: form.content_purpose ? CONTENT_PURPOSE_LABELS[form.content_purpose] || '' : '',
           platform: platform.name,
           format: form.format,
           targetAudience: form.target_audience,
@@ -166,13 +173,13 @@ export default function EditContentPage() {
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label>Pillar</Label>
+                <Label>Tema</Label>
                 <Select
                   value={form.pillar_id}
                   onChange={(e) => setForm({ ...form, pillar_id: e.target.value })}
                   className="w-full"
                 >
-                  <option value="">Select pillar</option>
+                  <option value="">Select tema</option>
                   {masterData.pillars.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -200,6 +207,36 @@ export default function EditContentPage() {
                 >
                   {CONTENT_FORMATS.map((f) => (
                     <option key={f} value={f}>{f}</option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Content Purpose</Label>
+                <Select
+                  value={form.content_purpose}
+                  onChange={(e) => setForm({ ...form, content_purpose: e.target.value })}
+                  className="w-full"
+                >
+                  <option value="">Select purpose</option>
+                  {CONTENT_PURPOSES.map((p) => (
+                    <option key={p} value={p}>{CONTENT_PURPOSE_LABELS[p]}</option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Posting Category</Label>
+                <Select
+                  value={form.posting_category}
+                  onChange={(e) => setForm({ ...form, posting_category: e.target.value })}
+                  className="w-full"
+                >
+                  <option value="">Select category</option>
+                  {POSTING_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{POSTING_CATEGORY_LABELS[c]}</option>
                   ))}
                 </Select>
               </div>
@@ -269,6 +306,26 @@ export default function EditContentPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
+                <Label>Brief Link</Label>
+                <Input
+                  value={form.brief_link}
+                  onChange={(e) => setForm({ ...form, brief_link: e.target.value })}
+                  placeholder="Link brief/design (Canva, Drive, dll.)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Result Link</Label>
+                <Input
+                  value={form.result_link}
+                  onChange={(e) => setForm({ ...form, result_link: e.target.value })}
+                  placeholder="Link hasil konten (opsional)"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
                 <Label>Target Audience</Label>
                 <Input
                   value={form.target_audience}
@@ -292,7 +349,7 @@ export default function EditContentPage() {
                   size="sm"
                   variant="outline"
                   onClick={handleGenerateWithAI}
-                  disabled={loading || !form.pillar_id || !form.platform_id || !form.topic}
+                  disabled={loading || !form.platform_id || !form.topic}
                 >
                   <Sparkles className="mr-1 h-3 w-3" />
                   Generate with AI

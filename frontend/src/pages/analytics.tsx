@@ -202,7 +202,7 @@ export default function AnalyticsOverviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Performance by Pillar</CardTitle>
+              <CardTitle className="text-base">Performance by Tema</CardTitle>
             </CardHeader>
             <CardContent>
               {data.pillarPerformance.length === 0 ? (
@@ -212,11 +212,11 @@ export default function AnalyticsOverviewPage() {
                   <table className="w-full">
                     <caption className="sr-only">
                       Content count, published count, views, average views, engagement, and
-                      engagement rate per pillar
+                      engagement rate per tema
                     </caption>
                     <thead className="border-b bg-surface-muted">
                       <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pillar</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Content</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>

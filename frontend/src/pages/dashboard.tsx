@@ -40,6 +40,10 @@ import {
   ChevronRight,
   BarChart3,
   PieChart as PieChartIcon,
+  Plus,
+  Upload,
+  CalendarRange,
+  Send,
 } from 'lucide-react'
 import { FilterBar, EMPTY_FILTERS, type FilterValues } from '@/components/analytics/filter-bar'
 import { SkeletonCard, SkeletonKPI } from '@/components/ui/skeleton'
@@ -268,7 +272,7 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Date</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Platform</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Title</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Pillar</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Tema</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Status</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">PIC</th>
                 <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">Action</th>
@@ -434,6 +438,53 @@ export default function DashboardPage() {
           <FilterBar filters={filters} onChange={setFilters} masterData={masterData} />
         </CardContent>
       </Card>
+
+      {/* Quick Actions */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/content/planning/new" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-primary hover:bg-primary-soft/30">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-primary-soft">
+            <Plus className="h-4 w-4 text-primary" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink">Buat Konten</p>
+            <p className="text-xs text-ink-muted">Tambah rencana konten baru</p>
+          </div>
+          <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+        </Link>
+
+        <Link href="/content/import" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-success hover:bg-success-soft/30">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-success-soft">
+            <Upload className="h-4 w-4 text-success" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink">Import Massal</p>
+            <p className="text-xs text-ink-muted">Upload CSV untuk impor cepat</p>
+          </div>
+          <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+        </Link>
+
+        <Link href="/recap" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-warning hover:bg-warning-soft/30">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-warning-soft">
+            <CalendarRange className="h-4 w-4 text-warning" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink">Rekap Periode</p>
+            <p className="text-xs text-ink-muted">Laporan bulanan &amp; semester</p>
+          </div>
+          <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+        </Link>
+
+        <Link href="/publishing" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-info hover:bg-info-soft/30">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-info-soft">
+            <Send className="h-4 w-4 text-info" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink">Publishing</p>
+            <p className="text-xs text-ink-muted">Rekam &amp; pantau publikasi</p>
+          </div>
+          <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+        </Link>
+      </div>
 
       {loading || !data ? (
         <div className="space-y-6">

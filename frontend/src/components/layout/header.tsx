@@ -3,11 +3,12 @@
 import { apiFetch } from '@/lib/api'
 import * as React from 'react'
 import { useRouter, usePathname } from '@/compat/next'
-import { Bell, LogOut, Menu, User, Calendar } from 'lucide-react'
+import { Bell, LogOut, Menu, User, CheckSquare, AlertCircle, Send, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ROLE_LABELS } from '@/constants'
 import type { UserRole } from '@/types'
+import Link from '@/compat/next'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -23,11 +24,36 @@ interface CurrentUser {
   } | null
 }
 
+interface NotifItem {
+  id: string
+  title: string
+  status: string
+  updatedAt: string
+}
+
+const STATUS_NOTIF: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  PENDING_REVIEW:    { label: 'Menunggu review',   icon: <Clock className="h-3.5 w-3.5" />,        color: 'text-warning' },
+  APPROVED:          { label: 'Menunggu final',    icon: <CheckSquare className="h-3.5 w-3.5" />,  color: 'text-info' },
+  REVISION_REQUIRED: { label: 'Perlu revisi',      icon: <AlertCircle className="h-3.5 w-3.5" />, color: 'text-danger' },
+  READY_TO_PUBLISH:  { label: 'Siap publish',      icon: <Send className="h-3.5 w-3.5" />,        color: 'text-success' },
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return 'baru saja'
+  if (mins < 60) return `${mins} mnt lalu`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return `${hrs} jam lalu`
+  return `${Math.floor(hrs / 24)} hr lalu`
+}
+
 const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/content/calendar': 'Content Calendar',
   '/content/planning': 'Content Planning',
   '/content/planning/new': 'New Content',
+  '/content/import': 'Import Konten',
   '/publishing': 'Publishing Tracker',
   '/workflow/tasks': 'My Tasks',
   '/workflow/approval': 'Approval Queue',
@@ -37,7 +63,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/reports': 'Reports',
   '/ai': 'AI Assistant',
   '/admin/users': 'Users',
-  '/admin/pillars': 'Pillars',
+  '/admin/pillars': 'Tema',
   '/admin/categories': 'Categories',
   '/admin/platforms': 'Platforms',
 }
@@ -46,6 +72,7 @@ const ROUTE_SUBTITLES: Record<string, string> = {
   '/dashboard': 'Content activity, workflow overview & performance summary',
   '/content/calendar': 'Monthly content scheduling calendar',
   '/content/planning': 'Manage and track all planned content',
+  '/content/import': 'Upload CSV untuk impor massal',
   '/publishing': 'Track publications across platforms',
   '/workflow/tasks': 'Your assigned content tasks',
   '/workflow/approval': 'Review and approve content',
@@ -55,7 +82,7 @@ const ROUTE_SUBTITLES: Record<string, string> = {
   '/reports': 'Export and filter content reports',
   '/ai': 'AI-powered content tools',
   '/admin/users': 'Manage user accounts and roles',
-  '/admin/pillars': 'Manage content pillars',
+  '/admin/pillars': 'Kelola topik/tema konten',
   '/admin/categories': 'Manage content categories',
   '/admin/platforms': 'Manage publishing platforms',
 }
@@ -84,6 +111,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const pathname = usePathname()
   const [user, setUser] = React.useState<CurrentUser | null>(null)
 
+  // Notifications
+  const [notifOpen, setNotifOpen]       = React.useState(false)
+  const [notifs, setNotifs]             = React.useState<NotifItem[]>([])
+  const [notifLoading, setNotifLoading] = React.useState(false)
+  const notifRef = React.useRef<HTMLDivElement>(null)
+
   const pageTitle = usePageTitle(pathname)
   const pageSubtitle = usePageSubtitle(pathname)
 
@@ -93,6 +126,49 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
       .then((data) => data?.user && setUser(data.user))
       .catch(() => {})
   }, [])
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    if (notifOpen) document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [notifOpen])
+
+  async function loadNotifs() {
+    setNotifLoading(true)
+    try {
+      const [qRes, tRes] = await Promise.all([
+        apiFetch('/api/workflow/approval-queue'),
+        apiFetch('/api/workflow/tasks'),
+      ])
+      const items: NotifItem[] = []
+      const seen = new Set<string>()
+      const push = (c: { id: string; title: string; status: string; updated_at: string }) => {
+        if (!seen.has(c.id)) { seen.add(c.id); items.push({ id: c.id, title: c.title, status: c.status, updatedAt: c.updated_at }) }
+      }
+      if (qRes.ok) { const d = await qRes.json(); (d.queue || []).forEach(push) }
+      if (tRes.ok) {
+        const d = await tRes.json()
+        ;(d.revisions      || []).forEach(push)
+        ;(d.readyToPublish || []).forEach(push)
+        ;(d.submitted      || []).forEach(push)
+      }
+      // Sort: most recently updated first
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      setNotifs(items)
+    } catch { /* ignore */ } finally {
+      setNotifLoading(false)
+    }
+  }
+
+  function toggleNotif() {
+    if (!notifOpen) loadNotifs()
+    setNotifOpen((v) => !v)
+  }
 
   async function handleLogout() {
     try {
@@ -146,24 +222,96 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Date range picker pill — hidden on mobile */}
-        <button
-          type="button"
-          className="hidden items-center gap-2 rounded-md border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:bg-surface-muted md:flex"
-          aria-label="Select date range"
-        >
-          <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>01 Jun 2025 – 30 Jun 2025</span>
-        </button>
+        {/* Notifications */}
+        <div ref={notifRef} className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Notifications"
+            aria-label="Notifications"
+            aria-expanded={notifOpen}
+            className="relative"
+            onClick={toggleNotif}
+          >
+            <Bell className="h-4 w-4" />
+            {notifs.length > 0 && (
+              <span className="absolute right-1 top-1 flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
+              </span>
+            )}
+          </Button>
 
-        {/* Notifications with badge */}
-        <Button variant="ghost" size="icon" title="Notifications" aria-label="Notifications" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1 top-1 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
-          </span>
-        </Button>
+          {notifOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-surface shadow-lg">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <p className="text-sm font-semibold text-ink">Notifikasi</p>
+                {notifs.length > 0 && (
+                  <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-bold text-white">
+                    {notifs.length}
+                  </span>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="max-h-80 overflow-y-auto">
+                {notifLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <span className="text-sm text-ink-muted">Memuat...</span>
+                  </div>
+                ) : notifs.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <Bell className="mx-auto mb-2 h-8 w-8 text-ink-muted" aria-hidden="true" />
+                    <p className="text-sm text-ink-muted">Tidak ada notifikasi aktif</p>
+                  </div>
+                ) : (
+                  <ul>
+                    {notifs.map((n) => {
+                      const meta = STATUS_NOTIF[n.status]
+                      return (
+                        <li key={n.id} className="border-b last:border-0">
+                          <Link
+                            href={`/content/${n.id}`}
+                            onClick={() => setNotifOpen(false)}
+                            className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-muted"
+                          >
+                            <span className={cn('mt-0.5 flex-shrink-0', meta?.color ?? 'text-ink-muted')}>
+                              {meta?.icon ?? <Bell className="h-3.5 w-3.5" />}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-ink">{n.title}</p>
+                              <div className="mt-0.5 flex items-center gap-2">
+                                <span className={cn('text-xs', meta?.color ?? 'text-ink-muted')}>
+                                  {meta?.label ?? n.status}
+                                </span>
+                                <span className="text-xs text-ink-muted">·</span>
+                                <span className="text-xs text-ink-muted">{timeAgo(n.updatedAt)}</span>
+                              </div>
+                            </div>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {/* Footer */}
+              {notifs.length > 0 && (
+                <div className="border-t px-4 py-2">
+                  <Link
+                    href="/workflow/tasks"
+                    onClick={() => setNotifOpen(false)}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Lihat semua tugas →
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* User avatar + info */}
         <div className="flex items-center gap-2">

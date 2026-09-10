@@ -17,7 +17,8 @@ type timeDb = models.Time
 
 const contentSelect = `
 SELECT c.id, c.title, c.topic, c.pillar_id, c.category_id, c.platform_id, c.format,
-       c.brief, c.target_audience, c.planned_date::TEXT, c.planned_week, c.day, c.reference,
+       c.brief, c.content_purpose, c.posting_category, c.target_audience, c.planned_date::TEXT, c.planned_week, c.day, c.reference,
+       c.brief_link, c.result_link,
        c.pic, c.priority, c.status, c.source_idea_id, c.created_by, c.created_at,
        c.updated_at, c.updated_by,
        pi.id AS pillar_pid, pi.name AS pillar_name, pi.description AS pillar_description, pi.created_at AS pillar_created_at,
@@ -105,20 +106,24 @@ func (h *Handler) GetContent(c *gin.Context) {
 }
 
 type contentInput struct {
-	Title          *string `json:"title"`
-	Topic          *string `json:"topic"`
-	PillarID       *string `json:"pillar_id"`
-	CategoryID     *string `json:"category_id"`
-	PlatformID     *string `json:"platform_id"`
-	Format         *string `json:"format"`
-	Brief          *string `json:"brief"`
-	TargetAudience *string `json:"target_audience"`
-	PlannedDate    *string `json:"planned_date"`
-	PlannedWeek    *int    `json:"planned_week"`
-	Reference      *string `json:"reference"`
-	Pic            *string `json:"pic"`
-	Priority       *string `json:"priority"`
-	SourceIdeaID   *string `json:"source_idea_id"`
+	Title           *string `json:"title"`
+	Topic           *string `json:"topic"`
+	PillarID        *string `json:"pillar_id"`
+	CategoryID      *string `json:"category_id"`
+	PlatformID      *string `json:"platform_id"`
+	Format          *string `json:"format"`
+	Brief           *string `json:"brief"`
+	ContentPurpose  *string `json:"content_purpose"`
+	PostingCategory *string `json:"posting_category"`
+	TargetAudience  *string `json:"target_audience"`
+	PlannedDate     *string `json:"planned_date"`
+	PlannedWeek     *int    `json:"planned_week"`
+	Reference       *string `json:"reference"`
+	BriefLink       *string `json:"brief_link"`
+	ResultLink      *string `json:"result_link"`
+	Pic             *string `json:"pic"`
+	Priority        *string `json:"priority"`
+	SourceIdeaID    *string `json:"source_idea_id"`
 }
 
 // POST /api/contents
@@ -160,13 +165,13 @@ func (h *Handler) CreateContent(c *gin.Context) {
 	var id string
 	err := h.Pool.QueryRow(c.Request.Context(), `
 		INSERT INTO contents (title, topic, pillar_id, category_id, platform_id, format,
-			brief, target_audience, planned_date, planned_week, day, reference, pic,
-			priority, source_idea_id, created_by, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'DRAFT')
+			brief, content_purpose, posting_category, target_audience, planned_date, planned_week, day, reference,
+			brief_link, result_link, pic, priority, source_idea_id, created_by, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,'DRAFT')
 		RETURNING id
 	`, deref(in.Title), deref(in.Topic), in.PillarID, in.CategoryID, in.PlatformID, in.Format,
-		in.Brief, in.TargetAudience, in.PlannedDate, plannedWeek, day, in.Reference, in.Pic,
-		in.Priority, in.SourceIdeaID, user.ID).Scan(&id)
+		in.Brief, in.ContentPurpose, in.PostingCategory, in.TargetAudience, in.PlannedDate, plannedWeek, day, in.Reference,
+		in.BriefLink, in.ResultLink, in.Pic, in.Priority, in.SourceIdeaID, user.ID).Scan(&id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create content"})
 		return
@@ -223,6 +228,12 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 	if in.Brief != nil {
 		add("brief", nullable(*in.Brief))
 	}
+	if in.ContentPurpose != nil {
+		add("content_purpose", nullable(*in.ContentPurpose))
+	}
+	if in.PostingCategory != nil {
+		add("posting_category", nullable(*in.PostingCategory))
+	}
 	if in.TargetAudience != nil {
 		add("target_audience", nullable(*in.TargetAudience))
 	}
@@ -241,6 +252,12 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 	}
 	if in.Reference != nil {
 		add("reference", nullable(*in.Reference))
+	}
+	if in.BriefLink != nil {
+		add("brief_link", nullable(*in.BriefLink))
+	}
+	if in.ResultLink != nil {
+		add("result_link", nullable(*in.ResultLink))
 	}
 	if in.Pic != nil {
 		add("pic", nullable(*in.Pic))
@@ -358,8 +375,8 @@ func (h *Handler) queryContents(ctx context.Context, query string, args ...any) 
 		var pCreated, cCreated, plCreated *timeDb
 
 		if err := rows.Scan(&ct.ID, &ct.Title, &ct.Topic, &ct.PillarID, &ct.CategoryID, &ct.PlatformID,
-			&ct.Format, &ct.Brief, &ct.TargetAudience, &ct.PlannedDate, &ct.PlannedWeek, &ct.Day,
-			&ct.Reference, &ct.Pic, &ct.Priority, &ct.Status, &ct.SourceIdeaID, &ct.CreatedBy,
+			&ct.Format, &ct.Brief, &ct.ContentPurpose, &ct.PostingCategory, &ct.TargetAudience, &ct.PlannedDate, &ct.PlannedWeek, &ct.Day,
+			&ct.Reference, &ct.BriefLink, &ct.ResultLink, &ct.Pic, &ct.Priority, &ct.Status, &ct.SourceIdeaID, &ct.CreatedBy,
 			&ct.CreatedAt, &ct.UpdatedAt, &ct.UpdatedBy,
 			&pid, &pn, &pd, &pCreated,
 			&cid, &pcatn, &pcatd, &cCreated,

@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Loader2, Edit, ArrowLeft, ExternalLink } from 'lucide-react'
 import Link from '@/compat/next'
 import {
-  ENGAGEMENT_FORMULA,
+  ENGAGEMENT_FORMULA, CONTENT_PURPOSE_LABELS, POSTING_CATEGORY_LABELS,
 } from '@/constants'
 import { formatDate, formatDateTime, calculateEngagementRate } from '@/lib/utils'
 import { WorkflowActionButton } from '@/components/workflow/workflow-action-button'
@@ -95,7 +95,7 @@ export default function ContentDetailPage() {
           <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{content.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={content.status} />
-            {content.pillar && <Badge variant="outline">{content.pillar.name}</Badge>}
+            {content.pillar && <Badge variant="outline">Tema: {content.pillar.name}</Badge>}
             {content.platform && <Badge variant="outline">{content.platform.name}</Badge>}
             <Badge variant="outline">{content.format}</Badge>
           </div>
@@ -140,6 +140,18 @@ export default function ContentDetailPage() {
                   <dt className="text-xs text-ink-secondary">Target Audience</dt>
                   <dd className="text-sm font-medium">{content.target_audience || '-'}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs text-ink-secondary">Content Purpose</dt>
+                  <dd className="text-sm font-medium">
+                    {content.content_purpose ? (CONTENT_PURPOSE_LABELS[content.content_purpose] ?? content.content_purpose) : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-secondary">Posting Category</dt>
+                  <dd className="text-sm font-medium">
+                    {content.posting_category ? (POSTING_CATEGORY_LABELS[content.posting_category] ?? content.posting_category) : '-'}
+                  </dd>
+                </div>
               </dl>
             </CardContent>
           </Card>
@@ -152,6 +164,29 @@ export default function ContentDetailPage() {
               <p className="whitespace-pre-wrap text-sm text-ink-secondary">
                 {content.brief || 'No brief provided.'}
               </p>
+              {(() => {
+                const c = content as Content & { reference?: string | null; brief_link?: string | null; result_link?: string | null }
+                const links = [
+                  { label: 'Reference', url: c.reference },
+                  { label: 'Brief Link', url: c.brief_link },
+                  { label: 'Result Link', url: c.result_link },
+                ].filter(l => l.url && l.url.trim() !== '')
+                if (links.length === 0) return null
+                return (
+                  <div className="mt-4 border-t pt-4">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-ink-muted">Links</p>
+                    <div className="space-y-2">
+                      {links.map((l) => (
+                        <a key={l.label} href={l.url!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline">
+                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="font-medium">{l.label}:</span>
+                          <span className="truncate">{l.url}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
 

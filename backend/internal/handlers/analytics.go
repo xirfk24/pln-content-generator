@@ -262,6 +262,16 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 		avgRate = sum / float64(len(rates))
 	}
 
+	// Count published based on publications table, not content.status.
+	// A content is "published" if it has at least one publication with actual_publish_date.
+	publishedByContent := map[string]bool{}
+	for _, p := range pubs {
+		if p.actualPublishDate != nil && *p.actualPublishDate != "" {
+			publishedByContent[p.contentID] = true
+		}
+	}
+	publishedCount := len(publishedByContent)
+
 	return gin.H{
 		"content": gin.H{
 			"total":          total,
@@ -270,7 +280,8 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 			"pendingReview":  statusCount["PENDING_REVIEW"],
 			"approved":       statusCount["APPROVED"],
 			"readyToPublish": statusCount["READY_TO_PUBLISH"],
-			"published":      statusCount["PUBLISHED"],
+			"published":      publishedCount,
+			"publishedByStatus": statusCount["PUBLISHED"], // kept for reference
 			"rescheduled":    statusCount["RESCHEDULED"],
 			"notRealized":    statusCount["NOT_REALIZED"],
 		},
@@ -406,9 +417,6 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 			order = append(order, name)
 		}
 		rows[name].ContentCount++
-		if r.Status == "PUBLISHED" {
-			rows[name].PublishedCount++
-		}
 	}
 
 	contentIDs := make([]string, len(all))
@@ -423,6 +431,14 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 		pubIDs[i] = p.id
 	}
 
+	// Published content = has at least one publication with actual_publish_date
+	publishedContentIDs := map[string]bool{}
+	for _, p := range pubs {
+		if p.actualPublishDate != nil && *p.actualPublishDate != "" {
+			publishedContentIDs[p.contentID] = true
+		}
+	}
+
 	contentPillar := map[string]string{}
 	for _, r := range all {
 		name := "Unknown"
@@ -430,6 +446,16 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 			name = *r.PillarName
 		}
 		contentPillar[r.ID] = name
+	}
+
+	// Count published per pillar based on publications table
+	for _, r := range all {
+		if publishedContentIDs[r.ID] {
+			name := contentPillar[r.ID]
+			if row, ok := rows[name]; ok {
+				row.PublishedCount++
+			}
+		}
 	}
 
 	byPub := h.loadMetricsForPubs(pubIDs)
@@ -469,6 +495,8 @@ type monthlyTrendRow struct {
 	Label          string `json:"label"`
 	Planned        int    `json:"planned"`
 	Published      int    `json:"published"`
+	PublishedVerified   int    `json:"publishedVerified"`
+	PublishedUnverified int    `json:"publishedUnverified"`
 	RealizationRate float64 `json:"realizationRate"`
 	Views          int    `json:"views"`
 	Likes          int    `json:"likes"`
@@ -487,10 +515,7 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		if _, ok := byMonth[key]; !ok {
 			byMonth[key] = &[2]int{}
 		}
-		byMonth[key][0]++
-		if r.Status == "PUBLISHED" {
-			byMonth[key][1]++
-		}
+		byMonth[key][0]++ // planned count
 	}
 
 	contentIDs := make([]string, len(all))
@@ -503,6 +528,41 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		pubIDs[i] = p.id
 	}
 	byPub := h.loadMetricsForPubs(pubIDs)
+
+	// Published count: based on publications with actual_publish_date.
+	// Group by the month of actual_publish_date.
+	publishedByMonth := map[string]*[2]int{} // [verified, unverified]
+	for _, p := range pubs {
+		if p.actualPublishDate == nil || *p.actualPublishDate == "" {
+			continue
+		}
+		key := monthKey(*p.actualPublishDate)
+		if _, ok := publishedByMonth[key]; !ok {
+			publishedByMonth[key] = &[2]int{}
+		}
+		// actual_publish_date present → verified
+		publishedByMonth[key][0]++
+	}
+
+	// Also count content as published per their planned_date month (for realization rate)
+	// if they have at least one publication with actual_publish_date
+	publishedContentIDs := map[string]bool{}
+	for _, p := range pubs {
+		if p.actualPublishDate != nil && *p.actualPublishDate != "" {
+			publishedContentIDs[p.contentID] = true
+		}
+	}
+	for _, r := range all {
+		if r.PlannedDate == nil || *r.PlannedDate == "" {
+			continue
+		}
+		if publishedContentIDs[r.ID] {
+			key := monthKey(*r.PlannedDate)
+			if _, ok := byMonth[key]; ok {
+				byMonth[key][1]++ // published count in the month the content was planned
+			}
+		}
+	}
 
 	pubMonthAgg := map[string]*struct{ views, likes, reach, engagement int }{}
 	for _, p := range pubs {
@@ -541,11 +601,18 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		if v, ok := byMonth[key]; ok {
 			planned, published = v[0], v[1]
 		}
+		verified, unverified := 0, 0
+		if v, ok := publishedByMonth[key]; ok {
+			verified = v[0]
+			unverified = v[1]
+		}
 		row := monthlyTrendRow{
 			Month:  key,
 			Label:  monthLabel(key),
 			Planned: planned,
 			Published: published,
+			PublishedVerified:   verified,
+			PublishedUnverified: unverified,
 		}
 		if planned > 0 {
 			row.RealizationRate = float64(published) / float64(planned) * 100

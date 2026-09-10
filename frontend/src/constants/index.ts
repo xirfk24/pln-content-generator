@@ -66,5 +66,29 @@ export const CONTENT_FORMATS = [
 
 export const CONTENT_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const
 
+export const CONTENT_PURPOSES = [
+  'EDUCATION', 'ENTERTAINMENT', 'INSPIRATIONAL', 'PROMOTION', 'INFORMATION',
+] as const
+
+export const CONTENT_PURPOSE_LABELS: Record<string, string> = {
+  EDUCATION: 'Education',
+  ENTERTAINMENT: 'Entertainment',
+  INSPIRATIONAL: 'Inspirational',
+  PROMOTION: 'Promotion',
+  INFORMATION: 'Information',
+}
+
+export const POSTING_CATEGORIES = [
+  'ORIGINAL', 'REPOST_PLN_ID', 'REPOST_UP3', 'CAMPAIGN', 'OTHER',
+] as const
+
+export const POSTING_CATEGORY_LABELS: Record<string, string> = {
+  ORIGINAL: 'Original',
+  REPOST_PLN_ID: 'Repost PLN ID',
+  REPOST_UP3: 'Repost UP3',
+  CAMPAIGN: 'Campaign',
+  OTHER: 'Other',
+}
+
 export const ENGAGEMENT_FORMULA =
   'Engagement Rate = (Likes + Comments + Shares + Saves) / Reach × 100'

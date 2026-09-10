@@ -37,6 +37,7 @@ func (h *Handler) Reports(c *gin.Context) {
 
 	rows, err := h.Pool.Query(h.ctx(), `
 		SELECT c.id, c.title, c.topic, c.status, c.planned_date::TEXT, c.pic, c.priority, c.format,
+		       c.content_purpose, c.posting_category,
 		       pi.name, pl.name, ca.name
 		FROM contents c
 		LEFT JOIN pillars pi ON pi.id = c.pillar_id
@@ -51,31 +52,33 @@ func (h *Handler) Reports(c *gin.Context) {
 	defer rows.Close()
 
 	type reportRow struct {
-		ID         *string `json:"id"`
-		Title      string  `json:"title"`
-		Topic      string  `json:"topic"`
-		Status     string  `json:"status"`
-		PlannedDate *string `json:"planned_date"`
-		Pic        *string `json:"pic"`
-		Priority   *string `json:"priority"`
-		Format     *string `json:"format"`
-		Pillar     *string `json:"pillar"`
-		Platform   *string `json:"platform"`
-		Category   *string `json:"category"`
+		ID              *string `json:"id"`
+		Title           string  `json:"title"`
+		Topic           string  `json:"topic"`
+		Status          string  `json:"status"`
+		PlannedDate     *string `json:"planned_date"`
+		Pic             *string `json:"pic"`
+		Priority        *string `json:"priority"`
+		Format          *string `json:"format"`
+		ContentPurpose  *string `json:"content_purpose"`
+		PostingCategory *string `json:"posting_category"`
+		Pillar          *string `json:"pillar"`
+		Platform        *string `json:"platform"`
+		Category        *string `json:"category"`
 	}
 
 	out := []reportRow{}
 	for rows.Next() {
 		var r reportRow
 		if err := rows.Scan(&r.ID, &r.Title, &r.Topic, &r.Status, &r.PlannedDate, &r.Pic,
-			&r.Priority, &r.Format, &r.Pillar, &r.Platform, &r.Category); err != nil {
+			&r.Priority, &r.Format, &r.ContentPurpose, &r.PostingCategory, &r.Pillar, &r.Platform, &r.Category); err != nil {
 			continue
 		}
 		out = append(out, r)
 	}
 
 	if c.Query("format") == "csv" {
-		headers := []string{"ID", "Title", "Topic", "Pillar", "Platform", "Category", "Format", "Status", "Planned Date", "PIC", "Priority"}
+		headers := []string{"ID", "Title", "Topic", "Tema", "Platform", "Category", "Format", "Content Purpose", "Posting Category", "Status", "Planned Date", "PIC", "Priority"}
 		var sb strings.Builder
 		sb.WriteString("\uFEFF") // BOM for Excel
 		sb.WriteString(strings.Join(headers, ","))
@@ -89,6 +92,8 @@ func (h *Handler) Reports(c *gin.Context) {
 				derefString(r.Platform),
 				derefString(r.Category),
 				derefString(r.Format),
+				derefString(r.ContentPurpose),
+				derefString(r.PostingCategory),
 				r.Status,
 				derefString(r.PlannedDate),
 				derefString(r.Pic),

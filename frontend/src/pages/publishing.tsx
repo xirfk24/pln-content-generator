@@ -36,6 +36,9 @@ export default function PublishingPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
   const [addOpen, setAddOpen] = useState(false)
   const [editPub, setEditPub] = useState<PublicationRow | null>(null)
   const [metricsPub, setMetricsPub] = useState<PublicationRow | null>(null)
@@ -68,6 +71,8 @@ export default function PublishingPage() {
     try {
       const params = new URLSearchParams()
       if (statusFilter) params.set('status', statusFilter)
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
       const res = await apiFetch(`/api/publications?${params.toString()}`)
       const data = await res.json()
       setPublications(data.publications || [])
@@ -76,7 +81,15 @@ export default function PublishingPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [statusFilter, dateFrom, dateTo])
+
+  function selectMonth(year: number, month: number) {
+    const firstDay = new Date(year, month - 1, 1)
+    const lastDay = new Date(year, month, 0)
+    const fmt = (d: Date) => d.toISOString().split('T')[0]
+    setDateFrom(fmt(firstDay))
+    setDateTo(fmt(lastDay))
+  }
 
   useEffect(() => {
     loadPublications()
@@ -295,6 +308,30 @@ export default function PublishingPage() {
                 </option>
               ))}
             </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-ink-muted">Bulan:</span>
+              {[new Date().getFullYear(), new Date().getFullYear() - 1].map((yr) =>
+                [1,2,3,4,5,6,7,8,9,10,11,12].map((mo) => {
+                  const firstDay = `${yr}-${String(mo).padStart(2,'0')}-01`
+                  const isActive = dateFrom === firstDay
+                  return (
+                    <button
+                      key={`${yr}-${mo}`}
+                      type="button"
+                      onClick={() => isActive ? (setDateFrom(''), setDateTo('')) : selectMonth(yr, mo)}
+                      className={`rounded px-2 py-0.5 text-xs transition-colors ${isActive ? 'bg-primary text-white' : 'bg-surface-muted text-ink-secondary hover:bg-primary-soft hover:text-primary'}`}
+                    >
+                      {yr === new Date().getFullYear() ? '' : `${yr} `}{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo-1]}
+                    </button>
+                  )
+                })
+              )}
+              {(dateFrom || dateTo) && (
+                <button type="button" onClick={() => { setDateFrom(''); setDateTo('') }} className="text-xs text-ink-muted hover:text-danger">
+                  ✕ Clear
+                </button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -386,7 +423,14 @@ export default function PublishingPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={pub.status} kind="publication" />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={pub.status} kind="publication" />
+                          {pub.status === 'PUBLISHED' && (!pub.performance_metrics || pub.performance_metrics.length === 0) && (
+                            <span className="rounded bg-warning-soft px-1.5 py-0.5 text-xs text-warning" title="Belum ada data performa">
+                              No metrics
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">

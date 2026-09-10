@@ -46,11 +46,15 @@ type Content struct {
 	PlatformID     *string     `json:"platform_id"`
 	Format         *string     `json:"format"`
 	Brief          *string     `json:"brief"`
+	ContentPurpose *string     `json:"content_purpose"`
+	PostingCategory *string    `json:"posting_category"`
 	TargetAudience *string     `json:"target_audience"`
 	PlannedDate    *string     `json:"planned_date"`
 	PlannedWeek    *int        `json:"planned_week"`
 	Day            *string     `json:"day"`
 	Reference      *string     `json:"reference"`
+	BriefLink      *string     `json:"brief_link"`
+	ResultLink     *string     `json:"result_link"`
 	Pic            *string     `json:"pic"`
 	Priority       *string     `json:"priority"`
 	Status         string      `json:"status"`

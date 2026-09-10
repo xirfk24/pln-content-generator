@@ -120,9 +120,9 @@ export default function ContentPlanningList() {
                 value={pillarFilter}
                 onChange={(e) => setPillarFilter(e.target.value)}
                 className="w-full sm:w-40"
-                aria-label="Filter by pillar"
+                aria-label="Filter by tema"
               >
-                <option value="">All Pillars</option>
+                <option value="">All Tema</option>
                 {masterData.pillars.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -170,7 +170,7 @@ export default function ContentPlanningList() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <caption className="sr-only">
-              Content plan list with week, day, date, category, platform, pillar, topic, PIC,
+              Content plan list with week, day, date, category, platform, tema, topic, PIC,
               status, and actions
             </caption>
             <thead className="border-b border-border bg-surface-muted">
@@ -180,7 +180,7 @@ export default function ContentPlanningList() {
                 <th scope="col" className={TH_BASE}>Date</th>
                 <th scope="col" className={TH_BASE}>Kategori</th>
                 <th scope="col" className={TH_BASE}>Platform</th>
-                <th scope="col" className={`hidden lg:table-cell ${TH_BASE}`}>Pillar</th>
+                <th scope="col" className={`hidden lg:table-cell ${TH_BASE}`}>Tema</th>
                 <th scope="col" className={TH_BASE}>Topic &amp; Title</th>
                 <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>PIC</th>
                 <th scope="col" className={TH_BASE}>Status</th>

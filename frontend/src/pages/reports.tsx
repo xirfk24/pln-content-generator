@@ -1,6 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/lib/api'
+import { CONTENT_PURPOSE_LABELS, POSTING_CATEGORY_LABELS } from '@/constants'
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +19,8 @@ interface ReportRow {
   platform: string
   category: string
   format: string
+  content_purpose: string | null
+  posting_category: string | null
   status: string
   planned_date: string
   pic: string
@@ -61,11 +64,26 @@ export default function ReportsPage() {
       .catch(console.error)
   }, [])
 
-  function handleExportCsv() {
-    const params = new URLSearchParams()
-    Object.entries(filters).forEach(([k, v]) => v && params.set(k, v))
-    params.set('format', 'csv')
-    window.location.href = `/api/reports?${params.toString()}`
+  async function handleExportCsv() {
+    try {
+      const params = new URLSearchParams()
+      Object.entries(filters).forEach(([k, v]) => v && params.set(k, v))
+      params.set('format', 'csv')
+
+      const res = await apiFetch(`/api/reports?${params.toString()}`)
+      if (!res.ok) {
+        console.error('CSV export failed:', res.status)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('CSV export error:', err)
+    }
   }
 
   return (
@@ -114,9 +132,11 @@ export default function ReportsPage() {
                 <thead className="border-b bg-surface-muted">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pillar</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Format</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Purpose</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Posting</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned Date</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">PIC</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Priority</th>
@@ -135,6 +155,12 @@ export default function ReportsPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-ink-secondary">{row.platform || '-'}</td>
                       <td className="px-4 py-3 text-sm text-ink-secondary">{row.format}</td>
+                      <td className="px-4 py-3 text-sm text-ink-secondary">
+                        {row.content_purpose ? (CONTENT_PURPOSE_LABELS[row.content_purpose] ?? row.content_purpose) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-ink-secondary">
+                        {row.posting_category ? (POSTING_CATEGORY_LABELS[row.posting_category] ?? row.posting_category) : '-'}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
                         {formatDate(row.planned_date)}
                       </td>

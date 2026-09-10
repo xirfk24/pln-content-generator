@@ -25,6 +25,20 @@ export type ApprovalAction =
   | 'REVIEWED'
   | 'REVIEW_APPROVED'
 
+export type ContentPurpose = 
+  | 'EDUCATION' 
+  | 'ENTERTAINMENT' 
+  | 'INSPIRATIONAL' 
+  | 'PROMOTION' 
+  | 'INFORMATION'
+
+export type PostingCategory =
+  | 'ORIGINAL'
+  | 'REPOST_PLN_ID'
+  | 'REPOST_UP3'
+  | 'CAMPAIGN'
+  | 'OTHER'
+
 export interface User {
   id: string
   email: string
@@ -65,6 +79,8 @@ export interface Content {
   platform_id: string
   format: string
   brief: string | null
+  content_purpose: ContentPurpose | null
+  posting_category: PostingCategory | null
   target_audience: string | null
   planned_date: string | null
   planned_week: number | null
