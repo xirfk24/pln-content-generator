@@ -23,6 +23,7 @@ import AIPage from './pages/ai'
 import ReportsPage from './pages/reports'
 import RecapPage from './pages/recap'
 import ContentImportPage from './pages/content-import'
+import ContentTabunganPage from './pages/content-tabungan'
 import AdminUsersPage from './pages/admin-users'
 import AdminCategoriesPage from './pages/admin-categories'
 import AdminPillarsPage from './pages/admin-pillars'
@@ -78,6 +79,7 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/content/planning" element={<ContentPlanningPage />} />
+        <Route path="/content/tabungan" element={<ContentTabunganPage />} />
         <Route path="/content/planning/new" element={<ContentNewPage />} />
         <Route path="/content/calendar" element={<ContentCalendarPage />} />
         <Route path="/content/:id" element={<ContentDetailPage />} />

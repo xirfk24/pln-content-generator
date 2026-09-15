@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -9,7 +10,7 @@ import (
 	"pln-backend/internal/models"
 )
 
-// Workflow action definitions, ported 1:1 from src/constants/workflow.ts
+// Workflow action definitions
 type workflowActionDef struct {
 	Label               string
 	AllowedRoles        []string
@@ -18,46 +19,64 @@ type workflowActionDef struct {
 	RequiresComment     bool
 }
 
-// Two-tier workflow:
-// - STAFF (Operator): draft, brief, submit, respond to revision
-// - ADMIN (Gatekeeper): approve / reject
+// Alur kerja PLN:
+// - STAFF: Kerjakan, Ajukan untuk ditinjau, Kirim ulang revisi
+// - ADMIN: Setujui, Minta Revisi, Tandai Publikasi, Ditolak
 var workflowActions = map[string]workflowActionDef{
+	"START_PROGRESS": {
+		Label:               "Mulai Dikerjakan",
+		AllowedRoles:        []string{"ADMIN", "STAFF"},
+		AllowedFromStatuses: []string{"DRAFT"},
+		ToStatus:            "IN_PROGRESS",
+		RequiresComment:     false,
+	},
 	"SUBMITTED": {
-		Label:               "Submit for Review",
+		Label:               "Ajukan untuk Ditinjau",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
 		AllowedFromStatuses: []string{"DRAFT", "PLANNED", "IN_PROGRESS"},
 		ToStatus:            "PENDING_REVIEW",
+		RequiresComment:     false,
 	},
 	"RESUBMITTED": {
-		Label:               "Resubmit for Review",
+		Label:               "Ajukan Ulang Revisi",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"REVISION_REQUIRED"},
+		AllowedFromStatuses: []string{"REVISION_REQUIRED", "IN_PROGRESS"},
 		ToStatus:            "PENDING_REVIEW",
+		RequiresComment:     false,
 	},
 	"APPROVED": {
-		Label:               "Approve",
+		Label:               "Setujui Konten",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
 		ToStatus:            "APPROVED",
+		RequiresComment:     false,
 	},
 	"REVISION_REQUESTED": {
-		Label:               "Request Revision",
+		Label:               "Minta Revisi",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
-		ToStatus:            "REVISION_REQUIRED",
+		ToStatus:            "IN_PROGRESS", // Kembali ke Dalam Proses sesuai Alur Revisi
 		RequiresComment:     true,
 	},
+	"MARK_PUBLISHED": {
+		Label:               "Tandai Dipublikasikan",
+		AllowedRoles:        []string{"ADMIN", "STAFF"},
+		AllowedFromStatuses: []string{"APPROVED", "READY_TO_PUBLISH"},
+		ToStatus:            "PUBLISHED",
+		RequiresComment:     false,
+	},
 	"FINAL_APPROVED": {
-		Label:               "Final Approval",
+		Label:               "Setujui Final",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"APPROVED"},
 		ToStatus:            "READY_TO_PUBLISH",
+		RequiresComment:     false,
 	},
 	"REJECTED": {
-		Label:               "Reject",
+		Label:               "Tolak / Minta Revisi",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"APPROVED", "READY_TO_PUBLISH"},
-		ToStatus:            "REVISION_REQUIRED",
+		ToStatus:            "IN_PROGRESS",
 		RequiresComment:     true,
 	},
 }
@@ -82,13 +101,13 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 
 	var body workflowBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "action is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Aksi workflow wajib ditentukan"})
 		return
 	}
 
 	def, ok := workflowActions[body.Action]
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown action: " + body.Action})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Aksi workflow tidak dikenal: " + body.Action})
 		return
 	}
 
@@ -97,12 +116,12 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 		comment = strings.TrimSpace(*body.Comment)
 	}
 	if def.RequiresComment && comment == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Comment is required for this action"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Komentar/catatan revisi wajib diisi untuk aksi ini"})
 		return
 	}
 
 	if !containsRole(def.AllowedRoles, user.Role) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Role " + user.Role + " is not allowed to perform " + def.Label})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Role " + user.Role + " tidak memiliki izin untuk melakukan aksi " + def.Label})
 		return
 	}
 
@@ -110,12 +129,12 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 	err := h.Pool.QueryRow(c.Request.Context(),
 		"SELECT status FROM contents WHERE id = $1", contentID).Scan(&fromStatus)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Content not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
 		return
 	}
 
 	if !containsStatus(def.AllowedFromStatuses, fromStatus) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot " + def.Label + " from status " + fromStatus})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak dapat melakukan aksi '" + def.Label + "' dari status '" + fromStatus + "'"})
 		return
 	}
 
@@ -125,21 +144,57 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 		WHERE id = $3 RETURNING id
 	`, def.ToStatus, user.ID, contentID).Scan(&updatedID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update content status"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status alur kerja konten"})
 		return
 	}
 
+	// Simpan ke riwayat persetujuan
 	_, _ = h.Pool.Exec(c.Request.Context(), `
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, contentID, body.Action, fromStatus, def.ToStatus, comment, user.ID)
 
+	// Jika status menjadi APPROVED, otomatis buat entri di tabel publications untuk tiap platform
+	if def.ToStatus == "APPROVED" {
+		var plannedDate *string
+		var singlePlatID *string
+		var multiPlatIDs []string
+		_ = h.Pool.QueryRow(c.Request.Context(), `
+			SELECT planned_date::TEXT, platform_id, COALESCE(platform_ids, '{}') FROM contents WHERE id = $1
+		`, contentID).Scan(&plannedDate, &singlePlatID, &multiPlatIDs)
+
+		targetPlatforms := multiPlatIDs
+		if len(targetPlatforms) == 0 && singlePlatID != nil && *singlePlatID != "" {
+			targetPlatforms = []string{*singlePlatID}
+		}
+
+		for _, pid := range targetPlatforms {
+			if strings.TrimSpace(pid) == "" {
+				continue
+			}
+			var exists bool
+			_ = h.Pool.QueryRow(c.Request.Context(), `
+				SELECT EXISTS(SELECT 1 FROM publications WHERE content_id = $1 AND platform_id = $2)
+			`, contentID, pid).Scan(&exists)
+			if !exists {
+				_, errInsert := h.Pool.Exec(c.Request.Context(), `
+					INSERT INTO publications (content_id, platform_id, planned_publish_date, status)
+					VALUES ($1, $2, $3, 'PLANNED')
+				`, contentID, pid, plannedDate)
+				if errInsert != nil {
+					log.Printf("Auto-create publication error: %v", errInsert)
+				}
+			}
+		}
+	}
+
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", updatedID)
 	if err != nil || len(contents) == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load content"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat data konten"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"content": contents[0]})
+	h.attachPublications(c.Request.Context(), contents)
+	c.JSON(http.StatusOK, gin.H{"content": contents[0], "message": "Status konten berhasil diperbarui menjadi " + def.ToStatus})
 }
 
 // GET /api/workflow/approval-queue
@@ -156,11 +211,12 @@ func (h *Handler) ApprovalQueue(c *gin.Context) {
 	}
 
 	contents, err := h.queryContents(c.Request.Context(),
-		contentSelect+" WHERE c.status = ANY($1) ORDER BY c.updated_at ASC", statuses)
+		contentSelect+" WHERE c.status = ANY($1) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.updated_at ASC", statuses)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch queue"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil antrean persetujuan"})
 		return
 	}
+	h.attachPublications(c.Request.Context(), contents)
 	c.JSON(http.StatusOK, gin.H{"queue": contents, "role": user.Role})
 }
 
@@ -171,12 +227,15 @@ func (h *Handler) MyTasks(c *gin.Context) {
 		return
 	}
 
-	contents, err := h.queryContents(c.Request.Context(),
-		contentSelect+" WHERE c.created_by = $1 ORDER BY c.updated_at DESC", user.ID)
+	// Ambil konten milik user yang tidak dalam tabungan
+	query := contentSelect + " WHERE (c.created_by = $1 OR c.pic ILIKE $2) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.updated_at DESC"
+	userSearch := "%" + user.Email + "%"
+	contents, err := h.queryContents(c.Request.Context(), query, user.ID, userSearch)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil daftar tugas"})
 		return
 	}
+	h.attachPublications(c.Request.Context(), contents)
 
 	drafts := []models.Content{}
 	revisions := []models.Content{}
@@ -188,7 +247,7 @@ func (h *Handler) MyTasks(c *gin.Context) {
 			drafts = append(drafts, ct)
 		case "REVISION_REQUIRED":
 			revisions = append(revisions, ct)
-		case "READY_TO_PUBLISH":
+		case "READY_TO_PUBLISH", "APPROVED":
 			readyToPublish = append(readyToPublish, ct)
 		case "PENDING_REVIEW":
 			submitted = append(submitted, ct)

@@ -42,12 +42,12 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
       <div className="flex items-center gap-2 pb-2 text-sm font-medium text-ink-secondary lg:pb-0">
         <Filter className="h-4 w-4" aria-hidden="true" />
-        Filters
+        Filter Data
       </div>
 
       <div>
         <label htmlFor="filter-date-from" className="mb-1 block text-xs text-ink-muted">
-          From
+          Dari Tanggal
         </label>
         <Input
           id="filter-date-from"
@@ -60,7 +60,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
 
       <div>
         <label htmlFor="filter-date-to" className="mb-1 block text-xs text-ink-muted">
-          To
+          Sampai Tanggal
         </label>
         <Input
           id="filter-date-to"
@@ -81,7 +81,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           onChange={(e) => set('platform_id', e.target.value)}
           className="w-full sm:w-40"
         >
-          <option value="">All</option>
+          <option value="">Semua Platform</option>
           {masterData.platforms.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -92,15 +92,15 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
 
       <div>
         <label htmlFor="filter-pillar" className="mb-1 block text-xs text-ink-muted">
-          Tema
+          Content Pillar
         </label>
         <Select
           id="filter-pillar"
           value={filters.pillar_id}
           onChange={(e) => set('pillar_id', e.target.value)}
-          className="w-full sm:w-40"
+          className="w-full sm:w-44"
         >
-          <option value="">All</option>
+          <option value="">Semua Pillar</option>
           {masterData.pillars.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -120,17 +120,17 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
             onChange={(e) => set('status', e.target.value)}
             className="w-full sm:w-44"
           >
-            <option value="">All</option>
+            <option value="">Semua Status</option>
             <option value="DRAFT">Draft</option>
-            <option value="PLANNED">Planned</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="PENDING_REVIEW">Pending Review</option>
-            <option value="REVISION_REQUIRED">Revision Required</option>
-            <option value="APPROVED">Approved</option>
-            <option value="READY_TO_PUBLISH">Ready to Publish</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="RESCHEDULED">Rescheduled</option>
-            <option value="NOT_REALIZED">Not Realized</option>
+            <option value="PLANNED">Direncanakan</option>
+            <option value="IN_PROGRESS">Dalam Proses</option>
+            <option value="PENDING_REVIEW">Menunggu Persetujuan</option>
+            <option value="REVISION_REQUIRED">Perlu Revisi</option>
+            <option value="APPROVED">Disetujui</option>
+            <option value="READY_TO_PUBLISH">Siap Publikasi</option>
+            <option value="PUBLISHED">Dipublikasikan</option>
+            <option value="RESCHEDULED">Dijadwalkan Ulang</option>
+            <option value="NOT_REALIZED">Tidak Direalisasikan</option>
           </Select>
         </div>
       )}
@@ -138,7 +138,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={() => onChange(EMPTY_FILTERS)}>
           <X className="mr-1 h-3 w-3" aria-hidden="true" />
-          Clear
+          Reset Filter
         </Button>
       )}
     </div>

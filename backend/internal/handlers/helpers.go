@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 )
@@ -35,12 +34,9 @@ func parseDateStr(s string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// weekNumber mirrors the JS getWeekNumber implementation exactly.
+// weekNumber returns the week of the month (1-5) based on the day of the month.
 func weekNumber(t time.Time) int {
-	startOfYear := time.Date(t.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
-	days := int(math.Floor(t.Sub(startOfYear).Hours() / 24))
-	n := days + int(startOfYear.Weekday()) + 1
-	return int(math.Ceil(float64(n) / 7))
+	return (t.Day()-1)/7 + 1
 }
 
 func dayName(s string) (string, bool) {

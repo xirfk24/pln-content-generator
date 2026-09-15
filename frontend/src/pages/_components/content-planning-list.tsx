@@ -1,19 +1,38 @@
 'use client'
 
 import { apiFetch } from '@/lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Search, Eye, Edit, FileText, Loader2 } from 'lucide-react'
+import {
+  Search,
+  Eye,
+  Edit,
+  FileText,
+  Loader2,
+  Lock,
+  MoreVertical,
+  BookmarkPlus,
+  Trash2,
+  Copy,
+  ExternalLink,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react'
 import Link from '@/compat/next'
-import { formatDate } from '@/lib/utils'
+import { formatDateWithDay, getWeekOfMonth } from '@/lib/utils'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import type { Content, Publication } from '@/types'
+import { PlatformCluster } from '@/components/ui/platform-icon'
+import { ContentPlanningKpi } from './content-planning-kpi'
+import { ContentPlanningCharts } from './content-planning-charts'
 
 /** Ambil URL publikasi pertama yang published (kalau ada) */
 function getPublishedUrl(content: Content): string | null {
@@ -34,10 +53,25 @@ export default function ContentPlanningList() {
   const [statusFilter, setStatusFilter] = useState('')
   const [pillarFilter, setPillarFilter] = useState('')
   const [platformFilter, setPlatformFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [sortBy, setSortBy] = useState('planned_date')
+  const [sortOrder, setSortOrder] = useState('ASC')
+  const [specialFilter, setSpecialFilter] = useState<string | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  // Action Menu Popover
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [masterData, setMasterData] = useState<{
     pillars: Array<{ id: string; name: string }>
     platforms: Array<{ id: string; name: string }>
   }>({ pillars: [], platforms: [] })
+
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadMasterData()
@@ -45,8 +79,24 @@ export default function ContentPlanningList() {
 
   useEffect(() => {
     loadContents()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, pillarFilter, platformFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder])
+
+  // Reset current page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, statusFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder, specialFilter])
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   async function loadMasterData() {
     try {
@@ -69,7 +119,11 @@ export default function ContentPlanningList() {
       if (statusFilter) params.set('status', statusFilter)
       if (pillarFilter) params.set('pillar_id', pillarFilter)
       if (platformFilter) params.set('platform_id', platformFilter)
-      
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      if (sortBy) params.set('sort_by', sortBy)
+      if (sortOrder) params.set('order', sortOrder)
+
       const res = await apiFetch(`/api/contents?${params.toString()}`)
       const data = await res.json()
       setContents(data.contents || [])
@@ -80,189 +134,765 @@ export default function ContentPlanningList() {
     }
   }
 
-  const hasFilters = search || statusFilter || pillarFilter || platformFilter
+  function handleResetFilters() {
+    setSearch('')
+    setStatusFilter('')
+    setPillarFilter('')
+    setPlatformFilter('')
+    setDateFrom('')
+    setDateTo('')
+    setSortBy('planned_date')
+    setSortOrder('ASC')
+    setSpecialFilter(null)
+    setCurrentPage(1)
+  }
+
+  // Real-time instant filtering & sorting
+  const filteredContents = useMemo(() => {
+    let list = [...contents]
+
+    // 0. Special KPI Filter (Perlu Tindak Lanjut / Terlambat)
+    if (specialFilter === 'follow_up') {
+      const todayStr = new Date().toISOString().split('T')[0]
+      list = list.filter((c) => {
+        if (['REVISION_REQUIRED', 'RESCHEDULED', 'NOT_REALIZED'].includes(c.status)) {
+          return true
+        }
+        if (c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED') {
+          return true
+        }
+        return false
+      })
+    } else if (specialFilter === 'overdue') {
+      const todayStr = new Date().toISOString().split('T')[0]
+      list = list.filter((c) => c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED')
+    }
+
+    // 1. Search (Title, Topic, PIC, Pillar)
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      list = list.filter((item) => {
+        const matchTitle = item.title?.toLowerCase().includes(q)
+        const matchTopic = item.topic?.toLowerCase().includes(q)
+        const matchPic = item.pic?.toLowerCase().includes(q)
+        const matchPillar = item.pillar?.name?.toLowerCase().includes(q)
+        return matchTitle || matchTopic || matchPic || matchPillar
+      })
+    }
+
+    // 2. Status
+    if (statusFilter) {
+      list = list.filter((item) => {
+        if (statusFilter === 'DRAFT') {
+          return item.status === 'DRAFT' || item.status === 'PLANNED'
+        }
+        return item.status === statusFilter
+      })
+    }
+
+    // 3. Pillar
+    if (pillarFilter) {
+      list = list.filter(
+        (item) =>
+          item.pillar_id === pillarFilter ||
+          item.pillar?.id === pillarFilter ||
+          item.pillar?.name?.toLowerCase() === pillarFilter.toLowerCase()
+      )
+    }
+
+    // 4. Platform
+    if (platformFilter) {
+      list = list.filter(
+        (item) =>
+          item.platform_id === platformFilter ||
+          item.platform?.id === platformFilter ||
+          item.platform_ids?.includes(platformFilter)
+      )
+    }
+
+    // 5. Date Range
+    if (dateFrom) {
+      list = list.filter((item) => item.planned_date && item.planned_date >= dateFrom)
+    }
+    if (dateTo) {
+      list = list.filter((item) => item.planned_date && item.planned_date <= dateTo)
+    }
+
+    // 6. Sorting
+    list.sort((a, b) => {
+      if (sortBy === 'created_at') {
+        const timeA = new Date(a.created_at || 0).getTime()
+        const timeB = new Date(b.created_at || 0).getTime()
+        return sortOrder === 'ASC' ? timeA - timeB : timeB - timeA
+      }
+      // default: planned_date
+      const dateA = a.planned_date ? new Date(a.planned_date).getTime() : 0
+      const dateB = b.planned_date ? new Date(b.planned_date).getTime() : 0
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return sortOrder === 'DESC' ? dateB - dateA : dateA - dateB
+    })
+
+    return list
+  }, [contents, search, statusFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder, specialFilter])
+
+  // Pagination calculation
+  const totalItems = filteredContents.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const paginatedContents = filteredContents.slice(startIndex, endIndex)
+
+  async function handleMoveToTabungan(content: Content) {
+    setActiveMenuId(null)
+    const reason = prompt(`Masukkan alasan pemindahan "${content.title}" ke Konten Tabungan:`)
+    if (reason === null) return
+
+    try {
+      const res = await apiFetch(`/api/tabungan/${content.id}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'Dipindahkan dari Rencana Konten' }),
+      })
+      if (res.ok) {
+        loadContents()
+      } else {
+        const d = await res.json()
+        alert(d.error || 'Gagal memindahkan ke Konten Tabungan')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat memindahkan ke Konten Tabungan')
+    }
+  }
+
+  async function handleDelete(content: Content) {
+    setActiveMenuId(null)
+    const isLocked = ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(content.status)
+    if (isLocked) {
+      alert(`Konten dengan status ${content.status} sedang aktif dalam workflow dan tidak dapat dihapus.`)
+      return
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus rencana konten "${content.title}"?`)) {
+      return
+    }
+
+    try {
+      const res = await apiFetch(`/api/contents/${content.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        loadContents()
+      } else {
+        const d = await res.json()
+        alert(d.error || 'Gagal menghapus konten')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat menghapus konten')
+    }
+  }
+
+  function handleCopyLink(contentId: string) {
+    const url = `${window.location.origin}/content/${contentId}`
+    navigator.clipboard.writeText(url)
+    setCopiedId(contentId)
+    setTimeout(() => {
+      setCopiedId(null)
+      setActiveMenuId(null)
+    }, 1200)
+  }
+
+  const hasFilters =
+    Boolean(search) ||
+    Boolean(statusFilter) ||
+    Boolean(pillarFilter) ||
+    Boolean(platformFilter) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo) ||
+    Boolean(specialFilter) ||
+    sortBy !== 'planned_date' ||
+    sortOrder !== 'ASC'
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="p-4">
-          <div className="flex flex-col gap-3 lg:flex-row">
-            <div className="relative flex-1">
-              <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
-                aria-hidden="true"
-              />
-              <Input
-                placeholder="Search content..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-                aria-label="Search content"
-              />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+    <div className="space-y-6">
+      {/* 1. SEKSI 4 KARTU RINGKASAN KPI */}
+      <ContentPlanningKpi
+        contents={contents}
+        activeStatusFilter={statusFilter}
+        activeSpecialFilter={specialFilter}
+        onFilterStatus={(st) => {
+          setStatusFilter(st)
+          setSpecialFilter(null)
+        }}
+        onFilterSpecial={(spec) => {
+          setSpecialFilter(spec)
+          if (spec) setStatusFilter('')
+        }}
+      />
+
+      {/* 2. SEKSI 2 CHART UTAMA & ACCORDION RINGKASAN LAINNYA */}
+      <ContentPlanningCharts
+        contents={filteredContents}
+        activeStatusFilter={statusFilter}
+        activeSpecialFilter={specialFilter}
+        activePillarFilter={pillarFilter}
+        activePlatformFilter={platformFilter}
+        onFilterStatus={(st) => {
+          setStatusFilter(st)
+          setSpecialFilter(null)
+        }}
+        onFilterSpecial={(spec) => {
+          setSpecialFilter(spec)
+          if (spec) setStatusFilter('')
+        }}
+        onFilterPillar={(pid) => setPillarFilter(pid)}
+        onFilterPlatform={(platId) => setPlatformFilter(platId)}
+        pillars={masterData.pillars}
+        platforms={masterData.platforms}
+      />
+
+      {/* 3. SEKSI FILTER & PENCARIAN 2 BARIS */}
+      <Card className="shadow-xs border-border">
+        <div className="p-4 space-y-3">
+          {/* BARIS 1: Pencarian berdasarkan judul, topik, atau PIC */}
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Pencarian berdasarkan judul, topik, atau PIC..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-10 w-full bg-white dark:bg-slate-900"
+              aria-label="Cari konten berdasarkan judul, topik, atau PIC"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-muted hover:text-ink p-1"
+                title="Hapus pencarian"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* BARIS 2: [Status] [Content Pillar] [Platform] [Rentang Tanggal] [Sort By] */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 items-center">
+            {/* 1. Status */}
+            <div>
               <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-44"
-                aria-label="Filter by status"
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setSpecialFilter(null)
+                }}
+                className="w-full text-xs bg-white dark:bg-slate-900"
+                aria-label="Filter status"
               >
-                <option value="">All Status</option>
+                <option value="">Semua Status</option>
                 <option value="DRAFT">Draft</option>
-                <option value="PLANNED">Planned</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="PENDING_REVIEW">Pending Review</option>
-                <option value="APPROVED">Approved</option>
-                <option value="READY_TO_PUBLISH">Ready to Publish</option>
-                <option value="PUBLISHED">Published</option>
+                <option value="IN_PROGRESS">Dalam Proses</option>
+                <option value="PENDING_REVIEW">Menunggu Persetujuan</option>
+                <option value="APPROVED">Disetujui</option>
+                <option value="PUBLISHED">Dipublikasikan</option>
+                <option value="REVISION_REQUIRED">Perlu Revisi</option>
+                <option value="RESCHEDULED">Dijadwalkan Ulang</option>
+                <option value="NOT_REALIZED">Tidak Direalisasikan</option>
               </Select>
+            </div>
+
+            {/* 2. Content Pillar */}
+            <div>
               <Select
                 value={pillarFilter}
                 onChange={(e) => setPillarFilter(e.target.value)}
-                className="w-full sm:w-40"
-                aria-label="Filter by tema"
+                className="w-full text-xs bg-white dark:bg-slate-900"
+                aria-label="Filter pilar konten"
               >
-                <option value="">All Tema</option>
+                <option value="">Semua Content Pillar</option>
                 {masterData.pillars.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </Select>
-              <Select
-                value={platformFilter}
-                onChange={(e) => setPlatformFilter(e.target.value)}
-                className="w-full sm:w-40"
-                aria-label="Filter by platform"
-              >
-                <option value="">All Platforms</option>
-                {masterData.platforms.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
+
+            {/* 3. Platform */}
+            <div>
+              <Select
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="w-full text-xs bg-white dark:bg-slate-900"
+                aria-label="Filter platform"
+              >
+                <option value="">Semua Platform</option>
+                {masterData.platforms.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 4. Rentang Tanggal (Dari s/d Sampai) */}
+            <div className="flex items-center gap-1.5 w-full col-span-1 sm:col-span-2 md:col-span-1 lg:col-span-2">
+              <div className="relative flex-1">
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full text-xs bg-white dark:bg-slate-900"
+                  title="Dari Tanggal"
+                  aria-label="Dari Tanggal"
+                />
+              </div>
+              <span className="text-xs font-medium text-ink-muted shrink-0">s/d</span>
+              <div className="relative flex-1">
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full text-xs bg-white dark:bg-slate-900"
+                  title="Sampai Tanggal"
+                  aria-label="Sampai Tanggal"
+                />
+              </div>
+            </div>
+
+            {/* 5. Sort By (Sesuai Planning Konten / Tanggal Dibuat) */}
+            <div>
+              <Select
+                value={`${sortBy}_${sortOrder.toLowerCase()}`}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === 'created_at_desc') {
+                    setSortBy('created_at')
+                    setSortOrder('DESC')
+                  } else if (val === 'created_at_asc') {
+                    setSortBy('created_at')
+                    setSortOrder('ASC')
+                  } else if (val === 'planned_date_desc') {
+                    setSortBy('planned_date')
+                    setSortOrder('DESC')
+                  } else {
+                    setSortBy('planned_date')
+                    setSortOrder('ASC')
+                  }
+                }}
+                className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
+                aria-label="Urutkan Konten"
+              >
+                <option value="planned_date_asc">Sort: Planning Konten (Terdekat)</option>
+                <option value="planned_date_desc">Sort: Planning Konten (Terjauh)</option>
+                <option value="created_at_desc">Sort: Tanggal Dibuat (Terbaru)</option>
+                <option value="created_at_asc">Sort: Tanggal Dibuat (Terlama)</option>
+              </Select>
+            </div>
           </div>
+
+          {/* Tombol Reset Filter jika ada filter aktif */}
+          {hasFilters && (
+            <div className="flex items-center justify-between pt-1 border-t border-dashed border-border text-xs">
+              <span className="text-ink-muted">
+                Filter aktif diterapkan • Ditemukan <strong>{filteredContents.length}</strong> dari {contents.length} konten
+              </span>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="font-medium text-primary hover:underline hover:text-primary/80"
+              >
+                Reset Semua Filter ↺
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 
+      {/* 4. SEKSI TABEL DATA RENCANA KONTEN */}
       {loading ? (
         <Card>
-          <div className="flex items-center justify-center border-b border-border py-3" role="status" aria-live="polite">
+          <div
+            className="flex items-center justify-center border-b border-border py-3"
+            role="status"
+            aria-live="polite"
+          >
             <Loader2 className="h-4 w-4 animate-spin text-ink-muted" aria-hidden="true" />
-            <span className="ml-2 text-sm text-ink-secondary">Loading content...</span>
+            <span className="ml-2 text-sm text-ink-secondary">
+              Memuat daftar rencana konten...
+            </span>
           </div>
           <div className="p-4">
-            <SkeletonTable rows={6} cols={5} />
+            <SkeletonTable rows={6} cols={7} />
           </div>
         </Card>
-      ) : contents.length === 0 ? (
+      ) : filteredContents.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title="No content found"
+          title="Tidak ada rencana konten"
           description={
             hasFilters
-              ? 'Try adjusting your search or filters.'
-              : 'Start planning your first content.'
+              ? 'Coba sesuaikan kata kunci pencarian atau filter yang dipilih.'
+              : 'Mulai susun rencana konten pertama Anda.'
           }
-          actionLabel="New Content"
-          actionHref="/content/planning/new"
+          actionLabel={hasFilters ? 'Reset Filter' : 'Buat Rencana Konten'}
+          actionHref={hasFilters ? undefined : '/content/planning/new'}
+          actionOnClick={hasFilters ? handleResetFilters : undefined}
         />
       ) : (
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <caption className="sr-only">
-              Content plan list with week, day, date, category, platform, tema, topic, PIC,
-              status, and actions
-            </caption>
-            <thead className="border-b border-border bg-surface-muted">
-              <tr>
-                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>Week</th>
-                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>Day</th>
-                <th scope="col" className={TH_BASE}>Date</th>
-                <th scope="col" className={TH_BASE}>Kategori</th>
-                <th scope="col" className={TH_BASE}>Platform</th>
-                <th scope="col" className={`hidden lg:table-cell ${TH_BASE}`}>Tema</th>
-                <th scope="col" className={TH_BASE}>Topic &amp; Title</th>
-                <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>PIC</th>
-                <th scope="col" className={TH_BASE}>Status</th>
-                <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {contents.map((content) => {
-                const day = (content as Content & { day?: string | null }).day
-                return (
-                  <tr key={content.id} className="transition-colors hover:bg-surface-muted/60">
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
-                      {content.planned_week ?? '-'}
-                    </td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
-                      {day || '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
-                      {content.planned_date ? formatDate(content.planned_date) : '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
-                      {content.category?.name || '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
-                      {content.platform?.name || '-'}
-                    </td>
-                    <td className="hidden px-4 py-3 text-sm lg:table-cell">
-                      <Badge variant="outline">{content.pillar?.name || '-'}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {(() => {
-                        const pubUrl = getPublishedUrl(content)
-                        if (pubUrl) {
-                          return (
-                            <a
-                              href={pubUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-medium text-ink hover:text-primary hover:underline"
-                            >
-                              {content.title}
-                            </a>
-                          )
-                        }
-                        return (
-                          <Link
-                            href={`/content/${content.id}`}
-                            className="font-medium text-ink hover:text-primary"
+        <Card className="shadow-xs border-border">
+          <div className="overflow-x-auto min-h-[360px]">
+            <table className="w-full">
+              <caption className="sr-only">
+                Daftar rencana konten Humas PLN UID Jawa Barat
+              </caption>
+              <thead className="border-b border-border bg-surface-muted/50">
+                <tr>
+                  <th scope="col" className={`whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary w-28`}>
+                    Minggu
+                  </th>
+                  <th scope="col" className={TH_BASE}>
+                    Hari &amp; Tgl Rencana
+                  </th>
+                  <th scope="col" className={TH_BASE}>
+                    Platform
+                  </th>
+                  <th scope="col" className={`${TH_BASE} min-w-[220px]`}>
+                    Judul Konten
+                  </th>
+                  <th scope="col" className={TH_BASE}>
+                    Topik
+                  </th>
+                  <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>
+                    PIC
+                  </th>
+                  <th scope="col" className={TH_BASE}>
+                    Status
+                  </th>
+                  <th
+                    scope="col"
+                    className="whitespace-nowrap px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-ink-secondary w-16"
+                  >
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {paginatedContents.map((content) => {
+                  const isLocked = ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(
+                    content.status
+                  )
+
+                  // Platform badges
+                  const displayPlatforms: string[] = []
+                  if (content.platform?.name) {
+                    displayPlatforms.push(content.platform.name)
+                  }
+                  if (content.platform_ids && content.platform_ids.length > 0) {
+                    content.platform_ids.forEach((pid) => {
+                      const match = masterData.platforms.find((p) => p.id === pid)
+                      if (match && !displayPlatforms.includes(match.name)) {
+                        displayPlatforms.push(match.name)
+                      }
+                    })
+                  }
+
+                  // Minggu dalam bulan (misal: "Minggu 1")
+                  const weekOfMonthDisplay = content.planned_date
+                    ? getWeekOfMonth(content.planned_date)
+                    : content.planned_week
+                    ? `Minggu ${content.planned_week}`
+                    : '-'
+
+                  // Hari & Tanggal Rencana disatukan (misal: "Kamis, 1 Agu 2024")
+                  const dateWithDayDisplay = content.planned_date
+                    ? formatDateWithDay(content.planned_date)
+                    : '-'
+
+                  const isMenuOpen = activeMenuId === content.id
+
+                  return (
+                    <tr
+                      key={content.id}
+                      className="transition-colors hover:bg-surface-muted/60 relative"
+                    >
+                      {/* 1. MINGGU (Week of Month) */}
+                      <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink-secondary">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {weekOfMonthDisplay}
+                        </span>
+                      </td>
+
+                      {/* 2. HARI & TGL RENCANA (Disatukan) */}
+                      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-ink">
+                        {dateWithDayDisplay}
+                      </td>
+
+                      {/* 3. PLATFORM */}
+                      <td className="px-4 py-3 text-sm">
+                        <PlatformCluster platforms={displayPlatforms} size="sm" />
+                      </td>
+
+                      {/* 4. JUDUL KONTEN */}
+                      <td className="px-4 py-3 text-sm max-w-sm">
+                        <div className="space-y-1">
+                          {(() => {
+                            const pubUrl = getPublishedUrl(content)
+                            if (pubUrl) {
+                              return (
+                                <a
+                                  href={pubUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-ink hover:text-primary hover:underline line-clamp-2 inline-flex items-center gap-1"
+                                >
+                                  {content.title}
+                                  <ExternalLink className="h-3 w-3 text-primary shrink-0 inline" />
+                                </a>
+                              )
+                            }
+                            return (
+                              <Link
+                                href={`/content/${content.id}`}
+                                className="font-medium text-ink hover:text-primary line-clamp-2"
+                              >
+                                {content.title}
+                              </Link>
+                            )
+                          })()}
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {content.format && (
+                              <span className="inline-block text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5">
+                                {content.format}
+                              </span>
+                            )}
+                            {content.category?.name && (
+                              <span className="inline-block text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded px-1.5 py-0.5">
+                                {content.category.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 5. TOPIK */}
+                      <td className="px-4 py-3 text-sm max-w-[200px]">
+                        <div className="font-medium text-ink line-clamp-1">{content.topic || '-'}</div>
+                        {content.pillar?.name && (
+                          <div className="mt-0.5">
+                            <span className="inline-block text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 rounded px-1.5 py-0.5 line-clamp-1 max-w-fit">
+                              {content.pillar.name}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 6. PIC */}
+                      <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
+                        {content.pic || '-'}
+                      </td>
+
+                      {/* 7. STATUS */}
+                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                        <StatusBadge status={content.status} />
+                      </td>
+
+                      {/* 8. AKSI (Menu Titik 3 / MoreVertical) */}
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-center relative">
+                        <div className="inline-block text-left" ref={isMenuOpen ? menuRef : undefined}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setActiveMenuId(isMenuOpen ? null : content.id)
+                            }}
+                            className={`h-8 w-8 rounded-lg transition-colors ${
+                              isMenuOpen ? 'bg-slate-200 dark:bg-slate-700' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                            title="Menu Aksi"
+                            aria-label={`Menu aksi ${content.title}`}
                           >
-                            {content.title}
-                          </Link>
-                        )
-                      })()}
-                      <div className="text-xs text-ink-muted">{content.topic}</div>
-                    </td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
-                      {content.pic || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <StatusBadge status={content.status} />
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex justify-end gap-1">
-                        <Link href={`/content/${content.id}`}>
-                          <Button variant="ghost" size="icon" title="View content" aria-label={`View ${content.title}`}>
-                            <Eye className="h-4 w-4" aria-hidden="true" />
+                            <MoreVertical className="h-4 w-4 text-ink-secondary" />
                           </Button>
-                        </Link>
-                        <Link href={`/content/${content.id}/edit`}>
-                          <Button variant="ghost" size="icon" title="Edit content" aria-label={`Edit ${content.title}`}>
-                            <Edit className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+
+                          {/* Popover Menu Dropdown Aksi */}
+                          {isMenuOpen && (
+                            <div className="absolute right-4 top-10 z-50 w-52 rounded-xl border border-border bg-white p-1.5 shadow-lg dark:bg-slate-900 animate-in fade-in-0 zoom-in-95">
+                              {/* Opsi 1: Lihat Detail */}
+                              <Link
+                                href={`/content/${content.id}`}
+                                onClick={() => setActiveMenuId(null)}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>Lihat Detail</span>
+                              </Link>
+
+                              {/* Opsi 2: Edit Rencana Konten */}
+                              {isLocked ? (
+                                <div
+                                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-ink-muted opacity-60 cursor-not-allowed"
+                                  title="Konten terkunci dari pengeditan langsung"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Edit className="h-3.5 w-3.5" />
+                                    <span>Edit Konten</span>
+                                  </div>
+                                  <Lock className="h-3 w-3 text-amber-500" />
+                                </div>
+                              ) : (
+                                <Link
+                                  href={`/content/${content.id}/edit`}
+                                  onClick={() => setActiveMenuId(null)}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  <Edit className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                  <span>Edit Konten</span>
+                                </Link>
+                              )}
+
+                              {/* Opsi 3: Salin Link Konten */}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyLink(content.id)}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                {copiedId === content.id ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span className="text-emerald-600 font-semibold">Tautan Tersalin!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                                    <span>Salin Tautan</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Opsi 4: Pindahkan ke Tabungan (hanya jika belum published) */}
+                              {content.status !== 'PUBLISHED' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveToTabungan(content)}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  <BookmarkPlus className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                                  <span>Pindah ke Tabungan</span>
+                                </button>
+                              )}
+
+                              {/* Divider */}
+                              <div className="my-1 border-t border-border" />
+
+                              {/* Opsi 5: Hapus Konten */}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(content)}
+                                disabled={isLocked}
+                                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                                  isLocked
+                                    ? 'text-ink-muted opacity-40 cursor-not-allowed'
+                                    : 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+                                }`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Hapus Konten</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 5. SEKSI PAGINATION & INFORMASI DATA */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border text-xs text-ink-secondary bg-surface-muted/20">
+            {/* Info jumlah data */}
+            <div className="flex items-center gap-2">
+              <span>
+                Menampilkan <strong className="text-ink">{totalItems > 0 ? startIndex + 1 : 0}</strong> – <strong className="text-ink">{endIndex}</strong> dari <strong className="text-ink">{totalItems}</strong> rencana konten
+              </span>
+            </div>
+
+            {/* Kontrol Pagination & Page Size */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-ink-muted">Baris:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="rounded border border-border bg-white px-2 py-1 text-xs text-ink dark:bg-slate-900"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  title="Halaman Pertama"
+                >
+                  <ChevronsLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+
+                <span className="px-2 text-xs font-medium text-ink">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Halaman Selanjutnya"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  title="Halaman Terakhir"
+                >
+                  <ChevronsRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   )

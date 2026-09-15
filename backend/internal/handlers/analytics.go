@@ -40,7 +40,7 @@ type analyticsContentRow struct {
 	Title         string
 }
 
-func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle, needPlatform bool) []analyticsContentRow {
+func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []analyticsContentRow {
 	where := []string{"TRUE"}
 	args := []any{}
 	if f.dateFrom != "" {
@@ -298,7 +298,7 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 }
 
 func (h *Handler) statusBreakdown(f analyticsFilters) []gin.H {
-	all := h.loadFilteredContents(f, false, false)
+	all := h.loadFilteredContents(f, false)
 	counts := map[string]int{}
 	for _, r := range all {
 		counts[r.Status]++
@@ -328,7 +328,7 @@ type platformPerfRow struct {
 }
 
 func (h *Handler) platformPerformance(f analyticsFilters) []platformPerfRow {
-	all := h.loadFilteredContents(f, false, false)
+	all := h.loadFilteredContents(f, false)
 	platformCount := map[string]int{}
 	contentPlatform := map[string]string{}
 	for _, r := range all {
@@ -404,7 +404,7 @@ type pillarPerfRow struct {
 }
 
 func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
-	all := h.loadFilteredContents(f, false, false)
+	all := h.loadFilteredContents(f, false)
 	rows := map[string]*pillarPerfRow{}
 	order := []string{}
 	for _, r := range all {
@@ -504,7 +504,7 @@ type monthlyTrendRow struct {
 }
 
 func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
-	all := h.loadFilteredContents(f, false, false)
+	all := h.loadFilteredContents(f, false)
 
 	byMonth := map[string]*[2]int{} // [planned, published]
 	for _, r := range all {
@@ -638,7 +638,7 @@ type topContentRow struct {
 }
 
 func (h *Handler) topContent(f analyticsFilters, metric string, limit int) []topContentRow {
-	all := h.loadFilteredContents(f, true, true)
+	all := h.loadFilteredContents(f, true)
 	contentByID := map[string]analyticsContentRow{}
 	for _, r := range all {
 		contentByID[r.ID] = r

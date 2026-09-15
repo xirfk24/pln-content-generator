@@ -103,9 +103,19 @@ export default function AnalyticsOverviewPage() {
 
   return (
     <div className="space-y-6">
+      {/* Banner Penjelasan Modul */}
+      <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-sky-50 p-4 text-xs text-blue-900 shadow-sm sm:text-sm">
+        <p className="font-semibold text-blue-950">
+          📈 Modul Analisis Performa & Efektivitas Media
+        </p>
+        <p className="mt-1 text-xs text-blue-700">
+          Menganalisis jangkauan, penayangan, tingkat interaksi (Engagement Rate), serta distribusi topik per platform media sosial Divisi Humas PLN UID Jawa Barat.
+        </p>
+      </div>
+
       <PageHeader
-        title="Analytics Overview"
-        description="Content and performance analytics"
+        title="Ikhtisar Analisis"
+        description="Analisis mendalam performa konten dan efektivitas saluran komunikasi publik."
       />
 
       <Card>
@@ -132,14 +142,14 @@ export default function AnalyticsOverviewPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Performance by Platform</CardTitle>
+                <CardTitle className="text-base">Performa Berdasarkan Platform</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.platformPerformance.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                  <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
                 ) : (
                   <>
-                    <div role="img" aria-label="Grouped bar chart of views, likes, and shares by platform">
+                    <div role="img" aria-label="Diagram batang performa per platform">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={data.platformPerformance} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid {...GRID_PROPS} />
@@ -150,17 +160,12 @@ export default function AnalyticsOverviewPage() {
                             content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                           />
                           <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                          <Bar dataKey="views" name="Views" fill={CHART_COLORS.primary} radius={[3, 3, 0, 0]} />
-                          <Bar dataKey="likes" name="Likes" fill={CHART_COLORS.danger} radius={[3, 3, 0, 0]} />
-                          <Bar dataKey="shares" name="Shares" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="views" name="Penayangan" fill={CHART_COLORS.primary} radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="likes" name="Suka" fill={CHART_COLORS.danger} radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="shares" name="Bagikan" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <ul className="sr-only">
-                      {data.platformPerformance.map((p) => (
-                        <li key={p.platform}>{`${p.platform}: ${formatNumber(p.views)} views, ${formatNumber(p.likes)} likes, ${formatNumber(p.shares)} shares`}</li>
-                      ))}
-                    </ul>
                   </>
                 )}
               </CardContent>
@@ -168,14 +173,14 @@ export default function AnalyticsOverviewPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Engagement Rate by Platform</CardTitle>
+                <CardTitle className="text-base">Tingkat Interaksi (Engagement Rate) per Platform</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.platformPerformance.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                  <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
                 ) : (
                   <>
-                    <div role="img" aria-label="Bar chart of engagement rate by platform">
+                    <div role="img" aria-label="Diagram batang tingkat interaksi per platform">
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={data.platformPerformance} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid {...GRID_PROPS} />
@@ -185,15 +190,10 @@ export default function AnalyticsOverviewPage() {
                             cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
                             content={(props) => <ChartTooltip {...props} formatter={formatPercent} />}
                           />
-                          <Bar dataKey="engagementRate" name="Engagement Rate" fill={CHART_COLORS.violet} radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="engagementRate" name="Tingkat Interaksi" fill={CHART_COLORS.violet} radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <ul className="sr-only">
-                      {data.platformPerformance.map((p) => (
-                        <li key={p.platform}>{`${p.platform}: ${formatPercent(p.engagementRate)} engagement rate`}</li>
-                      ))}
-                    </ul>
                   </>
                 )}
               </CardContent>
@@ -202,27 +202,23 @@ export default function AnalyticsOverviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Performance by Tema</CardTitle>
+              <CardTitle className="text-base">Performa Berdasarkan Pilar Konten</CardTitle>
             </CardHeader>
             <CardContent>
               {data.pillarPerformance.length === 0 ? (
-                <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <caption className="sr-only">
-                      Content count, published count, views, average views, engagement, and
-                      engagement rate per tema
-                    </caption>
                     <thead className="border-b bg-surface-muted">
                       <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Content</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Views</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Avg Views</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Engagement</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Eng. Rate</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pilar Konten</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Total Konten</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Penayangan</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rata-rata Tayang</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Interaksi</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">ER (%)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -251,14 +247,14 @@ export default function AnalyticsOverviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Monthly: Planned vs Published</CardTitle>
+              <CardTitle className="text-base">Tren Bulanan: Rencana vs Realisasi Terbit</CardTitle>
             </CardHeader>
             <CardContent>
               {data.monthlyTrend.length === 0 ? (
-                <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
               ) : (
                 <>
-                  <div role="img" aria-label="Bar chart comparing planned and published content per month">
+                  <div role="img" aria-label="Diagram batang tren bulanan rencana vs publikasi">
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={data.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <CartesianGrid {...GRID_PROPS} />
@@ -269,23 +265,20 @@ export default function AnalyticsOverviewPage() {
                           content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                         />
                         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                        <Bar dataKey="planned" name="Planned" fill={CHART_COLORS.neutral} radius={[3, 3, 0, 0]} />
-                        <Bar dataKey="published" name="Published" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="planned" name="Direncanakan" fill={CHART_COLORS.neutral} radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="published" name="Diterbitkan" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full">
-                      <caption className="sr-only">
-                        Planned, published, and realization rate per month
-                      </caption>
                       <thead className="border-b bg-surface-muted">
                         <tr>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Month</th>
-                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
-                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realization Rate</th>
+                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Bulan</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
+                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rasio Ketercapaian</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -320,9 +313,9 @@ export default function AnalyticsOverviewPage() {
           {recap && recap.recap.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Rekap Jumlah Topik (Kode A-Z)</CardTitle>
+                <CardTitle>Rekapitulasi Jumlah Topik (Kode A-Z)</CardTitle>
                 <p className="text-sm text-ink-secondary">
-                  Jumlah konten per kode topik — sesuai template Content Plan.
+                  Jumlah konten per kode topik — sesuai pilar Content Plan.
                   Total: <span className="font-semibold text-ink">{recap.total}</span>
                 </p>
               </CardHeader>
@@ -352,9 +345,9 @@ export default function AnalyticsOverviewPage() {
           )}
 
           <p className="text-center text-sm text-ink-muted">
-            Want detailed metrics per content?{' '}
+            Ingin melihat rincian metrik per konten?{' '}
             <Link href="/analytics/performance" className="text-primary hover:underline">
-              Open Performance Analytics
+              Buka Analisis Performa Konten
             </Link>
           </p>
         </>

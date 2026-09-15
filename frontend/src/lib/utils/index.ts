@@ -5,6 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const INDO_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '-'
   const d = new Date(date)
@@ -13,6 +15,27 @@ export function formatDate(date: string | Date | null | undefined): string {
     month: 'short',
     year: 'numeric',
   })
+}
+
+export function formatDateWithDay(date: string | Date | null | undefined): string {
+  if (!date) return '-'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '-'
+  const dayName = INDO_DAYS[d.getDay()]
+  const dateFormatted = d.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  return `${dayName}, ${dateFormatted}`
+}
+
+export function getWeekOfMonth(date: string | Date | null | undefined): string {
+  if (!date) return '-'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '-'
+  const weekNum = Math.ceil(d.getDate() / 7)
+  return `Minggu ${weekNum}`
 }
 
 export function formatDateTime(date: string | Date | null | undefined): string {
@@ -40,9 +63,7 @@ export function calculateEngagementRate(metrics: {
 }
 
 export function getWeekNumber(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1)
-  const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000))
-  return Math.ceil((days + startOfYear.getDay() + 1) / 7)
+  return Math.ceil(date.getDate() / 7)
 }
 
 export function slugify(text: string): string {

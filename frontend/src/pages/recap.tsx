@@ -217,9 +217,19 @@ export default function RecapPage() {
 
   return (
     <div className="space-y-6">
+      {/* Banner Penjelasan Modul */}
+      <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-blue-50 p-4 text-xs text-indigo-900 shadow-sm sm:text-sm">
+        <p className="font-semibold text-indigo-950">
+          📑 Modul Rekapitulasi Konten & Laporan Periode
+        </p>
+        <p className="mt-1 text-xs text-indigo-700">
+          Menyajikan ringkasan realisasi rencana konten per bulan dan semester, rasio ketercapaian publikasi per pilar dan platform, serta fitur ekspor data CSV untuk pelaporan manajemen.
+        </p>
+      </div>
+
       <PageHeader
         title="Rekap Konten"
-        description="Rekapitulasi konten berdasarkan periode bulanan atau semester"
+        description="Rekapitulasi ketercapaian publikasi konten berdasarkan periode bulanan atau semester"
       />
 
       {/* --- Period Selector --- */}
@@ -249,7 +259,7 @@ export default function RecapPage() {
 
             <div>
               <label htmlFor="recap-mode" className="mb-1 block text-xs text-ink-muted">
-                Mode
+                Mode Periode
               </label>
               <Select
                 id="recap-mode"
@@ -257,14 +267,14 @@ export default function RecapPage() {
                 onChange={(e) => handleModeChange(e.target.value as PeriodMode)}
                 className="w-full sm:w-36"
               >
-                <option value="monthly">Monthly</option>
+                <option value="monthly">Bulanan</option>
                 <option value="semester">Semester</option>
               </Select>
             </div>
 
             <div>
               <label htmlFor="recap-period" className="mb-1 block text-xs text-ink-muted">
-                Periode
+                Pilihan Periode
               </label>
               <Select
                 id="recap-period"
@@ -288,7 +298,7 @@ export default function RecapPage() {
                 onChange={(e) => setPlatformID(e.target.value)}
                 className="w-full sm:w-40"
               >
-                <option value="">All</option>
+                <option value="">Semua Platform</option>
                 {masterData.platforms.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -297,7 +307,7 @@ export default function RecapPage() {
 
             <div>
               <label htmlFor="recap-pillar" className="mb-1 block text-xs text-ink-muted">
-                Tema
+                Pilar Konten
               </label>
               <Select
                 id="recap-pillar"
@@ -305,7 +315,7 @@ export default function RecapPage() {
                 onChange={(e) => setPillarID(e.target.value)}
                 className="w-full sm:w-40"
               >
-                <option value="">All</option>
+                <option value="">Semua Pilar</option>
                 {masterData.pillars.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -316,13 +326,13 @@ export default function RecapPage() {
 
             <Button onClick={handleExportCsv} disabled={loading || !data} className="self-end">
               <Download className="mr-2 h-4 w-4" />
-              Export CSV
+              Ekspor CSV
             </Button>
           </div>
 
           {/* Date range indicator */}
           <div className="mt-3 rounded-md bg-surface-muted px-3 py-2 text-xs text-ink-secondary">
-            <span className="font-medium">Periode:</span>{' '}
+            <span className="font-medium">Rentang Tanggal:</span>{' '}
             <span className="text-ink">{periodRange.label}</span>
             <span className="ml-2 text-ink-muted">
               ({periodRange.dateFrom} s/d {periodRange.dateTo})
@@ -373,31 +383,31 @@ export default function RecapPage() {
           {/* --- Summary KPI Cards --- */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
-              label="Planned"
+              label="Direncanakan"
               value={data.summary.planned}
               icon={<BarChart3 className="h-5 w-5" />}
               color="text-ink-secondary"
             />
             <SummaryCard
-              label="Published Total"
+              label="Total Terbit"
               value={data.summary.published_total}
               icon={<BarChart3 className="h-5 w-5" />}
               color="text-primary"
             />
             <SummaryCard
-              label="Published Verified"
+              label="Terbit Terverifikasi"
               value={data.summary.published_verified}
               icon={<CheckCircle2 className="h-5 w-5" />}
               color="text-success"
             />
             <SummaryCard
-              label="Published Unverified"
+              label="Belum Verifikasi"
               value={data.summary.published_unverified}
               icon={<AlertCircle className="h-5 w-5" />}
               color="text-warning"
             />
             <SummaryCard
-              label="Realization Rate"
+              label="Tingkat Realisasi"
               value={`${data.summary.realization_rate.toFixed(1)}%`}
               icon={<BarChart3 className="h-5 w-5" />}
               color={
@@ -414,19 +424,19 @@ export default function RecapPage() {
           {data.pillar_breakdown.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Rekap per Tema</CardTitle>
+                <CardTitle className="text-base">Rekapitulasi per Pilar Konten</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="border-b bg-surface-muted">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Code</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Unverified</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realization</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Kode</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pilar Konten</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Belum Verifikasi</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realisasi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -467,7 +477,7 @@ export default function RecapPage() {
           {data.platform_breakdown.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Rekap per Platform</CardTitle>
+                <CardTitle className="text-base">Rekapitulasi per Platform</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -475,11 +485,11 @@ export default function RecapPage() {
                     <thead className="border-b bg-surface-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Published</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Verified</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Unverified</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realization</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terverifikasi</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Belum Verifikasi</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realisasi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -518,9 +528,9 @@ export default function RecapPage() {
               <div className="flex items-center gap-2">
                 <FileBarChart className="h-5 w-5 text-ink-muted" />
                 <CardTitle className="text-base">
-                  Detail Konten
+                  Rincian Konten
                   <span className="ml-2 text-sm font-normal text-ink-secondary">
-                    {data.total} records
+                    ({data.total} baris)
                   </span>
                 </CardTitle>
               </div>
@@ -535,12 +545,12 @@ export default function RecapPage() {
                   <table className="w-full">
                     <thead className="border-b bg-surface-muted">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Title</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Judul & Topik</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pilar</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned Date</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Published Date</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Verified</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tgl Rencana</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tgl Terbit</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Verifikasi</th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Status</th>
                       </tr>
                     </thead>
@@ -570,12 +580,12 @@ export default function RecapPage() {
                               row.publish_verified ? (
                                 <span className="inline-flex items-center gap-1 text-success">
                                   <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Verified
+                                  Terverifikasi
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-warning">
                                   <AlertCircle className="h-3.5 w-3.5" />
-                                  Unverified
+                                  Belum Verifikasi
                                 </span>
                               )
                             ) : (

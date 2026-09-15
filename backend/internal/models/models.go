@@ -38,35 +38,42 @@ type Platform struct {
 }
 
 type Content struct {
-	ID             string      `json:"id"`
-	Title          string      `json:"title"`
-	Topic          string      `json:"topic"`
-	PillarID       *string     `json:"pillar_id"`
-	CategoryID     *string     `json:"category_id"`
-	PlatformID     *string     `json:"platform_id"`
-	Format         *string     `json:"format"`
-	Brief          *string     `json:"brief"`
-	ContentPurpose *string     `json:"content_purpose"`
-	PostingCategory *string    `json:"posting_category"`
-	TargetAudience *string     `json:"target_audience"`
-	PlannedDate    *string     `json:"planned_date"`
-	PlannedWeek    *int        `json:"planned_week"`
-	Day            *string     `json:"day"`
-	Reference      *string     `json:"reference"`
-	BriefLink      *string     `json:"brief_link"`
-	ResultLink     *string     `json:"result_link"`
-	Pic            *string     `json:"pic"`
-	Priority       *string     `json:"priority"`
-	Status         string      `json:"status"`
-	SourceIdeaID   *string     `json:"source_idea_id"`
-	CreatedBy      *string     `json:"created_by"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	UpdatedBy      *string     `json:"updated_by"`
+	ID              string      `json:"id"`
+	Title           string      `json:"title"`
+	Topic           string      `json:"topic"`
+	PillarID        *string     `json:"pillar_id"`
+	CategoryID      *string     `json:"category_id"`
+	PlatformID      *string     `json:"platform_id"`
+	PlatformIDs     []string    `json:"platform_ids"`
+	Format          *string     `json:"format"`
+	Brief           *string     `json:"brief"`
+	ContentPurpose  *string     `json:"content_purpose"`
+	ContentPurposes []string    `json:"content_purposes"`
+	PostingCategory *string     `json:"posting_category"`
+	TargetAudience  *string     `json:"target_audience"`
+	PlannedDate     *string     `json:"planned_date"`
+	PlannedWeek     *int        `json:"planned_week"`
+	Day             *string     `json:"day"`
+	Reference       *string     `json:"reference,omitempty"`
+	BriefLink       *string     `json:"brief_link"`
+	ResultLink      *string     `json:"result_link,omitempty"`
+	Pic             *string     `json:"pic"`
+	Priority        *string     `json:"priority"`
+	Status          string      `json:"status"`
+	IsSavings       bool        `json:"is_savings"`
+	SavingsReason   *string     `json:"savings_reason,omitempty"`
+	SavingsMonth    *string     `json:"savings_month,omitempty"`
+	SavedAt         *time.Time  `json:"saved_at,omitempty"`
+	SourceIdeaID    *string     `json:"source_idea_id"`
+	CreatedBy       *string     `json:"created_by"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+	UpdatedBy       *string     `json:"updated_by"`
 
 	Pillar       *Pillar        `json:"pillar,omitempty"`
 	Category     *Category      `json:"category,omitempty"`
 	Platform     *Platform      `json:"platform,omitempty"`
+	Platforms    []Platform     `json:"platforms,omitempty"`
 	Publications []Publication  `json:"publications,omitempty"`
 }
 
@@ -79,6 +86,7 @@ type Publication struct {
 	URL                *string   `json:"url"`
 	Status             string    `json:"status"`
 	Notes              *string   `json:"notes"`
+	CancelReason       *string   `json:"cancel_reason,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 

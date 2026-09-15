@@ -56,7 +56,7 @@ export function WorkflowActionButton({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Action failed')
+        setError(data.error || 'Aksi gagal dilakukan')
         return
       }
 
@@ -65,7 +65,7 @@ export function WorkflowActionButton({
       if (onDone) onDone()
       else router.refresh()
     } catch {
-      setError('Network error. Please try again.')
+      setError('Terjadi kesalahan jaringan. Silakan coba lagi.')
     } finally {
       setLoading(false)
     }
@@ -82,7 +82,7 @@ export function WorkflowActionButton({
   return (
     <>
       <Button variant={variant} size={size} onClick={handleClick} disabled={loading}>
-        {loading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+        {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
         {def?.label ?? action}
       </Button>
 
@@ -91,35 +91,34 @@ export function WorkflowActionButton({
           <DialogHeader>
             <DialogTitle>{def?.label}</DialogTitle>
             <DialogDescription>
-              A comment is required for this action. It will be recorded in the
-              approval history.
+              Catatan atau komentar wajib diisi untuk aksi ini dan akan tercatat secara permanen di riwayat alur kerja.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="comment">Comment *</Label>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="comment">Komentar / Catatan Revisi *</Label>
             <Textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Explain what needs to change or why this is rejected..."
+              placeholder="Tuliskan alasan atau bagian yang perlu disesuaikan..."
               rows={4}
             />
             {error && (
-              <p className="text-sm text-danger">{error}</p>
+              <p className="text-sm font-medium text-danger">{error}</p>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={loading}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={() => submit(comment)}
               disabled={loading || !comment.trim()}
             >
-              {loading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-              Confirm
+              {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Konfirmasi
             </Button>
           </DialogFooter>
         </DialogContent>

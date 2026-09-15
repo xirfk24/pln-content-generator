@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { PlatformBadge } from '@/components/ui/platform-icon'
 import {
   FileText,
   Eye,
@@ -253,13 +254,13 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-2">
           <List className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-          <CardTitle className="text-base">Recent Content</CardTitle>
+          <CardTitle className="text-base">Konten Terbaru</CardTitle>
         </div>
         <Link
           href="/content/planning"
           className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
-          View All
+          Lihat Semua
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </CardHeader>
@@ -269,13 +270,13 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
             <thead>
               <tr className="border-b border-border bg-surface-muted/50">
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">#</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Date</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Tanggal Rencana</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Platform</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Title</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Tema</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Judul Konten</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Pilar / Topik</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Status</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">PIC</th>
-                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">Action</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -288,7 +289,9 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
                   <td className="px-4 py-2.5 text-xs text-ink-secondary whitespace-nowrap">
                     {formatDate(row.plannedDate)}
                   </td>
-                  <td className="px-4 py-2.5 text-xs font-medium text-ink">{row.platform}</td>
+                  <td className="px-4 py-2.5 text-xs">
+                    <PlatformBadge platform={row.platform} size="sm" />
+                  </td>
                   <td className="px-4 py-2.5 text-xs font-medium text-ink max-w-[200px] truncate">
                     {row.title}
                   </td>
@@ -302,7 +305,7 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
                       href={`/content/${row.id}`}
                       className="inline-flex items-center text-xs font-medium text-primary hover:underline"
                     >
-                      View
+                      Detail
                     </Link>
                   </td>
                 </tr>
@@ -314,7 +317,7 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
         {/* Pagination */}
         <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-4 py-3 sm:flex-row">
           <p className="text-xs text-ink-muted">
-            Showing {start + 1} to {Math.min(end, contents.length)} of {contents.length} entries
+            Menampilkan {start + 1} sampai {Math.min(end, contents.length)} dari {contents.length} entri
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -325,7 +328,7 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
               className="h-7"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              Prev
+              Sebelumnya
             </Button>
             <span className="text-xs font-medium text-ink">
               {safePage + 1} / {pageCount}
@@ -337,7 +340,7 @@ function RecentContentTable({ contents }: { contents: RecentContent[] }) {
               disabled={safePage >= pageCount - 1}
               className="h-7"
             >
-              Next
+              Selanjutnya
               <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </div>
@@ -427,9 +430,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Banner Penjelasan Modul */}
+      <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-sky-50 p-4 text-xs text-blue-900 shadow-sm sm:text-sm">
+        <p className="font-semibold text-blue-950">
+          📊 Modul Dasbor Utama & Performa Konten
+        </p>
+        <p className="mt-1 text-xs text-blue-700">
+          Menyajikan ringkasan metrik konten, pemantauan efektivitas publikasi, serta status alur persetujuan Divisi Humas PLN UID Jawa Barat secara real-time.
+        </p>
+      </div>
+
       <PageHeader
-        title="Dashboard"
-        description="Content activity, workflow overview & performance summary."
+        title="Dasbor Utama"
+        description="Ringkasan aktivitas konten, alur kerja publikasi, dan performa komunikasi humas."
       />
 
       {/* Filter Bar */}
@@ -452,13 +465,13 @@ export default function DashboardPage() {
           <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
         </Link>
 
-        <Link href="/content/import" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-success hover:bg-success-soft/30">
+        <Link href="/content/planning" className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-success hover:bg-success-soft/30">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-success-soft">
             <Upload className="h-4 w-4 text-success" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-ink">Import Massal</p>
-            <p className="text-xs text-ink-muted">Upload CSV untuk impor cepat</p>
+            <p className="text-sm font-medium text-ink">Perencanaan Konten</p>
+            <p className="text-xs text-ink-muted">Rencana, kalender & impor</p>
           </div>
           <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
         </Link>
@@ -479,7 +492,7 @@ export default function DashboardPage() {
             <Send className="h-4 w-4 text-info" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-ink">Publishing</p>
+            <p className="text-sm font-medium text-ink">Antrean Publikasi</p>
             <p className="text-xs text-ink-muted">Rekam &amp; pantau publikasi</p>
           </div>
           <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
@@ -505,38 +518,38 @@ export default function DashboardPage() {
           {/* SECTION 1: KPI Summary Cards (4 columns) */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              title="Total Content"
+              title="Total Konten"
               icon={FileText}
               iconBg="bg-primary-soft"
               iconColor="text-primary"
               value={String(data.kpis.content.total)}
-              hint={`${data.kpis.content.published} published this month`}
+              hint={`${data.kpis.content.published} terbit bulan ini`}
               sparkData={sparkContent}
               sparkColor={CHART_COLORS.primary}
             />
             <KpiCard
-              title="Total Views"
+              title="Total Penayangan (Views)"
               icon={Eye}
               iconBg="bg-success-soft"
               iconColor="text-success"
               value={formatNumber(data.kpis.performance.totalViews)}
-              hint="+12% from last month"
+              hint="+12% dari bulan lalu"
               sparkData={sparkViews}
               sparkColor={CHART_COLORS.success}
             />
             <KpiCard
-              title="Engagement Rate"
+              title="Tingkat Interaksi (ER)"
               icon={TrendingUp}
               iconBg="bg-warning-soft"
               iconColor="text-warning"
               value={`${data.kpis.performance.avgEngagementRate.toFixed(2)}%`}
-              hint="avg per publication"
+              hint="rata-rata per publikasi"
               hintTitle={ENGAGEMENT_FORMULA}
               sparkData={sparkEngagement}
               sparkColor={CHART_COLORS.warning}
             />
             <KpiCard
-              title="Pending Action"
+              title="Menunggu Tindakan"
               icon={ClipboardCheck}
               iconBg="bg-danger-soft"
               iconColor="text-danger"
@@ -550,21 +563,21 @@ export default function DashboardPage() {
           {/* SECTION 2: Performance KPI Cards (3 columns) */}
           <div className="grid gap-4 md:grid-cols-3">
             <KpiCard
-              title="Total Likes"
+              title="Total Suka (Likes)"
               icon={Heart}
               iconBg="bg-danger-soft"
               iconColor="text-danger"
               value={formatNumber(data.kpis.performance.totalLikes)}
             />
             <KpiCard
-              title="Total Comments"
+              title="Total Komentar"
               icon={MessageCircle}
               iconBg="bg-info-soft"
               iconColor="text-info"
               value={formatNumber(data.kpis.performance.totalComments)}
             />
             <KpiCard
-              title="Total Shares"
+              title="Total Bagikan (Shares)"
               icon={Share2}
               iconBg="bg-success-soft"
               iconColor="text-success"
@@ -572,33 +585,33 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* SECTION 3: Filter indicator row (compact summary) */}
+          {/* SECTION 3: Filter indicator row */}
           {(filters.platform_id || filters.pillar_id || filters.status) && (
             <div className="flex items-center gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2">
               <Filter className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
               <span className="text-xs font-medium text-primary">
-                Filtered view active
+                Tampilan terfilter sedang aktif
               </span>
             </div>
           )}
 
           {/* SECTION 4: Two Charts Side by Side */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* LEFT: Content by Status (Horizontal Bar Chart) */}
+            {/* LEFT: Content by Status */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-                  <CardTitle className="text-base">Content by Status</CardTitle>
+                  <CardTitle className="text-base">Distribusi Konten Berdasarkan Status</CardTitle>
                 </div>
-                <span className="text-xs text-ink-muted">Count</span>
+                <span className="text-xs text-ink-muted">Jumlah</span>
               </CardHeader>
               <CardContent>
                 {data.statusBreakdown.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                  <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
                 ) : (
                   <>
-                    <div role="img" aria-label="Bar chart of content count by status">
+                    <div role="img" aria-label="Diagram batang jumlah konten berdasarkan status">
                       <ResponsiveContainer width="100%" height={280}>
                         <BarChart data={data.statusBreakdown} layout="vertical" margin={{ left: 8, right: 24 }}>
                           <CartesianGrid {...GRID_PROPS} horizontal={false} />
@@ -614,7 +627,7 @@ export default function DashboardPage() {
                             cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
                             content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                           />
-                          <Bar dataKey="count" name="Content" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>
+                          <Bar dataKey="count" name="Konten" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>
                             <LabelList
                               dataKey="count"
                               position="right"
@@ -624,31 +637,26 @@ export default function DashboardPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <ul className="sr-only">
-                      {data.statusBreakdown.map((s) => (
-                        <li key={s.status}>{`${s.label}: ${s.count} content`}</li>
-                      ))}
-                    </ul>
                   </>
                 )}
               </CardContent>
             </Card>
 
-            {/* RIGHT: Views by Platform (Pie/Donut Chart) */}
+            {/* RIGHT: Views by Platform */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div className="flex items-center gap-2">
                   <PieChartIcon className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-                  <CardTitle className="text-base">Views by Platform</CardTitle>
+                  <CardTitle className="text-base">Penayangan Berdasarkan Platform</CardTitle>
                 </div>
-                <span className="text-xs text-ink-muted">Views</span>
+                <span className="text-xs text-ink-muted">Penayangan</span>
               </CardHeader>
               <CardContent>
                 {data.platformPerformance.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                  <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
                 ) : (
                   <>
-                    <div role="img" aria-label="Donut chart of views by platform">
+                    <div role="img" aria-label="Diagram donat penayangan per platform">
                       <ResponsiveContainer width="100%" height={280}>
                         <PieChart>
                           <Pie
@@ -693,14 +701,6 @@ export default function DashboardPage() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <ul className="sr-only">
-                      {data.platformPerformance.map((p) => {
-                        const pct = totalViews > 0 ? (p.views / totalViews) * 100 : 0
-                        return (
-                          <li key={p.platform}>{`${p.platform}: ${formatNumber(p.views)} views (${pct.toFixed(1)}%)`}</li>
-                        )
-                      })}
-                    </ul>
                   </>
                 )}
               </CardContent>
@@ -711,15 +711,15 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Planning vs Actual Publishing &amp; Performance Trend
+                Tren Rencana vs Realisasi Publikasi &amp; Penayangan
               </CardTitle>
             </CardHeader>
             <CardContent>
               {data.monthlyTrend.length === 0 ? (
-                <p className="py-8 text-center text-sm text-ink-muted">No data</p>
+                <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
               ) : (
                 <>
-                  <div role="img" aria-label="Line chart of planned, published, and views per month">
+                  <div role="img" aria-label="Grafik tren rencana vs realisasi publikasi">
                     <ResponsiveContainer width="100%" height={280}>
                       <LineChart data={data.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <CartesianGrid {...GRID_PROPS} />
@@ -735,7 +735,7 @@ export default function DashboardPage() {
                           type="monotone"
                           dataKey="planned"
                           stroke={CHART_COLORS.neutral}
-                          name="Planned"
+                          name="Direncanakan"
                           strokeWidth={2}
                           strokeDasharray="5 4"
                           dot={false}
@@ -745,7 +745,7 @@ export default function DashboardPage() {
                           type="monotone"
                           dataKey="published"
                           stroke={CHART_COLORS.success}
-                          name="Published"
+                          name="Diterbitkan"
                           strokeWidth={2}
                           dot={false}
                         />
@@ -754,18 +754,13 @@ export default function DashboardPage() {
                           type="monotone"
                           dataKey="views"
                           stroke={CHART_COLORS.primary}
-                          name="Views"
+                          name="Penayangan"
                           strokeWidth={2}
                           dot={false}
                         />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <ul className="sr-only">
-                    {data.monthlyTrend.map((m) => (
-                      <li key={m.label}>{`${m.label}: planned ${m.planned}, published ${m.published}, views ${formatNumber(m.views)}`}</li>
-                    ))}
-                  </ul>
                 </>
               )}
             </CardContent>
@@ -779,20 +774,20 @@ export default function DashboardPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <List className="h-4 w-4 text-ink-muted" aria-hidden="true" />
-                  <CardTitle className="text-base">Recent Content</CardTitle>
+                  <CardTitle className="text-base">Konten Terbaru</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="py-8 text-center text-sm text-ink-muted">No content found.</p>
+                <p className="py-8 text-center text-sm text-ink-muted">Tidak ada konten yang ditemukan.</p>
               </CardContent>
             </Card>
           )}
 
-          {/* SECTION 7: Top Performing Content (retained from original) */}
+          {/* SECTION 7: Top Performing Content */}
           {data.topContent.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Top Performing Content</CardTitle>
+                <CardTitle className="text-base">Konten Performa Tertinggi</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -829,10 +824,10 @@ export default function DashboardPage() {
                       </div>
                       <div className="ml-4 flex-shrink-0 text-right">
                         <p className="text-sm font-medium">
-                          {formatNumber(c.views)} views
+                          {formatNumber(c.views)} penayangan
                         </p>
                         <p className="text-xs text-success">
-                          {c.engagementRate.toFixed(2)}% engagement
+                          {c.engagementRate.toFixed(2)}% interaksi
                         </p>
                       </div>
                     </div>

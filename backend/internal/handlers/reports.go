@@ -78,7 +78,7 @@ func (h *Handler) Reports(c *gin.Context) {
 	}
 
 	if c.Query("format") == "csv" {
-		headers := []string{"ID", "Title", "Topic", "Tema", "Platform", "Category", "Format", "Content Purpose", "Posting Category", "Status", "Planned Date", "PIC", "Priority"}
+		headers := []string{"ID", "Judul", "Topik Konten", "Content Pillar", "Platform", "Kategori", "Format", "Tujuan Konten", "Kategori Posting", "Status", "Tanggal Rencana", "PIC", "Prioritas"}
 		var sb strings.Builder
 		sb.WriteString("\uFEFF") // BOM for Excel
 		sb.WriteString(strings.Join(headers, ","))

@@ -42,6 +42,8 @@ const PUB_MAP: Record<PublicationStatus, { variant: Variant; icon: LucideIcon; l
   PUBLISHED: { variant: 'success', icon: Globe, label: PUBLICATION_STATUS_LABELS.PUBLISHED },
   DELAYED: { variant: 'warning', icon: CalendarClock, label: PUBLICATION_STATUS_LABELS.DELAYED },
   CANCELLED: { variant: 'default', icon: Ban, label: PUBLICATION_STATUS_LABELS.CANCELLED },
+  DELAY: { variant: 'warning', icon: CalendarClock, label: PUBLICATION_STATUS_LABELS.DELAYED },
+  CANCEL: { variant: 'default', icon: Ban, label: PUBLICATION_STATUS_LABELS.CANCELLED },
 }
 
 interface StatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {

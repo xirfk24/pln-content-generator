@@ -12,20 +12,28 @@ export type ContentStatus =
   | 'RESCHEDULED'
   | 'NOT_REALIZED'
 
-export type PublicationStatus = 'PLANNED' | 'PUBLISHED' | 'DELAYED' | 'CANCELLED'
+export type PublicationStatus = 'PLANNED' | 'PUBLISHED' | 'DELAYED' | 'CANCELLED' | 'DELAY' | 'CANCEL'
 
 export type ApprovalAction =
+  | 'START_PROGRESS'
   | 'SUBMITTED'
   | 'REVISION_REQUESTED'
   | 'APPROVED'
   | 'FINAL_APPROVED'
   | 'REJECTED'
   | 'RESUBMITTED'
-  // legacy actions (kept for displaying old approval history rows)
+  | 'MARK_PUBLISHED'
+  // legacy actions
   | 'REVIEWED'
   | 'REVIEW_APPROVED'
 
 export type ContentPurpose = 
+  | 'INFORMASI'
+  | 'EDUKASI'
+  | 'PUBLIKASI_KEGIATAN'
+  | 'BRANDING'
+  | 'DOKUMENTASI'
+  | 'ENGAGEMENT'
   | 'EDUCATION' 
   | 'ENTERTAINMENT' 
   | 'INSPIRATIONAL' 
@@ -74,21 +82,27 @@ export interface Content {
   id: string
   title: string
   topic: string
-  pillar_id: string
+  pillar_id: string | null
   category_id: string | null
-  platform_id: string
+  platform_id: string | null
+  platform_ids?: string[]
   format: string
   brief: string | null
-  content_purpose: ContentPurpose | null
-  posting_category: PostingCategory | null
+  content_purpose: string | null
+  content_purposes?: string[]
+  posting_category: string | null
   target_audience: string | null
   planned_date: string | null
   planned_week: number | null
   day: string | null
-  reference: string | null
+  brief_link?: string | null
   pic: string | null
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | null
   status: ContentStatus
+  is_savings?: boolean
+  savings_reason?: string | null
+  savings_month?: string | null
+  saved_at?: string | null
   source_idea_id: string | null
   created_by: string
   created_at: string
@@ -97,21 +111,30 @@ export interface Content {
   pillar?: Pillar
   category?: Category
   platform?: Platform
+  platforms?: Platform[]
   publications?: Publication[]
 }
 
 export interface Publication {
   id: string
   content_id: string
-  platform_id: string
+  platform_id: string | null
   planned_publish_date: string | null
   actual_publish_date: string | null
   url: string | null
   status: PublicationStatus
   notes: string | null
+  cancel_reason?: string | null
   created_at: string
   updated_at: string
   platform?: Platform
+  content?: {
+    id: string
+    title: string
+    topic: string
+    status: string
+    pic: string | null
+  }
   performance_metrics?: PerformanceMetric[]
 }
 
@@ -149,12 +172,4 @@ export interface DashboardStats {
   published: number
   rescheduled: number
   notRealized: number
-}
-
-export interface PerformanceStats {
-  totalViews: number
-  totalLikes: number
-  totalComments: number
-  totalShares: number
-  avgEngagementRate: number
 }

@@ -6,7 +6,6 @@ import Link from '@/compat/next'
 import { usePathname } from '@/compat/next'
 import {
   LayoutDashboard,
-  Calendar,
   CalendarRange,
   FileText,
   CheckSquare,
@@ -21,7 +20,7 @@ import {
   Menu,
   X,
   Download,
-  Upload,
+  BookmarkCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -41,50 +40,49 @@ type NavGroup = {
 }
 
 const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dasbor', href: '/dashboard', icon: LayoutDashboard },
   {
-    name: 'Planning',
+    name: 'Perencanaan Konten',
     children: [
-      { name: 'Calendar', href: '/content/calendar', icon: Calendar },
-      { name: 'Content Plan', href: '/content/planning', icon: FileText },
-      { name: 'Import', href: '/content/import', icon: Upload },
+      { name: 'Rencana Konten', href: '/content/planning', icon: FileText },
+      { name: 'Konten Tabungan', href: '/content/tabungan', icon: BookmarkCheck },
     ],
   },
   {
-    name: 'Workflow',
+    name: 'Alur Kerja',
     children: [
-      { name: 'My Tasks', href: '/workflow/tasks', icon: CheckSquare, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Review & Approval', href: '/workflow/approval', icon: ShieldCheck, roles: ['ADMIN'] },
+      { name: 'Tugas Saya', href: '/workflow/tasks', icon: CheckSquare, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Persetujuan Konten', href: '/workflow/approval', icon: ShieldCheck, roles: ['ADMIN'] },
     ],
   },
   {
-    name: 'Publishing',
+    name: 'Publikasi',
     children: [
-      { name: 'Publishing Queue', href: '/publishing', icon: Send },
+      { name: 'Antrean Publikasi', href: '/publishing', icon: Send },
     ],
   },
   {
-    name: 'Analytics',
+    name: 'Analisis & Laporan',
     children: [
-      { name: 'Overview', href: '/analytics', icon: BarChart3 },
-      { name: 'Performance', href: '/analytics/performance', icon: BarChart3 },
-      { name: 'AI Insights', href: '/analytics/insights', icon: Bot },
+      { name: 'Ringkasan Analisis', href: '/analytics', icon: BarChart3 },
+      { name: 'Performa Konten', href: '/analytics/performance', icon: BarChart3 },
+      { name: 'Wawasan AI', href: '/analytics/insights', icon: Bot },
       { name: 'Rekap Konten', href: '/recap', icon: CalendarRange },
-      { name: 'Reports', href: '/reports', icon: FileBarChart },
+      { name: 'Laporan Berkala', href: '/reports', icon: FileBarChart },
     ],
   },
   {
-    name: 'AI',
-    children: [{ name: 'AI Assistant', href: '/ai', icon: Bot }],
+    name: 'Kecerdasan Buatan',
+    children: [{ name: 'Asisten AI', href: '/ai', icon: Bot }],
   },
   {
-    name: 'Administration',
+    name: 'Administrasi',
     roles: ['ADMIN'],
     children: [
-      { name: 'Users', href: '/admin/users', icon: Users },
-      { name: 'Tema', href: '/admin/pillars', icon: Settings },
-      { name: 'Categories', href: '/admin/categories', icon: Settings },
-      { name: 'Platforms', href: '/admin/platforms', icon: Settings },
+      { name: 'Kelola Pengguna', href: '/admin/users', icon: Users },
+      { name: 'Pilar Konten', href: '/admin/pillars', icon: Settings },
+      { name: 'Kategori Konten', href: '/admin/categories', icon: Settings },
+      { name: 'Platform Media', href: '/admin/platforms', icon: Settings },
     ],
   },
 ]
@@ -94,7 +92,6 @@ function filterByRole<T extends { roles?: UserRole[] }>(items: T[], role: UserRo
   return items.filter((item) => !item.roles || item.roles.includes(role))
 }
 
-/** Deep blue PLN corporate sidebar theme */
 const sidebarBg = 'bg-[#1A3A6B]'
 const sidebarText = 'text-white/70'
 const sidebarGroupLabel = 'text-white/40'
@@ -136,7 +133,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm">
               <span className="text-xs font-bold text-[#1A3A6B]">PLN</span>
             </div>
-            <span className="font-semibold text-white">Content Manager</span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-white leading-tight">Content Manager</span>
+              <span className="text-[10px] text-white/60">UID Jawa Barat</span>
+            </div>
           </Link>
         )}
         {collapsed && (
@@ -148,7 +148,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
           className={cn('hidden lg:inline-flex text-white/70 hover:bg-white/10 hover:text-white', !collapsed && 'ml-auto')}
         >
           {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -157,7 +157,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           variant="ghost"
           size="icon"
           onClick={onMobileClose}
-          aria-label="Close menu"
+          aria-label="Tutup menu"
           className="ml-auto text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
         >
           <X className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                   </p>
                 )}
                 {children.map((child) => {
-                  const isActive = pathname === child.href
+                  const isActive = pathname === child.href || (child.href === '/content/planning' && (pathname.startsWith('/content/planning') || pathname === '/content/calendar' || pathname === '/content/import'))
                   return (
                     <Link
                       key={child.href}
@@ -235,16 +235,16 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
               className="flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
-              Export Report
+              Ekspor Laporan
             </a>
-            <p className="text-center text-micro text-white/40">&copy; 2025 PLN Content Manager</p>
+            <p className="text-center text-micro text-white/40">&copy; 2026 Humas PLN UID Jabar</p>
           </div>
         ) : (
           <a
             href="/api/reports?format=csv"
             className="flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            title="Export Report"
-            aria-label="Export Report"
+            title="Ekspor Laporan"
+            aria-label="Ekspor Laporan"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
@@ -263,7 +263,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           collapsed ? 'w-16' : 'w-60'
         )}
       >
-        {content('Main navigation')}
+        {content('Navigasi utama')}
       </aside>
 
       {/* Mobile drawer */}
@@ -278,9 +278,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             className={cn('fixed left-0 top-0 flex h-screen w-60 flex-col border-r shadow-lg', sidebarBg)}
             role="dialog"
             aria-modal="true"
-            aria-label="Sidebar menu"
+            aria-label="Menu sidebar"
           >
-            {content('Mobile navigation')}
+            {content('Navigasi mobile')}
           </aside>
         </div>
       )}

@@ -53,6 +53,7 @@ func main() {
 
 		authed.GET("/contents", h.ListContents)
 		authed.POST("/contents", h.CreateContent)
+		authed.POST("/contents/import/validate", h.ValidateImportContents)
 		authed.POST("/contents/import", h.ImportContents)
 		authed.GET("/contents/calendar", h.Calendar)
 		authed.GET("/contents/:id", h.GetContent)
@@ -60,6 +61,12 @@ func main() {
 		authed.DELETE("/contents/:id", h.DeleteContent)
 		authed.GET("/contents/:id/details", h.ContentDetails)
 		authed.POST("/contents/:id/workflow", h.WorkflowAction)
+		authed.POST("/contents/:id/move-to-tabungan", h.MoveToTabungan)
+
+		// Konten Tabungan
+		authed.GET("/tabungan", h.ListTabungan)
+		authed.POST("/tabungan/:id/move-to-plan", h.MoveToPlan)
+		authed.POST("/tabungan/:id/reschedule", h.RescheduleTabungan)
 
 		authed.GET("/publications", h.ListPublications)
 		authed.POST("/publications", h.CreatePublication)

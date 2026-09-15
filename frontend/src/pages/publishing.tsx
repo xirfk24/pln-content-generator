@@ -3,7 +3,7 @@
 import { apiFetch } from '@/lib/api'
 import { useState, useEffect, useCallback } from 'react'
 import Link from '@/compat/next'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,12 +16,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Loader2, Plus, ExternalLink, Pencil, Trash2, BarChart3 } from 'lucide-react'
-import { PUBLICATION_STATUS_LABELS, PUBLICATION_STATUSES, ENGAGEMENT_FORMULA } from '@/constants'
+import {
+  Loader2,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  BarChart3,
+  Send,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  XCircle,
+  BookmarkCheck,
+  Calendar,
+} from 'lucide-react'
+import {
+  PUBLICATION_STATUS_LABELS,
+  PUBLICATION_STATUS_COLORS,
+  ENGAGEMENT_FORMULA,
+} from '@/constants'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { PlatformBadge } from '@/components/ui/platform-icon'
 import { Select } from '@/components/ui/select'
 import { formatDate, calculateEngagementRate } from '@/lib/utils'
-import type { Publication, Content, Platform, PerformanceMetric } from '@/types'
+import type { Publication, Content, Platform, PerformanceMetric, UserRole } from '@/types'
 
 interface PublicationRow extends Publication {
   content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'pic'>
@@ -32,30 +50,30 @@ export default function PublishingPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [platforms, setPlatforms] = useState<Platform[]>([])
-  const [contents, setContents] = useState<Content[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
-  const [addOpen, setAddOpen] = useState(false)
-  const [editPub, setEditPub] = useState<PublicationRow | null>(null)
+  // Dialog states
+  const [publishModal, setPublishModal] = useState<{ open: boolean; pub: PublicationRow | null }>({
+    open: false,
+    pub: null,
+  })
+  const [publishDate, setPublishDate] = useState(new Date().toISOString().split('T')[0])
+  const [publishUrl, setPublishUrl] = useState('')
+  const [publishNotes, setPublishNotes] = useState('')
+
+  const [cancelModal, setCancelModal] = useState<{ open: boolean; pub: PublicationRow | null }>({
+    open: false,
+    pub: null,
+  })
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelMoveToTabungan, setCancelMoveToTabungan] = useState(true)
+
   const [metricsPub, setMetricsPub] = useState<PublicationRow | null>(null)
-  const [addForm, setAddForm] = useState({
-    content_id: '',
-    platform_id: '',
-    planned_publish_date: '',
-    notes: '',
-  })
-  const [editForm, setEditForm] = useState({
-    platform_id: '',
-    planned_publish_date: '',
-    actual_publish_date: '',
-    url: '',
-    status: 'PLANNED',
-    notes: '',
-  })
   const [metricsForm, setMetricsForm] = useState({
     views: '0',
     likes: '0',
@@ -83,6 +101,19 @@ export default function PublishingPage() {
     }
   }, [statusFilter, dateFrom, dateTo])
 
+  useEffect(() => {
+    loadPublications()
+    apiFetch('/api/master-data')
+      .then((res) => res.json())
+      .then((data) => setPlatforms(data.platforms || []))
+      .catch(console.error)
+
+    apiFetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data?.user?.profile?.role && setUserRole(data.user.profile.role))
+      .catch(() => {})
+  }, [loadPublications])
+
   function selectMonth(year: number, month: number) {
     const firstDay = new Date(year, month - 1, 1)
     const lastDay = new Date(year, month, 0)
@@ -91,133 +122,106 @@ export default function PublishingPage() {
     setDateTo(fmt(lastDay))
   }
 
-  useEffect(() => {
-    loadPublications()
-  }, [loadPublications])
-
-  useEffect(() => {
-    apiFetch('/api/master-data')
-      .then((res) => res.json())
-      .then((data) => setPlatforms(data.platforms || []))
-      .catch(console.error)
-
-    apiFetch('/api/contents?status=READY_TO_PUBLISH')
-      .then((res) => res.json())
-      .then((data) => setContents(data.contents || []))
-      .catch(console.error)
-    apiFetch('/api/contents?status=APPROVED')
-      .then((res) => res.json())
-      .then((data) =>
-        setContents((prev) => {
-          const ids = new Set(prev.map((c) => c.id))
-          return [...prev, ...(data.contents || []).filter((c: Content) => !ids.has(c.id))]
-        })
-      )
-      .catch(console.error)
-  }, [])
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
+  // Tandai Dipublikasikan
+  async function handleMarkPublished() {
+    if (!publishModal.pub) return
     setSaving(true)
     setError(null)
 
     try {
-      const res = await apiFetch('/api/publications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content_id: addForm.content_id,
-          platform_id: addForm.platform_id || undefined,
-          planned_publish_date: addForm.planned_publish_date || undefined,
-          notes: addForm.notes || undefined,
-          status: 'PLANNED',
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Failed to add publication')
-        return
-      }
-
-      setAddOpen(false)
-      setAddForm({ content_id: '', platform_id: '', planned_publish_date: '', notes: '' })
-      loadPublications()
-    } catch {
-      setError('Network error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function openEdit(pub: PublicationRow) {
-    setEditPub(pub)
-    setEditForm({
-      platform_id: pub.platform_id || '',
-      planned_publish_date: pub.planned_publish_date || '',
-      actual_publish_date: pub.actual_publish_date || '',
-      url: pub.url || '',
-      status: pub.status,
-      notes: pub.notes || '',
-    })
-  }
-
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editPub) return
-    setSaving(true)
-    setError(null)
-
-    try {
-      const res = await apiFetch(`/api/publications/${editPub.id}`, {
+      const res = await apiFetch(`/api/publications/${publishModal.pub.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform_id: editForm.platform_id || undefined,
-          planned_publish_date: editForm.planned_publish_date || null,
-          actual_publish_date: editForm.actual_publish_date || null,
-          url: editForm.url || null,
-          status: editForm.status,
-          notes: editForm.notes || null,
+          actual_publish_date: publishDate || new Date().toISOString().split('T')[0],
+          url: publishUrl ? publishUrl.trim() : null,
+          status: 'PUBLISHED',
+          notes: publishNotes ? publishNotes.trim() : null,
         }),
       })
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to update publication')
+        setError(data.error || 'Gagal menandai publikasi')
         return
       }
 
-      setEditPub(null)
+      setPublishModal({ open: false, pub: null })
+      setPublishUrl('')
+      setPublishNotes('')
       loadPublications()
     } catch {
-      setError('Network error')
+      setError('Terjadi kesalahan jaringan.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this publication?')) return
+  // Batalkan Publikasi
+  async function handleCancelPublication() {
+    if (!cancelModal.pub) return
+    if (!cancelReason.trim()) {
+      setError('Alasan pembatalan wajib diisi!')
+      return
+    }
+    setSaving(true)
+    setError(null)
+
     try {
-      await apiFetch(`/api/publications/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/publications/${cancelModal.pub.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'CANCELLED',
+          cancel_reason: cancelReason.trim(),
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Gagal membatalkan publikasi')
+        return
+      }
+
+      // Opsi: Pindahkan juga konten induk ke Konten Tabungan
+      if (cancelMoveToTabungan && cancelModal.pub.content_id) {
+        await apiFetch(`/api/contents/${cancelModal.pub.content_id}/move-to-tabungan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reason: `Dibatalkan dari publikasi (${cancelModal.pub.platform?.name || 'Platform'}): ${cancelReason}`,
+          }),
+        })
+      }
+
+      setCancelModal({ open: false, pub: null })
+      setCancelReason('')
       loadPublications()
-    } catch (err) {
-      console.error('Failed to delete:', err)
+    } catch {
+      setError('Terjadi kesalahan jaringan.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  function quickMarkPublished(pub: PublicationRow) {
-    const today = new Date().toISOString().split('T')[0]
-    openEdit({ ...pub })
-    setEditForm({
-      platform_id: pub.platform_id || '',
-      planned_publish_date: pub.planned_publish_date || '',
-      actual_publish_date: today,
-      url: pub.url || '',
-      status: 'PUBLISHED',
-      notes: pub.notes || '',
-    })
+  // Pindahkan Konten Delay ke Konten Tabungan
+  async function handleMoveDelayToTabungan(pub: PublicationRow) {
+    if (!pub.content_id) return
+    if (!confirm('Pindahkan konten tertunda ini ke Konten Tabungan agar dapat dijadwalkan ulang di masa mendatang?')) return
+    try {
+      const res = await apiFetch(`/api/contents/${pub.content_id}/move-to-tabungan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: `Publikasi tertunda (jadwal rencana: ${pub.planned_publish_date})`,
+        }),
+      })
+      if (res.ok) {
+        loadPublications()
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   function openMetrics(pub: PublicationRow) {
@@ -257,219 +261,265 @@ export default function PublishingPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to save metrics')
+        setError(data.error || 'Gagal menyimpan metrik')
         return
       }
 
       setMetricsPub(null)
       loadPublications()
     } catch {
-      setError('Network error')
+      setError('Terjadi kesalahan jaringan.')
     } finally {
       setSaving(false)
     }
   }
 
-  const previewEngagement = calculateEngagementRate({
-    likes: Number(metricsForm.likes) || 0,
-    comments: Number(metricsForm.comments) || 0,
-    shares: Number(metricsForm.shares) || 0,
-    saves: Number(metricsForm.saves) || 0,
-    reach: Number(metricsForm.reach) || 0,
-  })
+  async function handleDelete(id: string) {
+    if (!confirm('Apakah Anda yakin ingin menghapus record publikasi ini?')) return
+    try {
+      await apiFetch(`/api/publications/${id}`, { method: 'DELETE' })
+      loadPublications()
+    } catch (err) {
+      console.error('Failed to delete:', err)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Publishing Tracker</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Track content publications across platforms
-          </p>
+      {/* Banner Penjelasan Modul Konsisten */}
+      <div className="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50/90 to-blue-50/70 p-4.5 shadow-xs dark:border-teal-900/50 dark:from-teal-950/30 dark:to-blue-950/20">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white shadow-xs">
+            <Send className="h-5 w-5" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-teal-950 dark:text-teal-300">
+              Antrean Publikasi
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              Modul ini digunakan untuk memantau status tayang, mengelola jadwal, mencatat URL publikasi setelah tayang, dan merekam metrik performa media sosial. Status publikasi ditentukan secara otomatis berdasarkan aksi dan tenggat waktu.
+            </p>
+          </div>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="self-start sm:self-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Publication
-        </Button>
       </div>
 
+      {/* Filter & Quick Period Selector */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
+        <div className="p-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={!dateFrom && !dateTo ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="text-xs"
+            >
+              Semua Waktu
+            </Button>
+            {[
+              { label: 'Bulan Ini', fn: () => { const now = new Date(); selectMonth(now.getFullYear(), now.getMonth() + 1) } },
+              { label: 'Bulan Lalu', fn: () => { const now = new Date(); selectMonth(now.getFullYear(), now.getMonth()) } },
+            ].map((b) => (
+              <Button key={b.label} variant="outline" size="sm" onClick={b.fn} className="text-xs">
+                {b.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-36 text-xs"
+                title="Dari Tanggal"
+              />
+              <span className="text-ink-muted text-xs">s/d</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-36 text-xs"
+                title="Sampai Tanggal"
+              />
+            </div>
+
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-40"
+              className="w-full sm:w-48 text-xs"
             >
-              <option value="">All Status</option>
-              {PUBLICATION_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {PUBLICATION_STATUS_LABELS[s]}
-                </option>
-              ))}
+              <option value="">Semua Status Publikasi</option>
+              <option value="PLANNED">Direncanakan (Planned)</option>
+              <option value="PUBLISHED">Dipublikasikan (Published)</option>
+              <option value="DELAYED">Tertunda (Delay)</option>
+              <option value="CANCELLED">Dibatalkan (Cancel)</option>
             </Select>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-ink-muted">Bulan:</span>
-              {[new Date().getFullYear(), new Date().getFullYear() - 1].map((yr) =>
-                [1,2,3,4,5,6,7,8,9,10,11,12].map((mo) => {
-                  const firstDay = `${yr}-${String(mo).padStart(2,'0')}-01`
-                  const isActive = dateFrom === firstDay
-                  return (
-                    <button
-                      key={`${yr}-${mo}`}
-                      type="button"
-                      onClick={() => isActive ? (setDateFrom(''), setDateTo('')) : selectMonth(yr, mo)}
-                      className={`rounded px-2 py-0.5 text-xs transition-colors ${isActive ? 'bg-primary text-white' : 'bg-surface-muted text-ink-secondary hover:bg-primary-soft hover:text-primary'}`}
-                    >
-                      {yr === new Date().getFullYear() ? '' : `${yr} `}{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo-1]}
-                    </button>
-                  )
-                })
-              )}
-              {(dateFrom || dateTo) && (
-                <button type="button" onClick={() => { setDateFrom(''); setDateTo('') }} className="text-xs text-ink-muted hover:text-danger">
-                  ✕ Clear
-                </button>
-              )}
-            </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
+      {/* Tabel Publikasi */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
-        </div>
+        <Card>
+          <div className="flex items-center justify-center border-b border-border py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-ink-muted" />
+            <span className="ml-2 text-sm text-ink-secondary">Memuat data publikasi...</span>
+          </div>
+        </Card>
       ) : publications.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-ink-secondary">
-            No publications found.
+            Tidak ada record publikasi yang sesuai filter. Konten yang disetujui akan otomatis masuk ke antrean ini.
           </CardContent>
         </Card>
       ) : (
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b bg-surface-muted">
+              <thead className="border-b border-border bg-surface-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Content</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Actual</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">URL</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Platform</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Konten Terkait</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Tgl Rencana</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Tgl Aktual</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">URL Publikasi</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Aksi Publikasi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-border">
                 {publications.map((pub) => {
-                  const isDelayed =
-                    pub.status !== 'PUBLISHED' &&
-                    pub.status !== 'CANCELLED' &&
-                    pub.planned_publish_date &&
-                    new Date(pub.planned_publish_date) < new Date()
+                  const isDelay = pub.status === 'DELAYED' || pub.status === 'DELAY'
+                  const isPublished = pub.status === 'PUBLISHED'
+                  const isCancelled = pub.status === 'CANCELLED' || pub.status === 'CANCEL'
 
                   return (
-                    <tr key={pub.id} className="hover:bg-surface-muted">
-                      <td className="px-4 py-3">
+                    <tr key={pub.id} className="transition-colors hover:bg-surface-muted/60">
+                      <td className="px-4 py-3 text-sm font-semibold whitespace-nowrap text-ink">
+                        {pub.platform?.name ? (
+                          <PlatformBadge platform={pub.platform.name} size="sm" />
+                        ) : (
+                          <span className="text-ink-muted">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm max-w-xs">
                         {pub.content ? (
-                          <Link
-                            href={`/content/${pub.content.id}`}
-                            className="font-medium text-primary hover:underline"
-                          >
+                          <Link href={`/content/${pub.content.id}`} className="font-medium text-ink hover:text-primary line-clamp-2">
                             {pub.content.title}
                           </Link>
                         ) : (
                           <span className="text-ink-muted">-</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">
-                        {pub.platform?.name || '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        {formatDate(pub.planned_publish_date)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        {pub.actual_publish_date ? (
-                          <span
-                            className={
-                              pub.planned_publish_date &&
-                              pub.actual_publish_date > pub.planned_publish_date
-                                ? 'text-warning'
-                                : 'text-success'
-                            }
-                          >
-                            {formatDate(pub.actual_publish_date)}
-                          </span>
-                        ) : (
-                          <span className={isDelayed ? 'text-danger' : 'text-ink-muted'}>
-                            {isDelayed ? 'Overdue' : '-'}
-                          </span>
+                        {pub.content?.topic && (
+                          <div className="text-xs text-ink-muted">{pub.content.topic}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-ink-secondary">
+                        {formatDate(pub.planned_publish_date)}
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-ink-secondary">
+                        {formatDate(pub.actual_publish_date)}
+                      </td>
+                      <td className="px-4 py-3 text-sm max-w-[200px] truncate">
                         {pub.url ? (
                           <a
                             href={pub.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center text-primary hover:underline"
+                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline text-xs"
+                            title={pub.url}
                           >
-                            <ExternalLink className="mr-1 h-3 w-3" />
-                            Link
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{pub.url}</span>
                           </a>
                         ) : (
-                          <span className="text-ink-muted">-</span>
+                          <span className="text-ink-muted text-xs italic">Belum diisi</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <StatusBadge status={pub.status} kind="publication" />
-                          {pub.status === 'PUBLISHED' && (!pub.performance_metrics || pub.performance_metrics.length === 0) && (
-                            <span className="rounded bg-warning-soft px-1.5 py-0.5 text-xs text-warning" title="Belum ada data performa">
-                              No metrics
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                        <StatusBadge status={pub.status} kind="publication" />
+                        {pub.cancel_reason && (
+                          <div className="text-[11px] text-danger mt-0.5 max-w-xs truncate" title={pub.cancel_reason}>
+                            Alasan: {pub.cancel_reason}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          {pub.status === 'PLANNED' && (
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Aksi Tandai Dipublikasikan jika belum published */}
+                          {!isPublished && !isCancelled && (
                             <Button
-                              variant="ghost"
                               size="sm"
-                              onClick={() => quickMarkPublished(pub)}
-                              title="Mark as published"
+                              onClick={() => {
+                                setPublishModal({ open: true, pub })
+                                setPublishDate(new Date().toISOString().split('T')[0])
+                                setPublishUrl(pub.url || '')
+                                setPublishNotes(pub.notes || '')
+                              }}
+                              className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
-                              Publish
+                              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                              Tandai Tayang
                             </Button>
                           )}
-                          {pub.status === 'PUBLISHED' && (
+
+                          {/* Jika status Delay: tawarkan pindah ke Konten Tabungan */}
+                          {isDelay && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleMoveDelayToTabungan(pub)}
+                              className="text-xs h-8 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                              title="Pindahkan ke Konten Tabungan"
+                            >
+                              <BookmarkCheck className="mr-1 h-3.5 w-3.5" />
+                              Ke Tabungan
+                            </Button>
+                          )}
+
+                          {/* Aksi Batalkan Publikasi (Admin/Authorized) */}
+                          {!isPublished && !isCancelled && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setCancelModal({ open: true, pub })
+                                setCancelReason('')
+                                setCancelMoveToTabungan(true)
+                              }}
+                              className="text-xs h-8 text-rose-600 border-rose-200 hover:bg-rose-50"
+                            >
+                              <XCircle className="mr-1 h-3.5 w-3.5" />
+                              Batalkan
+                            </Button>
+                          )}
+
+                          {/* Aksi Catat Performa */}
+                          {isPublished && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openMetrics(pub)}
+                              className="text-xs h-8"
+                              title="Rekam Data Performa (Views, Likes, dll)"
+                            >
+                              <BarChart3 className="mr-1 h-3.5 w-3.5" />
+                              Metrik
+                            </Button>
+                          )}
+
+                          {userRole === 'ADMIN' && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openMetrics(pub)}
-                              title="Input performance metrics"
+                              onClick={() => handleDelete(pub.id)}
+                              title="Hapus record publikasi"
+                              className="h-8 w-8 text-danger hover:bg-danger-soft"
                             >
-                              <BarChart3 className="h-4 w-4 text-primary" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(pub)}
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(pub.id)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -481,288 +531,211 @@ export default function PublishingPage() {
         </Card>
       )}
 
-      {/* Add Publication Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      {/* Dialog: Tandai Dipublikasikan */}
+      <Dialog open={publishModal.open} onOpenChange={(open) => !saving && setPublishModal({ open, pub: null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Publication</DialogTitle>
+            <DialogTitle>Tandai Konten Telah Dipublikasikan</DialogTitle>
             <DialogDescription>
-              Schedule approved content for publishing on a platform.
+              Catat waktu aktual penayangan dan URL postingan media sosial untuk &quot;{publishModal.pub?.content?.title}&quot; ({publishModal.pub?.platform?.name}).
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAdd} className="space-y-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Content *</Label>
-              <Select
-                value={addForm.content_id}
-                onChange={(e) => setAddForm({ ...addForm, content_id: e.target.value })}
-                className="w-full"
-                required
-              >
-                <option value="">Select content (approved / ready to publish)</option>
-                {contents.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Platform</Label>
-                <Select
-                  value={addForm.platform_id}
-                  onChange={(e) => setAddForm({ ...addForm, platform_id: e.target.value })}
-                  className="w-full"
-                >
-                  <option value="">Select platform</option>
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Planned Date</Label>
-                <Input
-                  type="date"
-                  value={addForm.planned_publish_date}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, planned_publish_date: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={addForm.notes}
-                onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            {error && <p className="text-sm text-danger">{error}</p>}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving || !addForm.content_id}>
-                {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                Add Publication
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Publication Dialog */}
-      <Dialog open={!!editPub} onOpenChange={(open) => !open && setEditPub(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Publication</DialogTitle>
-            <DialogDescription>
-              Update publication status, dates, and URL.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Platform</Label>
-                <Select
-                  value={editForm.platform_id}
-                  onChange={(e) => setEditForm({ ...editForm, platform_id: e.target.value })}
-                  className="w-full"
-                >
-                  <option value="">Select platform</option>
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  className="w-full"
-                >
-                  {PUBLICATION_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {PUBLICATION_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Planned Date</Label>
-                <Input
-                  type="date"
-                  value={editForm.planned_publish_date}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, planned_publish_date: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Actual Publish Date</Label>
-                <Input
-                  type="date"
-                  value={editForm.actual_publish_date}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, actual_publish_date: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>URL</Label>
+              <Label htmlFor="pubDate">Tanggal Aktual Publikasi *</Label>
               <Input
-                type="url"
-                value={editForm.url}
-                onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                placeholder="https://..."
+                id="pubDate"
+                type="date"
+                value={publishDate}
+                onChange={(e) => setPublishDate(e.target.value)}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label htmlFor="pubUrl">URL Publikasi (Opsional)</Label>
+              <Input
+                id="pubUrl"
+                type="url"
+                value={publishUrl}
+                onChange={(e) => setPublishUrl(e.target.value)}
+                placeholder="https://instagram.com/p/... atau link media sosial"
+              />
+              <p className="text-[11px] text-ink-muted">
+                Dapat diisi sekarang atau diperbarui nanti setelah link tersedia.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pubNotes">Catatan Publikasi (Opsional)</Label>
               <Textarea
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                id="pubNotes"
+                value={publishNotes}
+                onChange={(e) => setPublishNotes(e.target.value)}
+                placeholder="Catatan tambahan seputar penayangan..."
                 rows={2}
               />
             </div>
+            {error && <p className="text-sm font-medium text-danger">{error}</p>}
+          </div>
 
-            {error && <p className="text-sm text-danger">{error}</p>}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditPub(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishModal({ open: false, pub: null })} disabled={saving}>
+              Batal
+            </Button>
+            <Button onClick={handleMarkPublished} disabled={saving || !publishDate} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Simpan Publikasi
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Metrics Dialog */}
-      <Dialog open={!!metricsPub} onOpenChange={(open) => !open && setMetricsPub(null)}>
+      {/* Dialog: Batalkan Publikasi */}
+      <Dialog open={cancelModal.open} onOpenChange={(open) => !saving && setCancelModal({ open, pub: null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Performance Metrics</DialogTitle>
+            <DialogTitle>Batalkan Publikasi Konten</DialogTitle>
             <DialogDescription>
-              {metricsPub?.content?.title
-                ? `${metricsPub.content.title} — ${metricsPub.platform?.name || ''}`
-                : 'Record metrics for this publication.'}
+              Wajib menyertakan alasan pembatalan publikasi untuk &quot;{cancelModal.pub?.content?.title}&quot;.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSaveMetrics} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <div className="space-y-1">
-                <Label>Views</Label>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="cancelReason">Alasan Pembatalan *</Label>
+              <Textarea
+                id="cancelReason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Tuliskan alasan mengapa publikasi dibatalkan atau ditunda..."
+                rows={3}
+                required
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="moveTabungan"
+                type="checkbox"
+                checked={cancelMoveToTabungan}
+                onChange={(e) => setCancelMoveToTabungan(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="moveTabungan" className="text-xs font-normal cursor-pointer">
+                Otomatis simpan konten ini ke <strong>Konten Tabungan</strong> agar dapat dimanfaatkan kembali nanti
+              </Label>
+            </div>
+            {error && <p className="text-sm font-medium text-danger">{error}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelModal({ open: false, pub: null })} disabled={saving}>
+              Tutup
+            </Button>
+            <Button onClick={handleCancelPublication} disabled={saving || !cancelReason.trim()} variant="destructive">
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Konfirmasi Pembatalan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Rekam Data Metrik */}
+      <Dialog open={!!metricsPub} onOpenChange={(open) => !open && !saving && setMetricsPub(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rekam Metrik Performa Publikasi</DialogTitle>
+            <DialogDescription>
+              Performa konten &quot;{metricsPub?.content?.title}&quot; di platform {metricsPub?.platform?.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveMetrics} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="views">Views (Tayangan)</Label>
                 <Input
+                  id="views"
                   type="number"
-                  min={0}
+                  min="0"
                   value={metricsForm.views}
                   onChange={(e) => setMetricsForm({ ...metricsForm, views: e.target.value })}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Likes</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="reach">Reach (Jangkauan)</Label>
                 <Input
+                  id="reach"
                   type="number"
-                  min={0}
-                  value={metricsForm.likes}
-                  onChange={(e) => setMetricsForm({ ...metricsForm, likes: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Comments</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={metricsForm.comments}
-                  onChange={(e) => setMetricsForm({ ...metricsForm, comments: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Shares</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={metricsForm.shares}
-                  onChange={(e) => setMetricsForm({ ...metricsForm, shares: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Saves</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={metricsForm.saves}
-                  onChange={(e) => setMetricsForm({ ...metricsForm, saves: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Reach</Label>
-                <Input
-                  type="number"
-                  min={0}
+                  min="0"
                   value={metricsForm.reach}
                   onChange={(e) => setMetricsForm({ ...metricsForm, reach: e.target.value })}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="likes">Likes (Suka)</Label>
+                <Input
+                  id="likes"
+                  type="number"
+                  min="0"
+                  value={metricsForm.likes}
+                  onChange={(e) => setMetricsForm({ ...metricsForm, likes: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="comments">Comments (Komentar)</Label>
+                <Input
+                  id="comments"
+                  type="number"
+                  min="0"
+                  value={metricsForm.comments}
+                  onChange={(e) => setMetricsForm({ ...metricsForm, comments: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="shares">Shares (Dibagikan)</Label>
+                <Input
+                  id="shares"
+                  type="number"
+                  min="0"
+                  value={metricsForm.shares}
+                  onChange={(e) => setMetricsForm({ ...metricsForm, shares: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="saves">Saves (Disimpan)</Label>
+                <Input
+                  id="saves"
+                  type="number"
+                  min="0"
+                  value={metricsForm.saves}
+                  onChange={(e) => setMetricsForm({ ...metricsForm, saves: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <Label>Recorded At</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="recDate">Tanggal Pengambilan Data</Label>
               <Input
+                id="recDate"
                 type="date"
                 value={metricsForm.recorded_at}
-                onChange={(e) =>
-                  setMetricsForm({ ...metricsForm, recorded_at: e.target.value })
-                }
+                onChange={(e) => setMetricsForm({ ...metricsForm, recorded_at: e.target.value })}
               />
-              <p className="text-xs text-ink-muted">
-                Existing metrics for the same date will be updated.
-              </p>
             </div>
 
-            <div className="rounded-md bg-primary-soft p-3">
-              <p className="text-sm">
-                <span className="font-medium text-primary">
-                  Engagement Rate: {previewEngagement.toFixed(2)}%
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-primary">{ENGAGEMENT_FORMULA}</p>
-            </div>
+            <p className="text-[11px] text-ink-muted">{ENGAGEMENT_FORMULA}</p>
+            {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
-            {error && <p className="text-sm text-danger">{error}</p>}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setMetricsPub(null)}>
-                Cancel
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setMetricsPub(null)} disabled={saving}>
+                Batal
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                Save Metrics
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Simpan Metrik
               </Button>
             </DialogFooter>
           </form>

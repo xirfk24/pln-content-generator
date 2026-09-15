@@ -13,7 +13,7 @@ import (
 	"pln-backend/internal/models"
 )
 
-var publicationStatuses = []string{"PLANNED", "PUBLISHED", "DELAYED", "CANCELLED"}
+var publicationStatuses = []string{"PLANNED", "PUBLISHED", "DELAYED", "CANCELLED", "DELAY", "CANCEL"}
 
 // GET /api/publications
 func (h *Handler) ListPublications(c *gin.Context) {
@@ -21,8 +21,15 @@ func (h *Handler) ListPublications(c *gin.Context) {
 	args := []any{}
 
 	if v := c.Query("status"); v != "" {
-		args = append(args, v)
-		where = append(where, "p.status = $"+itoa(len(args)))
+		switch v {
+		case "DELAY", "DELAYED":
+			where = append(where, "(p.status = 'DELAYED' OR (p.status = 'PLANNED' AND p.planned_publish_date < CURRENT_DATE))")
+		case "PLANNED":
+			where = append(where, "(p.status = 'PLANNED' AND (p.planned_publish_date >= CURRENT_DATE OR p.planned_publish_date IS NULL))")
+		default:
+			args = append(args, v)
+			where = append(where, "p.status = $"+itoa(len(args)))
+		}
 	}
 	if v := c.Query("platform_id"); v != "" {
 		args = append(args, v)
@@ -39,6 +46,15 @@ func (h *Handler) ListPublications(c *gin.Context) {
 
 	publications, pubIDs := h.queryPublicationsWithContent(c.Request.Context(),
 		strings.Join(where, " AND "), args...)
+
+	// Auto-tag DELAYED status in memory if planned date has passed and still PLANNED
+	todayStr := time.Now().Format("2006-01-02")
+	for i := range publications {
+		if publications[i].Status == "PLANNED" && publications[i].PlannedPublishDate != nil && *publications[i].PlannedPublishDate < todayStr {
+			publications[i].Status = "DELAYED"
+		}
+	}
+
 	h.attachMetrics(c.Request.Context(), publications, pubIDs)
 	c.JSON(http.StatusOK, gin.H{"publications": publications})
 }
@@ -51,6 +67,7 @@ type publicationInput struct {
 	URL                *string `json:"url"`
 	Status             *string `json:"status"`
 	Notes              *string `json:"notes"`
+	CancelReason       *string `json:"cancel_reason"`
 }
 
 // POST /api/publications
@@ -61,34 +78,38 @@ func (h *Handler) CreatePublication(c *gin.Context) {
 		return
 	}
 	if in.ContentID == nil || *in.ContentID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "content_id is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID konten wajib diisi"})
 		return
 	}
 	status := "PLANNED"
 	if in.Status != nil && *in.Status != "" {
-		if !containsStatus(publicationStatuses, *in.Status) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
+		status = *in.Status
+	}
+
+	if in.URL != nil && *in.URL != "" {
+		u, err := url.Parse(*in.URL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format URL publikasi tidak valid (harus diawali http:// atau https://)"})
 			return
 		}
-		status = *in.Status
 	}
 
 	var id string
 	err := h.Pool.QueryRow(c.Request.Context(), `
-		INSERT INTO publications (content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-	`, *in.ContentID, in.PlatformID, in.PlannedPublishDate, in.ActualPublishDate, in.URL, status, in.Notes).Scan(&id)
+		INSERT INTO publications (content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes, cancel_reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+	`, *in.ContentID, in.PlatformID, in.PlannedPublishDate, in.ActualPublishDate, in.URL, status, in.Notes, in.CancelReason).Scan(&id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create publication"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat record publikasi"})
 		return
 	}
 
 	pub := h.getPublication(c.Request.Context(), id)
 	if pub == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load publication"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat record publikasi"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"publication": pub})
+	c.JSON(http.StatusOK, gin.H{"publication": pub, "message": "Record publikasi berhasil ditambahkan"})
 }
 
 // PUT /api/publications/:id
@@ -103,7 +124,15 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 	if in.URL != nil && *in.URL != "" {
 		u, err := url.Parse(*in.URL)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format URL publikasi tidak valid (harus diawali http:// atau https://)"})
+			return
+		}
+	}
+
+	// Validasi pembatalan wajib ada alasan
+	if in.Status != nil && (*in.Status == "CANCELLED" || *in.Status == "CANCEL") {
+		if in.CancelReason == nil || strings.TrimSpace(*in.CancelReason) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Alasan pembatalan wajib diisi saat membatalkan publikasi"})
 			return
 		}
 	}
@@ -127,30 +156,47 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		add("url", nullable(*in.URL))
 	}
 	if in.Status != nil {
-		if !containsStatus(publicationStatuses, *in.Status) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
-			return
+		st := *in.Status
+		if st == "CANCEL" {
+			st = "CANCELLED"
 		}
-		add("status", *in.Status)
+		if st == "DELAY" {
+			st = "DELAYED"
+		}
+		add("status", st)
 	}
 	if in.Notes != nil {
 		add("notes", nullable(*in.Notes))
+	}
+	if in.CancelReason != nil {
+		add("cancel_reason", nullable(*in.CancelReason))
 	}
 
 	args = append(args, id)
 	res, err := h.Pool.Exec(c.Request.Context(),
 		"UPDATE publications SET "+strings.Join(setClauses, ", ")+" WHERE id = $"+itoa(len(args)), args...)
 	if err != nil || res.RowsAffected() == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update publication"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui publikasi"})
 		return
+	}
+
+	// Jika status jadi PUBLISHED, update juga konten terkait jika semua publikasi sudah dipublikasikan
+	if in.Status != nil && *in.Status == "PUBLISHED" {
+		var contentID string
+		_ = h.Pool.QueryRow(c.Request.Context(), "SELECT content_id FROM publications WHERE id = $1", id).Scan(&contentID)
+		if contentID != "" {
+			_, _ = h.Pool.Exec(c.Request.Context(), `
+				UPDATE contents SET status = 'PUBLISHED', updated_at = now() WHERE id = $1
+			`, contentID)
+		}
 	}
 
 	pub := h.getPublication(c.Request.Context(), id)
 	if pub == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Publication not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Publikasi tidak ditemukan"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"publication": pub})
+	c.JSON(http.StatusOK, gin.H{"publication": pub, "message": "Data publikasi berhasil diperbarui"})
 }
 
 // DELETE /api/publications/:id
@@ -158,10 +204,10 @@ func (h *Handler) DeletePublication(c *gin.Context) {
 	id := c.Param("id")
 	res, err := h.Pool.Exec(c.Request.Context(), "DELETE FROM publications WHERE id = $1", id)
 	if err != nil || res.RowsAffected() == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete publication"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus publikasi"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Publikasi berhasil dihapus"})
 }
 
 // GET /api/publications/:id/metrics
@@ -172,7 +218,7 @@ func (h *Handler) ListMetrics(c *gin.Context) {
 		FROM performance_metrics WHERE publication_id = $1
 		ORDER BY recorded_at DESC`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch metrics"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil metrik performa"})
 		return
 	}
 	defer rows.Close()
@@ -190,13 +236,13 @@ func (h *Handler) ListMetrics(c *gin.Context) {
 }
 
 type metricInput struct {
-	Views       *float64 `json:"views"`
-	Likes       *float64 `json:"likes"`
-	Comments    *float64 `json:"comments"`
-	Shares      *float64 `json:"shares"`
-	Saves       *float64 `json:"saves"`
-	Reach       *float64 `json:"reach"`
-	RecordedAt  *string  `json:"recorded_at"`
+	Views      *float64 `json:"views"`
+	Likes      *float64 `json:"likes"`
+	Comments   *float64 `json:"comments"`
+	Shares     *float64 `json:"shares"`
+	Saves      *float64 `json:"saves"`
+	Reach      *float64 `json:"reach"`
+	RecordedAt *string  `json:"recorded_at"`
 }
 
 // POST /api/publications/:id/metrics — upsert by (publication_id, recorded_at)
@@ -227,7 +273,7 @@ func (h *Handler) UpsertMetric(c *gin.Context) {
 
 	for _, v := range []float64{float64(views), float64(likes), float64(comments), float64(shares), float64(saves), float64(reach)} {
 		if v < 0 || isInf(v) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Metric values must be non-negative finite numbers"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Nilai metrik harus berupa angka non-negatif yang valid"})
 			return
 		}
 	}
@@ -255,12 +301,12 @@ func (h *Handler) UpsertMetric(c *gin.Context) {
 	}
 
 	if metricID == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save metric"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan metrik performa"})
 		return
 	}
 
 	m := h.getMetric(c.Request.Context(), metricID)
-	c.JSON(http.StatusOK, gin.H{"metric": m})
+	c.JSON(http.StatusOK, gin.H{"metric": m, "message": "Data performa berhasil disimpan"})
 }
 
 func (h *Handler) getMetric(ctx context.Context, id string) *models.PerformanceMetric {
@@ -290,7 +336,7 @@ func (h *Handler) getPublication(ctx context.Context, id string) *models.Publica
 func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string, args ...any) ([]models.Publication, []string) {
 	rows, err := h.Pool.Query(ctx, `
 		SELECT p.id, p.content_id, p.platform_id, p.planned_publish_date::TEXT, p.actual_publish_date::TEXT,
-		       p.url, p.status, p.notes, p.created_at, p.updated_at,
+		       p.url, p.status, p.notes, p.cancel_reason, p.created_at, p.updated_at,
 		       pl.id, pl.name, pl.icon, pl.created_at,
 		       c.id, c.title, c.topic, c.status, c.pic
 		FROM publications p
@@ -311,14 +357,15 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		var plID, plName, plIcon *string
 		var plCreated *timeDb
 		var cID, cTitle, cTopic, cStatus *string
-		var cPic *string
+		var cPic, cancelReason *string
 		if err := rows.Scan(&p.ID, &p.ContentID, &p.PlatformID, &p.PlannedPublishDate, &p.ActualPublishDate,
-			&p.URL, &p.Status, &p.Notes, &p.CreatedAt, &p.UpdatedAt,
+			&p.URL, &p.Status, &p.Notes, &cancelReason, &p.CreatedAt, &p.UpdatedAt,
 			&plID, &plName, &plIcon, &plCreated,
 			&cID, &cTitle, &cTopic, &cStatus, &cPic); err != nil {
 			log.Printf("queryPublicationsWithContent scan error: %v", err)
 			continue
 		}
+		p.CancelReason = cancelReason
 		if plID != nil {
 			p.Platform = &models.Platform{ID: *plID, Name: derefString(plName), Icon: plIcon, CreatedAt: derefTime(plCreated)}
 		}

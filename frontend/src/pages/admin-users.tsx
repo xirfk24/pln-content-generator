@@ -68,11 +68,20 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
+      {/* Banner Penjelasan Modul */}
+      <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-gray-50 p-4 text-xs text-slate-900 shadow-sm sm:text-sm">
+        <p className="font-semibold text-slate-950">
+          👥 Modul Manajemen Pengguna & Hak Akses
+        </p>
+        <p className="mt-1 text-xs text-slate-600">
+          Kelola hak akses (Admin / Staff) serta status keaktifan pengguna dalam sistem PLN Content Management System Divisi Humas PLN UID Jawa Barat.
+        </p>
+      </div>
+
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Users</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Manajemen Pengguna</h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          Manage user roles. New users register via Supabase Auth; profiles are
-          created automatically.
+          Kelola peran dan hak akses pengguna sistem. Pendaftaran akun baru dilakukan melalui autentikasi internal.
         </p>
       </div>
 
@@ -86,24 +95,24 @@ export default function AdminUsersPage() {
             </div>
           ) : users.length === 0 ? (
             <p className="py-12 text-center text-sm text-ink-muted">
-              No user profiles found.
+              Tidak ada profil pengguna yang ditemukan.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b bg-surface-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">User</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Role</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pengguna</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Peran (Role)</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Joined</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Terdaftar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-surface-muted">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-ink">{user.full_name}</div>
+                        <div className="font-medium text-ink">{user.full_name || '-'}</div>
                         <div className="text-xs text-ink-secondary">{user.email}</div>
                       </td>
                       <td className="px-4 py-3">
@@ -111,7 +120,7 @@ export default function AdminUsersPage() {
                           value={user.role}
                           onChange={(e) => updateUser(user.id, { role: e.target.value })}
                           className="w-full sm:w-40"
-                          aria-label={`Change role for ${user.email ?? user.id}`}
+                          aria-label={`Ubah peran untuk ${user.email ?? user.id}`}
                         >
                           {ROLES.map((role) => (
                             <option key={role} value={role}>
@@ -125,10 +134,10 @@ export default function AdminUsersPage() {
                           type="button"
                           onClick={() => updateUser(user.id, { is_active: !user.is_active })}
                           className="cursor-pointer"
-                          title="Toggle active status"
+                          title="Klik untuk mengubah status aktif"
                         >
                           <Badge variant={user.is_active ? 'success' : 'secondary'}>
-                            {user.is_active ? 'Active' : 'Inactive'}
+                            {user.is_active ? 'Aktif' : 'Non-aktif'}
                           </Badge>
                         </button>
                       </td>

@@ -5,9 +5,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react'
 import { CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS } from '@/constants'
-import type { Content } from '@/types'
+import { PlatformCluster } from '@/components/ui/platform-icon'
+import type { Content, Platform } from '@/types'
+import Link from '@/compat/next'
 
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 const MONTHS = [
@@ -15,10 +17,18 @@ const MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ]
 
-export default function CalendarPage() {
+export default function ContentCalendarPage() {
   const [contents, setContents] = useState<Content[]>([])
+  const [platforms, setPlatforms] = useState<Platform[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
+
+  useEffect(() => {
+    apiFetch('/api/master-data')
+      .then((res) => res.json())
+      .then((d) => setPlatforms(d.platforms || []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     loadContents()
@@ -76,7 +86,7 @@ export default function CalendarPage() {
     const map = new Map<string, Content[]>()
     contents.forEach((content) => {
       if (content.planned_date) {
-        const dateStr = content.planned_date
+        const dateStr = content.planned_date.split('T')[0]
         if (!map.has(dateStr)) map.set(dateStr, [])
         map.get(dateStr)!.push(content)
       }
@@ -102,74 +112,95 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Content Calendar</h1>
-          <p className="mt-1 text-sm text-ink-secondary">Visual overview of scheduled content</p>
-        </div>
-        <Button variant="outline" onClick={goToToday} className="self-start sm:self-auto">Today</Button>
-      </div>
-
+    <div className="space-y-4">
       <Card>
-        <CardHeader className="border-b">
+        <CardHeader className="border-b py-3 px-4">
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={goToPrevMonth}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <CardTitle className="text-lg">
-              {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </CardTitle>
-            <Button variant="ghost" size="icon" onClick={goToNextMonth}>
-              <ChevronRight className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base font-semibold text-ink">
+                {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                Hari Ini
+              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={goToPrevMonth} title="Bulan Sebelumnya">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={goToNextMonth} title="Bulan Berikutnya">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-ink-muted" />
+              <span className="ml-2 text-sm text-ink-secondary">Memuat jadwal kalender...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="grid min-w-[768px] grid-cols-7">
-              {DAYS.map((day) => (
-                <div key={day} className="truncate border-b bg-surface-muted p-2 text-center text-xs font-medium text-ink-secondary">
-                  {day}
-                </div>
-              ))}
-              
-              {calendar.days.map((day, index) => {
-                const dateStr = day.date.toISOString().split('T')[0]
-                const dayContents = contentsByDate.get(dateStr) || []
-                
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-28 border-b border-r p-1 last:border-r-0 ${!day.isCurrentMonth ? 'bg-surface-muted' : 'bg-surface'} ${isToday(day.date) ? 'bg-primary-soft' : ''}`}
-                  >
-                    <div className={`mb-1 text-xs ${day.isCurrentMonth ? 'text-ink' : 'text-ink-muted'} ${isToday(day.date) ? 'font-bold text-primary' : ''}`}>
-                      {day.date.getDate()}
-                    </div>
-                    <div className="space-y-1">
-                      {dayContents.slice(0, 3).map((content) => (
-                        <div
-                          key={content.id}
-                          className={`group cursor-pointer truncate rounded px-1 py-0.5 text-xs ${CONTENT_STATUS_COLORS[content.status as keyof typeof CONTENT_STATUS_COLORS] || 'bg-surface-muted text-ink'}`}
-                          title={`${content.title} - ${CONTENT_STATUS_LABELS[content.status as keyof typeof CONTENT_STATUS_LABELS] || content.status}`}
-                        >
-                          {content.title}
-                        </div>
-                      ))}
-                      {dayContents.length > 3 && (
-                        <div className="px-1 text-xs text-ink-secondary">
-                          +{dayContents.length - 3} more
-                        </div>
-                      )}
-                    </div>
+              <div className="grid min-w-[768px] grid-cols-7 border-collapse">
+                {DAYS.map((day) => (
+                  <div key={day} className="border-b border-r bg-surface-muted p-2 text-center text-xs font-semibold uppercase tracking-wider text-ink-secondary last:border-r-0">
+                    {day}
                   </div>
-                )
-              })}
+                ))}
+                
+                {calendar.days.map((day, index) => {
+                  const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`
+                  const dayContents = contentsByDate.get(dateStr) || []
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={`min-h-28 border-b border-r p-1.5 transition-colors last:border-r-0 ${!day.isCurrentMonth ? 'bg-slate-50/50 text-ink-muted dark:bg-slate-900/30' : 'bg-surface text-ink'} ${isToday(day.date) ? 'bg-blue-50/60 ring-1 ring-inset ring-primary/30' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs ${isToday(day.date) ? 'bg-primary font-bold text-white' : day.isCurrentMonth ? 'font-medium' : 'text-ink-muted'}`}>
+                          {day.date.getDate()}
+                        </span>
+                        {dayContents.length > 0 && (
+                          <span className="text-[10px] text-ink-muted">
+                            {dayContents.length} konten
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        {dayContents.slice(0, 3).map((content) => {
+                          const itemPlatforms = content.platform_ids && content.platform_ids.length > 0
+                            ? content.platform_ids
+                            : content.platform?.name ? [content.platform.name] : []
+                          return (
+                            <Link
+                              key={content.id}
+                              href={`/content/${content.id}`}
+                              className={`block group rounded border px-1.5 py-1 text-[11px] font-medium transition hover:shadow-xs ${CONTENT_STATUS_COLORS[content.status as keyof typeof CONTENT_STATUS_COLORS] || 'bg-slate-100 text-slate-800'}`}
+                              title={`[${content.pillar?.name || 'Pilar'}] ${content.title} - Topik: ${content.topic || '-'} (${CONTENT_STATUS_LABELS[content.status as keyof typeof CONTENT_STATUS_LABELS] || content.status})`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="truncate flex-1 font-semibold">{content.title}</span>
+                                {itemPlatforms.length > 0 && (
+                                  <PlatformCluster platforms={itemPlatforms} masterPlatforms={platforms} maxDisplay={2} />
+                                )}
+                              </div>
+                            </Link>
+                          )
+                        })}
+                        {dayContents.length > 3 && (
+                          <div className="px-1 text-[10px] font-medium text-ink-muted">
+                            +{dayContents.length - 3} lainnya
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -177,14 +208,16 @@ export default function CalendarPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Status Legend</CardTitle>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+            Keterangan Status Konten
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-2 px-4">
           <div className="flex flex-wrap gap-2">
-            {Object.entries(CONTENT_STATUS_COLORS).map(([status, color]) => (
-              <Badge key={status} className={color}>
-                {CONTENT_STATUS_LABELS[status as keyof typeof CONTENT_STATUS_LABELS] || status}
+            {['DRAFT', 'IN_PROGRESS', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'REVISION_REQUIRED'].map((status) => (
+              <Badge key={status} variant="outline" className={`text-xs ${CONTENT_STATUS_COLORS[status as keyof typeof CONTENT_STATUS_COLORS]}`}>
+                {CONTENT_STATUS_LABELS[status] || status}
               </Badge>
             ))}
           </div>

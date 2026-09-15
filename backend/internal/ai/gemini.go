@@ -138,7 +138,7 @@ func (g *GeminiProvider) generateJSON(ctx context.Context, prompt string, out an
 
 const brandContext = `Kamu adalah asisten konten media sosial untuk PLN (Perusahaan Listrik Negara), perusahaan listrik milik negara Indonesia.
 Selalu jawab dalam Bahasa Indonesia yang hangat, edukatif, dan sesuai tone BUMN.
-Pilar konten PLN: Keselamatan Listrik, Informasi Layanan, Kegiatan Perusahaan, Hari Besar Nasional, Tips Kelistrikan, Program Sosial.
+Pilar konten PLN: Edukasi (Educational), Hiburan (Entertainment), Inspirasi (Inspirational), Interaksi & Komunitas (Engagement), Promosi / Penjualan (Promotional), Di Balik Layar (Behind the Scenes), Bukti Sosial & Ulasan (Social Proof / Testimonials), Tren & Relevansi Terkini (Trending / Relatable), Berita & Wawasan Industri (Industry News & Insights), Solusi Masalah & FAQ (Problem Solving / Help).
 Balas HANYA dengan JSON valid sesuai skema yang diminta, tanpa penjelasan tambahan.`
 
 // ── Provider implementations ────────────────────────────────

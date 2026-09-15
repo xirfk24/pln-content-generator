@@ -49,59 +49,70 @@ function timeAgo(dateStr: string): string {
 }
 
 const ROUTE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/content/calendar': 'Content Calendar',
-  '/content/planning': 'Content Planning',
-  '/content/planning/new': 'New Content',
-  '/content/import': 'Import Konten',
-  '/publishing': 'Publishing Tracker',
-  '/workflow/tasks': 'My Tasks',
-  '/workflow/approval': 'Approval Queue',
-  '/analytics': 'Analytics Overview',
-  '/analytics/performance': 'Performance Analytics',
-  '/analytics/insights': 'AI Insights',
-  '/reports': 'Reports',
-  '/ai': 'AI Assistant',
-  '/admin/users': 'Users',
-  '/admin/pillars': 'Tema',
-  '/admin/categories': 'Categories',
-  '/admin/platforms': 'Platforms',
+  '/dashboard': 'Dasbor Utama',
+  '/content/planning': 'Rencana Konten',
+  '/content/planning/new': 'Buat Rencana Konten Baru',
+  '/content/tabungan': 'Konten Tabungan',
+  '/content/calendar': 'Rencana Konten — Kalender',
+  '/content/import': 'Rencana Konten — Import Data',
+  '/publishing': 'Antrean Publikasi',
+  '/workflow/tasks': 'Tugas Saya',
+  '/workflow/approval': 'Persetujuan Konten',
+  '/analytics': 'Ringkasan Analisis',
+  '/analytics/performance': 'Performa Konten',
+  '/analytics/insights': 'Wawasan AI',
+  '/recap': 'Rekap Konten',
+  '/reports': 'Laporan Berkala',
+  '/ai': 'Asisten AI',
+  '/admin/users': 'Kelola Pengguna',
+  '/admin/pillars': 'Pilar Konten',
+  '/admin/categories': 'Kategori Konten',
+  '/admin/platforms': 'Platform Media',
 }
 
 const ROUTE_SUBTITLES: Record<string, string> = {
-  '/dashboard': 'Content activity, workflow overview & performance summary',
-  '/content/calendar': 'Monthly content scheduling calendar',
-  '/content/planning': 'Manage and track all planned content',
-  '/content/import': 'Upload CSV untuk impor massal',
-  '/publishing': 'Track publications across platforms',
-  '/workflow/tasks': 'Your assigned content tasks',
-  '/workflow/approval': 'Review and approve content',
-  '/analytics': 'Performance metrics across platforms',
-  '/analytics/performance': 'Detailed content performance ranking',
-  '/analytics/insights': 'AI-powered performance analysis',
-  '/reports': 'Export and filter content reports',
-  '/ai': 'AI-powered content tools',
-  '/admin/users': 'Manage user accounts and roles',
-  '/admin/pillars': 'Kelola topik/tema konten',
-  '/admin/categories': 'Manage content categories',
-  '/admin/platforms': 'Manage publishing platforms',
+  '/dashboard': 'Ringkasan aktivitas konten, alur kerja, dan performa media sosial Humas PLN UID Jawa Barat.',
+  '/content/planning': 'Modul ini digunakan untuk menyusun, mengelola, mengajukan, dan memantau proses pengelolaan konten sebelum dipublikasikan.',
+  '/content/planning/new': 'Form penyusunan rencana konten baru dengan pengelompokan pilar komunikasi dan multi-platform.',
+  '/content/tabungan': 'Modul ini digunakan untuk menampung konten yang ditunda, belum memiliki waktu publikasi pasti, atau disimpan untuk periode berikutnya.',
+  '/content/calendar': 'Tampilan kalender terintegrasi dari jadwal publikasi rencana konten.',
+  '/content/import': 'Impor massal rencana konten melalui file spreadsheet/CSV.',
+  '/publishing': 'Modul ini digunakan untuk memantau status tayang, mengelola jadwal, mencatat URL publikasi, dan merekam data performa.',
+  '/workflow/tasks': 'Modul ini menampilkan daftar tugas penyusunan, perbaikan revisi, dan pencatatan publikasi konten Anda.',
+  '/workflow/approval': 'Modul ini digunakan oleh Admin/Reviewer untuk meninjau, menyetujui, atau meminta revisi atas rencana konten yang diajukan.',
+  '/analytics': 'Metrik agregat performa dan interaksi konten media sosial lintas platform.',
+  '/analytics/performance': 'Peringkat dan efektivitas jangkauan serta engagement konten.',
+  '/analytics/insights': 'Analisis cerdas AI untuk optimasi strategi komunikasi Humas PLN.',
+  '/recap': 'Laporan rekapitulasi data konten bulanan dan semesteran sesuai standar Humas PLN.',
+  '/reports': 'Ekspor dan filter laporan performa publikasi berkala.',
+  '/ai': 'Alat bantu AI untuk pembuatan brief, copywriting, dan rekomendasi konten.',
+  '/admin/users': 'Kelola akun pengguna, hak akses role Admin dan Staf.',
+  '/admin/pillars': 'Kelola daftar pilar komunikasi Humas PLN (A-Z).',
+  '/admin/categories': 'Kelola jenis dan format konten.',
+  '/admin/platforms': 'Kelola platform media sosial tujuan publikasi.',
 }
 
 function usePageTitle(pathname: string): string {
   return React.useMemo(() => {
     if (ROUTE_TITLES[pathname]) return ROUTE_TITLES[pathname]
-    if (pathname.startsWith('/content/planning/')) return 'Content Detail'
+    if (pathname.startsWith('/content/tabungan')) return 'Konten Tabungan'
+    if (pathname.startsWith('/content/planning/')) return 'Detail Rencana Konten'
     if (pathname.startsWith('/content/')) {
-      return pathname.endsWith('/edit') ? 'Edit Content' : 'Content Detail'
+      return pathname.endsWith('/edit') ? 'Edit Rencana Konten' : 'Detail Rencana Konten'
     }
-    return 'Content Management System'
+    return 'Sistem Manajemen Konten PLN'
   }, [pathname])
 }
 
 function usePageSubtitle(pathname: string): string {
   return React.useMemo(() => {
     if (ROUTE_SUBTITLES[pathname]) return ROUTE_SUBTITLES[pathname]
-    if (pathname.startsWith('/content/')) return 'View and manage content details'
+    if (pathname.startsWith('/content/tabungan')) return 'Kelola konten simpanan dan jadwalkan ulang saat siap tayang.'
+    if (pathname.startsWith('/content/')) {
+      return pathname.endsWith('/edit')
+        ? 'Perbarui rincian, brief, dan platform rencana konten.'
+        : 'Rincian lengkap rencana konten, riwayat alur kerja, dan metrik publikasi.'
+    }
     return ''
   }, [pathname])
 }

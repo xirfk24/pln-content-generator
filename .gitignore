@@ -8,6 +8,8 @@ coverage/
 # production builds
 frontend/dist/
 backend/server
+backend/server.exe
+*.exe
 
 # local env files
 .env
