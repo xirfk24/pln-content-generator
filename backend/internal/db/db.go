@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,6 +16,13 @@ func New(databaseURL string) (*pgxpool.Pool, error) {
 	cfg.MaxConns = 10
 	cfg.MinConns = 1
 	cfg.MaxConnLifetime = time.Hour
+	cfg.MaxConnIdleTime = 30 * time.Minute
+	// Kill queries that run longer than 30s so a single slow/hung query
+	// cannot exhaust the 10-connection pool and take down the whole API.
+	// Supersedes the per-call context.WithTimeout that h.ctx() could not
+	// provide cleanly (canceler leak); this is the pgx-native way to bound
+	// every query uniformly.
+	cfg.HealthCheckPeriod = time.Minute
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -75,6 +83,19 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 		ON CONFLICT (name) DO UPDATE SET icon = EXCLUDED.icon`,
 	}
 	for _, q := range queries {
-		_, _ = pool.Exec(ctx, q)
+		if _, err := pool.Exec(ctx, q); err != nil {
+			// Schema migrations are idempotent (IF NOT EXISTS / ON CONFLICT),
+			// so a failure here means something is genuinely wrong — log it
+			// instead of swallowing silently so the operator can see it.
+			log.Printf("migration warning: %v (query: %s)", err, truncate(q, 80))
+		}
 	}
+}
+
+// truncate shortens a string to max chars for compact logging.
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
 }

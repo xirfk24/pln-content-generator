@@ -353,7 +353,7 @@ export default function ContentImportPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadExcelTemplate(masterData)}
+                  onClick={() => { void downloadExcelTemplate(masterData) }}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800 shrink-0 font-medium"
                 >
                   <Download className="mr-1.5 h-4 w-4" />
@@ -670,7 +670,7 @@ export default function ContentImportPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => downloadValidationReportExcel(validationRows)}
+                    onClick={() => { void downloadValidationReportExcel(validationRows) }}
                     className="text-xs"
                   >
                     <Download className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
@@ -1003,7 +1003,7 @@ export default function ContentImportPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadValidationReportExcel(validationRows, 'Laporan_Hasil_Import_Konten.xlsx')}
+                  onClick={() => { void downloadValidationReportExcel(validationRows, 'Laporan_Hasil_Import_Konten.xlsx') }}
                   className="text-xs"
                 >
                   <Download className="mr-1.5 h-3.5 w-3.5" />

@@ -13,7 +13,43 @@ import (
 	"pln-backend/internal/models"
 )
 
-var publicationStatuses = []string{"PLANNED", "PUBLISHED", "DELAYED", "CANCELLED", "DELAY", "CANCEL"}
+// normalizePubStatus canonicalizes status aliases and rejects values that are
+// not a known publication status, returning "" for invalid ones.
+func normalizePubStatus(s string) string {
+	switch s {
+	case "DELAY":
+		return "DELAYED"
+	case "CANCEL":
+		return "CANCELLED"
+	case "PLANNED", "PUBLISHED", "DELAYED", "CANCELLED":
+		return s
+	default:
+		return ""
+	}
+}
+
+// publishableContentStatuses mirrors the workflow rule for MARK_PUBLISHED:
+// a publication may only be marked PUBLISHED when the underlying content has
+// passed approval (APPROVED / READY_TO_PUBLISH) or is already published.
+// This prevents PUT /api/publications/:id from short-circuiting the approval
+// chain on DRAFT/PENDING_REVIEW content.
+var publishableContentStatuses = map[string]bool{
+	"APPROVED":         true,
+	"READY_TO_PUBLISH": true,
+	"PUBLISHED":        true,
+}
+
+// contentAllowsPublish reports whether the content row with the given id is in
+// a status that permits marking one of its publications as PUBLISHED.
+// Returns ("", false) when the content does not exist.
+func (h *Handler) contentAllowsPublish(ctx context.Context, contentID string) (string, bool) {
+	var status string
+	err := h.Pool.QueryRow(ctx, "SELECT status FROM contents WHERE id = $1", contentID).Scan(&status)
+	if err != nil {
+		return "", false
+	}
+	return status, publishableContentStatuses[status]
+}
 
 // GET /api/publications
 func (h *Handler) ListPublications(c *gin.Context) {
@@ -72,6 +108,10 @@ type publicationInput struct {
 
 // POST /api/publications
 func (h *Handler) CreatePublication(c *gin.Context) {
+	user := requireUser(c)
+	if user == nil {
+		return
+	}
 	var in publicationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -83,7 +123,22 @@ func (h *Handler) CreatePublication(c *gin.Context) {
 	}
 	status := "PLANNED"
 	if in.Status != nil && *in.Status != "" {
-		status = *in.Status
+		status = normalizePubStatus(*in.Status)
+		if status == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Status publikasi tidak valid. Gunakan PLANNED, PUBLISHED, DELAYED, atau CANCELLED"})
+			return
+		}
+		// Creating an already-PUBLISHED record is equivalent to the
+		// MARK_PUBLISHED workflow action — only allowed on approved content.
+		if status == "PUBLISHED" {
+			if _, ok := h.contentAllowsPublish(c.Request.Context(), *in.ContentID); !ok {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
+				return
+			}
+			if !h.gatePublish(c, *in.ContentID) {
+				return
+			}
+		}
 	}
 
 	if in.URL != nil && *in.URL != "" {
@@ -114,6 +169,10 @@ func (h *Handler) CreatePublication(c *gin.Context) {
 
 // PUT /api/publications/:id
 func (h *Handler) UpdatePublication(c *gin.Context) {
+	user := requireUser(c)
+	if user == nil {
+		return
+	}
 	id := c.Param("id")
 	var in publicationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
@@ -137,6 +196,26 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		}
 	}
 
+	// Whitelist status publikasi + gate transisi PUBLISHED ke state workflow.
+	normalizedStatus := ""
+	if in.Status != nil && *in.Status != "" {
+		normalizedStatus = normalizePubStatus(*in.Status)
+		if normalizedStatus == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Status publikasi tidak valid. Gunakan PLANNED, PUBLISHED, DELAYED, atau CANCELLED"})
+			return
+		}
+		if normalizedStatus == "PUBLISHED" {
+			contentID, ok := h.publicationContentID(c.Request.Context(), id)
+			if !ok {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Publikasi tidak ditemukan"})
+				return
+			}
+			if !h.gatePublish(c, contentID) {
+				return
+			}
+		}
+	}
+
 	setClauses := []string{"updated_at = now()"}
 	args := []any{}
 	add := func(col string, val any) {
@@ -156,14 +235,7 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		add("url", nullable(*in.URL))
 	}
 	if in.Status != nil {
-		st := *in.Status
-		if st == "CANCEL" {
-			st = "CANCELLED"
-		}
-		if st == "DELAY" {
-			st = "DELAYED"
-		}
-		add("status", st)
+		add("status", normalizedStatus)
 	}
 	if in.Notes != nil {
 		add("notes", nullable(*in.Notes))
@@ -181,7 +253,7 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 	}
 
 	// Jika status jadi PUBLISHED, update juga konten terkait jika semua publikasi sudah dipublikasikan
-	if in.Status != nil && *in.Status == "PUBLISHED" {
+	if normalizedStatus == "PUBLISHED" {
 		var contentID string
 		_ = h.Pool.QueryRow(c.Request.Context(), "SELECT content_id FROM publications WHERE id = $1", id).Scan(&contentID)
 		if contentID != "" {
@@ -199,8 +271,17 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"publication": pub, "message": "Data publikasi berhasil diperbarui"})
 }
 
-// DELETE /api/publications/:id
+// DELETE /api/publications/:id — admin only, matching the UI which only
+// exposes the delete action to ADMINs.
 func (h *Handler) DeletePublication(c *gin.Context) {
+	user := requireUser(c)
+	if user == nil {
+		return
+	}
+	if user.Role != "ADMIN" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Administrator yang dapat menghapus record publikasi"})
+		return
+	}
 	id := c.Param("id")
 	res, err := h.Pool.Exec(c.Request.Context(), "DELETE FROM publications WHERE id = $1", id)
 	if err != nil || res.RowsAffected() == 0 {
@@ -320,6 +401,35 @@ func (h *Handler) getMetric(ctx context.Context, id string) *models.PerformanceM
 		return nil
 	}
 	return &m
+}
+
+// gatePublish enforces the workflow rule for marking a publication PUBLISHED:
+// the content must be APPROVED, READY_TO_PUBLISH, or already PUBLISHED —
+// the same states the MARK_PUBLISHED workflow action accepts. It writes the
+// HTTP error response itself and returns false when the gate rejects.
+func (h *Handler) gatePublish(c *gin.Context, contentID string) bool {
+	status, ok := h.contentAllowsPublish(c.Request.Context(), contentID)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
+		return false
+	}
+	if !publishableContentStatuses[status] {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Konten dengan status '" + status + "' belum melewati persetujuan dan tidak dapat ditandai sebagai terbit. Gunakan alur kerja persetujuan terlebih dahulu.",
+		})
+		return false
+	}
+	return true
+}
+
+// publicationContentID returns the content id of the given publication.
+func (h *Handler) publicationContentID(ctx context.Context, pubID string) (string, bool) {
+	var contentID string
+	err := h.Pool.QueryRow(ctx, "SELECT content_id FROM publications WHERE id = $1", pubID).Scan(&contentID)
+	if err != nil {
+		return "", false
+	}
+	return contentID, true
 }
 
 // getPublication fetches one publication with platform + content + metrics.

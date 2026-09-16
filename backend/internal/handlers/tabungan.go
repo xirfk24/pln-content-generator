@@ -55,6 +55,9 @@ func (h *Handler) MoveToPlan(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
+	if !h.requireContentAccess(c, user, id) {
+		return
+	}
 
 	var in moveTabunganInput
 	_ = c.ShouldBindJSON(&in)
@@ -121,10 +124,19 @@ func (h *Handler) RescheduleTabungan(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
+	if !h.requireContentAccess(c, user, id) {
+		return
+	}
 
 	var in rescheduleTabunganInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tanggal publikasi baru wajib diisi"})
+		return
+	}
+	// Tanggal harus format valid (YYYY-MM-DD / RFC3339) — sebelumnya string
+	// mentah masuk kolom date.
+	if _, ok := parseDateStr(in.PlannedDate); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal tidak valid. Gunakan format YYYY-MM-DD (contoh: 2026-09-15)"})
 		return
 	}
 
@@ -191,6 +203,9 @@ func (h *Handler) MoveToTabungan(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
+	if !h.requireContentAccess(c, user, id) {
+		return
+	}
 
 	var in saveToTabunganInput
 	_ = c.ShouldBindJSON(&in)

@@ -19,15 +19,23 @@ type ctxKey string
 const userKey ctxKey = "user"
 
 type Verifier struct {
-	pool       *pgxpool.Pool
-	jwtSecret  string       // legacy HS256 (optional)
-	jwks       *jwksCache   // ES256 signing keys (current Supabase default)
+	pool      *pgxpool.Pool
+	jwtSecret string     // legacy HS256 (optional)
+	jwks      *jwksCache // ES256 signing keys (current Supabase default)
+	issuer    string     // expected iss (supabaseURL + "/auth/v1"); "" = skip check
+	audience  string     // expected aud ("authenticated"); "" = skip check
 }
 
 func NewVerifier(pool *pgxpool.Pool, supabaseURL, jwtSecret string) *Verifier {
 	v := &Verifier{pool: pool, jwtSecret: jwtSecret}
 	if supabaseURL != "" {
 		v.jwks = newJWKSCache(supabaseURL)
+		// Supabase signs access tokens with iss = "<projectURL>/auth/v1"
+		// and aud = "authenticated". Enforcing them binds a validly-signed
+		// token to THIS project so a secret leak elsewhere cannot be replayed
+		// here (defense against cross-project token reuse).
+		v.issuer = supabaseURL + "/auth/v1"
+		v.audience = "authenticated"
 	}
 	return v
 }
@@ -131,9 +139,21 @@ func (v *Verifier) verifyToken(tokenStr string) (string, error) {
 		}
 	}
 
-	token, err := jwt.Parse(tokenStr, keyFunc,
+	// Validation options: signature + expiry always; issuer/audience only
+	// when the project URL is configured so this stays opt-in and does not
+	// break legacy Supabase projects whose token claims may differ.
+	opts := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{"ES256", "HS256"}),
-		jwt.WithExpirationRequired())
+		jwt.WithExpirationRequired(),
+	}
+	if v.issuer != "" {
+		opts = append(opts, jwt.WithIssuer(v.issuer))
+	}
+	if v.audience != "" {
+		opts = append(opts, jwt.WithAudience(v.audience))
+	}
+
+	token, err := jwt.Parse(tokenStr, keyFunc, opts...)
 	if err != nil || !token.Valid {
 		return "", errors.New("invalid token")
 	}

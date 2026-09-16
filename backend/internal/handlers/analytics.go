@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ctx returns a background context for internal helper functions that are
+// called across multiple endpoints and therefore cannot pin themselves to a
+// single request's lifecycle. Handler-level callers should pass
+// c.Request.Context() instead for proper cancellation on client disconnect.
 func (h *Handler) ctx() context.Context { return context.Background() }
 
 type analyticsFilters struct {
@@ -32,12 +36,12 @@ func readFilters(c *gin.Context) analyticsFilters {
 }
 
 type analyticsContentRow struct {
-	ID            string
-	Status        string
-	PlannedDate   *string
-	PillarName    *string
-	PlatformName  *string
-	Title         string
+	ID           string
+	Status       string
+	PlannedDate  *string
+	PillarName   *string
+	PlatformName *string
+	Title        string
 }
 
 func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []analyticsContentRow {
@@ -184,12 +188,13 @@ func (h *Handler) Analytics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"kpis":               h.dashboardKPIs(f),
+		"kpis":                h.dashboardKPIs(f),
 		"platformPerformance": h.platformPerformance(f),
-		"pillarPerformance":  h.pillarPerformance(f),
-		"monthlyTrend":       h.monthlyTrend(f),
-		"topContent":         h.topContent(f, rankMetric, 10),
-		"rankMetric":         rankMetric,
+		"pillarPerformance":   h.pillarPerformance(f),
+		"monthlyTrend":        h.monthlyTrend(f),
+		"semesterTrend":       h.semesterTrend(f),
+		"topContent":          h.topContent(f, rankMetric, 10),
+		"rankMetric":          rankMetric,
 	})
 }
 
@@ -274,24 +279,24 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 
 	return gin.H{
 		"content": gin.H{
-			"total":          total,
-			"planned":        statusCount["PLANNED"],
-			"inProgress":     statusCount["IN_PROGRESS"],
-			"pendingReview":  statusCount["PENDING_REVIEW"],
-			"approved":       statusCount["APPROVED"],
-			"readyToPublish": statusCount["READY_TO_PUBLISH"],
-			"published":      publishedCount,
+			"total":             total,
+			"planned":           statusCount["PLANNED"],
+			"inProgress":        statusCount["IN_PROGRESS"],
+			"pendingReview":     statusCount["PENDING_REVIEW"],
+			"approved":          statusCount["APPROVED"],
+			"readyToPublish":    statusCount["READY_TO_PUBLISH"],
+			"published":         publishedCount,
 			"publishedByStatus": statusCount["PUBLISHED"], // kept for reference
-			"rescheduled":    statusCount["RESCHEDULED"],
-			"notRealized":    statusCount["NOT_REALIZED"],
+			"rescheduled":       statusCount["RESCHEDULED"],
+			"notRealized":       statusCount["NOT_REALIZED"],
 		},
 		"performance": gin.H{
-			"totalViews":       totals.Views,
-			"totalLikes":       totals.Likes,
-			"totalComments":    totals.Comments,
-			"totalShares":      totals.Shares,
-			"totalSaves":       totals.Saves,
-			"totalReach":       totals.Reach,
+			"totalViews":        totals.Views,
+			"totalLikes":        totals.Likes,
+			"totalComments":     totals.Comments,
+			"totalShares":       totals.Shares,
+			"totalSaves":        totals.Saves,
+			"totalReach":        totals.Reach,
 			"avgEngagementRate": avgRate,
 		},
 	}
@@ -393,13 +398,13 @@ func (h *Handler) platformPerformance(f analyticsFilters) []platformPerfRow {
 }
 
 type pillarPerfRow struct {
-	Pillar         string `json:"pillar"`
-	ContentCount   int    `json:"contentCount"`
-	PublishedCount int    `json:"publishedCount"`
-	Views          int    `json:"views"`
-	Reach          int    `json:"reach"`
-	AvgViews       int    `json:"avgViews"`
-	TotalEngagement int   `json:"totalEngagement"`
+	Pillar            string  `json:"pillar"`
+	ContentCount      int     `json:"contentCount"`
+	PublishedCount    int     `json:"publishedCount"`
+	Views             int     `json:"views"`
+	Reach             int     `json:"reach"`
+	AvgViews          int     `json:"avgViews"`
+	TotalEngagement   int     `json:"totalEngagement"`
 	AvgEngagementRate float64 `json:"avgEngagementRate"`
 }
 
@@ -491,19 +496,41 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 }
 
 type monthlyTrendRow struct {
-	Month          string `json:"month"`
-	Label          string `json:"label"`
-	Planned        int    `json:"planned"`
-	Published      int    `json:"published"`
-	PublishedVerified   int    `json:"publishedVerified"`
-	PublishedUnverified int    `json:"publishedUnverified"`
-	RealizationRate float64 `json:"realizationRate"`
-	Views          int    `json:"views"`
-	Likes          int    `json:"likes"`
-	EngagementRate float64 `json:"engagementRate"`
+	Month               string  `json:"month"`
+	Label               string  `json:"label"`
+	Planned             int     `json:"planned"`
+	Published           int     `json:"published"`
+	PublishedVerified   int     `json:"publishedVerified"`
+	PublishedUnverified int     `json:"publishedUnverified"`
+	RealizationRate     float64 `json:"realizationRate"`
+	Views               int     `json:"views"`
+	Likes               int     `json:"likes"`
+	EngagementRate      float64 `json:"engagementRate"`
 }
 
+// monthlyTrend aggregates the plan vs realization trend per calendar month.
 func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
+	return h.periodTrend(f, monthKey, monthLabel)
+}
+
+// semesterTrend aggregates the plan vs realization trend per semester.
+// Semester 1 = January–June, Semester 2 = July–December.
+func (h *Handler) semesterTrend(f analyticsFilters) []monthlyTrendRow {
+	return h.periodTrend(f, semesterKey, semesterLabel)
+}
+
+// periodTrend computes the planned vs published trend grouped by an
+// arbitrary period key derived from ISO date strings (e.g. "2025-03" for
+// monthly or "2025-S1" for semester grouping).
+//
+// Grouping rules (mirroring monthlyTrend semantics):
+//   - planned: counted in the period of contents.planned_date
+//   - published: counted in the period of contents.planned_date when the
+//     content has at least one publication with actual_publish_date
+//     (used for the realization rate)
+//   - metrics (views/likes/ER): attributed to the period of
+//     publications.actual_publish_date
+func (h *Handler) periodTrend(f analyticsFilters, keyFn func(string) string, labelFn func(string) string) []monthlyTrendRow {
 	all := h.loadFilteredContents(f, false)
 
 	byMonth := map[string]*[2]int{} // [planned, published]
@@ -511,7 +538,7 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		if r.PlannedDate == nil || *r.PlannedDate == "" {
 			continue
 		}
-		key := monthKey(*r.PlannedDate)
+		key := keyFn(*r.PlannedDate)
 		if _, ok := byMonth[key]; !ok {
 			byMonth[key] = &[2]int{}
 		}
@@ -536,7 +563,7 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		if p.actualPublishDate == nil || *p.actualPublishDate == "" {
 			continue
 		}
-		key := monthKey(*p.actualPublishDate)
+		key := keyFn(*p.actualPublishDate)
 		if _, ok := publishedByMonth[key]; !ok {
 			publishedByMonth[key] = &[2]int{}
 		}
@@ -557,7 +584,7 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 			continue
 		}
 		if publishedContentIDs[r.ID] {
-			key := monthKey(*r.PlannedDate)
+			key := keyFn(*r.PlannedDate)
 			if _, ok := byMonth[key]; ok {
 				byMonth[key][1]++ // published count in the month the content was planned
 			}
@@ -569,7 +596,7 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 		if p.actualPublishDate == nil || *p.actualPublishDate == "" {
 			continue
 		}
-		key := monthKey(*p.actualPublishDate)
+		key := keyFn(*p.actualPublishDate)
 		if _, ok := pubMonthAgg[key]; !ok {
 			pubMonthAgg[key] = &struct{ views, likes, reach, engagement int }{}
 		}
@@ -607,10 +634,10 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 			unverified = v[1]
 		}
 		row := monthlyTrendRow{
-			Month:  key,
-			Label:  monthLabel(key),
-			Planned: planned,
-			Published: published,
+			Month:               key,
+			Label:               labelFn(key),
+			Planned:             planned,
+			Published:           published,
 			PublishedVerified:   verified,
 			PublishedUnverified: unverified,
 		}
@@ -630,9 +657,9 @@ func (h *Handler) monthlyTrend(f analyticsFilters) []monthlyTrendRow {
 }
 
 type topContentRow struct {
-	ContentID      string `json:"contentId"`
-	Title          string `json:"title"`
-	Platform       string `json:"platform"`
+	ContentID string `json:"contentId"`
+	Title     string `json:"title"`
+	Platform  string `json:"platform"`
 	metricAgg
 	EngagementRate float64 `json:"engagementRate"`
 }
@@ -711,6 +738,59 @@ func (h *Handler) topContent(f analyticsFilters, metric string, limit int) []top
 
 var pillarCodeRe = regexp.MustCompile(`^([A-Z])\s*-\s*(.+)$`)
 
+// topicRecapRow is one row of the topic recap: content count per topic code.
+type topicRecapRow struct {
+	Code  string `json:"code"`
+	Topic string `json:"topic"`
+	Count int    `json:"count"`
+}
+
+// buildTopicRecap aggregates content counts keyed by pillar name into one row
+// per topic code, so codes stay unique. Pillar names without an "X - Topic"
+// prefix all share the code "?" and are merged into a single "Tanpa Kode" row;
+// the same holds for multiple names carrying the same letter prefix.
+func buildTopicRecap(counts map[string]int) []topicRecapRow {
+	type agg struct {
+		count  int
+		topics []string
+	}
+	byCode := map[string]*agg{}
+	codes := []string{}
+	for name, count := range counts {
+		code, topic := "?", name
+		if m := pillarCodeRe.FindStringSubmatch(name); m != nil {
+			code, topic = m[1], m[2]
+		}
+		a := byCode[code]
+		if a == nil {
+			a = &agg{}
+			byCode[code] = a
+			codes = append(codes, code)
+		}
+		a.count += count
+		a.topics = append(a.topics, topic)
+	}
+
+	sort.Slice(codes, func(i, j int) bool {
+		// "?" (uncoded pillars) goes last, after A–Z.
+		if (codes[i] == "?") != (codes[j] == "?") {
+			return codes[j] == "?"
+		}
+		return codes[i] < codes[j]
+	})
+
+	recap := make([]topicRecapRow, 0, len(codes))
+	for _, code := range codes {
+		a := byCode[code]
+		topic := strings.Join(a.topics, ", ")
+		if code == "?" {
+			topic = "Tanpa Kode"
+		}
+		recap = append(recap, topicRecapRow{Code: code, Topic: topic, Count: a.count})
+	}
+	return recap
+}
+
 // GET /api/analytics/topic-recap
 func (h *Handler) TopicRecap(c *gin.Context) {
 	f := readFilters(c)
@@ -759,21 +839,7 @@ func (h *Handler) TopicRecap(c *gin.Context) {
 		counts[*name]++
 	}
 
-	type recapRow struct {
-		Code  string `json:"code"`
-		Topic string `json:"topic"`
-		Count int    `json:"count"`
-	}
-	recap := []recapRow{}
-	for name, count := range counts {
-		row := recapRow{Code: "?", Topic: name, Count: count}
-		if m := pillarCodeRe.FindStringSubmatch(name); m != nil {
-			row.Code = m[1]
-			row.Topic = m[2]
-		}
-		recap = append(recap, row)
-	}
-	sort.Slice(recap, func(i, j int) bool { return recap[i].Code < recap[j].Code })
+	recap := buildTopicRecap(counts)
 
 	total := 0
 	for _, r := range recap {

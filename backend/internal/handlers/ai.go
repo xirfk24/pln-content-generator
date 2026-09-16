@@ -10,6 +10,27 @@ import (
 	"pln-backend/internal/auth"
 )
 
+// Input length caps for AI endpoints: prompts are interpolated into Gemini
+// requests, so unbounded user input means unbounded tokens/cost. Short fields
+// are enums/labels; long fields are the content bodies to improve/review.
+const (
+	aiMaxShortInput = 300
+	aiMaxLongInput  = 20000
+)
+
+// rejectTooLong writes a 400 and returns true when any field exceeds max.
+func rejectTooLong(c *gin.Context, max int, fields map[string]string) bool {
+	for name, v := range fields {
+		if len(v) > max {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Field '" + name + "' terlalu panjang (maksimum " + itoa(max) + " karakter)",
+			})
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handler) logAIRequest(c *gin.Context, requestType string, inputData any) string {
 	user := auth.FromContext(c)
 	data, _ := json.Marshal(inputData)
@@ -43,6 +64,12 @@ func (h *Handler) AIGenerateContent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "topic is required"})
 		return
 	}
+	if rejectTooLong(c, aiMaxShortInput, map[string]string{
+		"topic": in.Topic, "pillar": in.Pillar, "platform": in.Platform,
+		"format": in.Format, "targetAudience": in.TargetAudience, "tone": in.Tone,
+	}) {
+		return
+	}
 	out := h.AI.GenerateContent(in)
 	reqID := h.logAIRequest(c, "CONTENT_GENERATION", in)
 	h.logAIOutput(reqID, out, h.AI.Model())
@@ -56,6 +83,16 @@ func (h *Handler) AIImproveContent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
 		return
 	}
+	if rejectTooLong(c, aiMaxLongInput, map[string]string{"content": in.Content}) {
+		return
+	}
+	if rejectTooLong(c, aiMaxShortInput, map[string]string{
+		"improvementType": in.ImprovementType,
+		"targetAudience":  in.TargetAudience,
+		"platform":        in.Platform,
+	}) {
+		return
+	}
 	out := h.AI.ImproveContent(in)
 	reqID := h.logAIRequest(c, "CONTENT_IMPROVEMENT", in)
 	h.logAIOutput(reqID, out, h.AI.Model())
@@ -67,6 +104,15 @@ func (h *Handler) AIReviewContent(c *gin.Context) {
 	var in ai.ReviewContentInput
 	if err := c.ShouldBindJSON(&in); err != nil || in.Content == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "content is required"})
+		return
+	}
+	if rejectTooLong(c, aiMaxLongInput, map[string]string{"content": in.Content}) {
+		return
+	}
+	if rejectTooLong(c, aiMaxShortInput, map[string]string{
+		"platform":       in.Platform,
+		"targetAudience": in.TargetAudience,
+	}) {
 		return
 	}
 	out := h.AI.ReviewContent(in)

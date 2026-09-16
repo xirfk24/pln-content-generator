@@ -54,6 +54,13 @@ interface AnalyticsData {
     realizationRate: number
     engagementRate: number
   }>
+  semesterTrend: Array<{
+    label: string
+    planned: number
+    published: number
+    realizationRate: number
+    engagementRate: number
+  }>
 }
 
 interface TopicRecapRow {
@@ -67,6 +74,7 @@ export default function AnalyticsOverviewPage() {
   const [recap, setRecap] = useState<{ recap: TopicRecapRow[]; total: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS)
+  const [trendMode, setTrendMode] = useState<'monthly' | 'semester'>('monthly')
   const [masterData, setMasterData] = useState<{
     pillars: Array<{ id: string; name: string }>
     platforms: Array<{ id: string; name: string }>
@@ -101,6 +109,10 @@ export default function AnalyticsOverviewPage() {
       .catch(console.error)
   }, [])
 
+  // Data tren sesuai mode: Bulanan atau Semester
+  // (1 semester = 6 bulan; Semester 1 = Jan–Jun, Semester 2 = Jul–Des)
+  const trendData = trendMode === 'semester' ? data?.semesterTrend ?? [] : data?.monthlyTrend ?? []
+
   return (
     <div className="space-y-6">
       {/* Banner Penjelasan Modul */}
@@ -114,7 +126,7 @@ export default function AnalyticsOverviewPage() {
       </div>
 
       <PageHeader
-        title="Ikhtisar Analisis"
+        title="Ringkasan Analisis"
         description="Analisis mendalam performa konten dan efektivitas saluran komunikasi publik."
       />
 
@@ -247,16 +259,44 @@ export default function AnalyticsOverviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Tren Bulanan: Rencana vs Realisasi Terbit</CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base">
+                  {trendMode === 'semester'
+                    ? 'Tren Semester: Rencana vs Realisasi Terbit'
+                    : 'Tren Bulanan: Rencana vs Realisasi Terbit'}
+                </CardTitle>
+                <div
+                  className="inline-flex rounded-md border border-border bg-surface-muted p-0.5"
+                  role="group"
+                  aria-label="Mode periode tren"
+                >
+                  {(['monthly', 'semester'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setTrendMode(m)}
+                      aria-pressed={trendMode === m}
+                      className={
+                        'rounded px-3 py-1 text-xs font-medium transition-colors ' +
+                        (trendMode === m
+                          ? 'bg-surface text-primary shadow-sm'
+                          : 'text-ink-secondary hover:text-ink')
+                      }
+                    >
+                      {m === 'monthly' ? 'Bulanan' : 'Semester'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {data.monthlyTrend.length === 0 ? (
+              {trendData.length === 0 ? (
                 <p className="py-8 text-center text-sm text-ink-muted">Belum ada data</p>
               ) : (
                 <>
-                  <div role="img" aria-label="Diagram batang tren bulanan rencana vs publikasi">
+                  <div role="img" aria-label={`Diagram batang tren ${trendMode === 'semester' ? 'semester' : 'bulanan'} rencana vs publikasi`}>
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={data.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <BarChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <CartesianGrid {...GRID_PROPS} />
                         <XAxis dataKey="label" {...AXIS_PROPS} />
                         <YAxis {...AXIS_PROPS} allowDecimals={false} width={48} />
@@ -275,14 +315,14 @@ export default function AnalyticsOverviewPage() {
                     <table className="w-full">
                       <thead className="border-b bg-surface-muted">
                         <tr>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Bulan</th>
+                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">{trendMode === 'semester' ? 'Semester' : 'Bulan'}</th>
                           <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
                           <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
                           <th scope="col" className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rasio Ketercapaian</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {data.monthlyTrend.map((m) => (
+                        {trendData.map((m) => (
                           <tr key={m.label}>
                             <td className="px-4 py-2 text-sm">{m.label}</td>
                             <td className="px-4 py-2 text-right text-sm">{m.planned}</td>

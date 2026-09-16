@@ -117,6 +117,15 @@ func (h *Handler) Reports(c *gin.Context) {
 }
 
 func csvEscape(s string) string {
+	// CSV formula injection defense: cells beginning with =, +, -, @, or
+	// tab/CR are prefixed with a single quote so spreadsheet apps treat them
+	// as text rather than evaluating them as a formula (e.g. =WEBSERVICE).
+	if len(s) > 0 {
+		switch s[0] {
+		case '=', '+', '-', '@', '\t', '\r':
+			s = "'" + s
+		}
+	}
 	if strings.ContainsAny(s, ",\"\n\r") {
 		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 	}

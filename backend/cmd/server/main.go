@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 
 	"pln-backend/internal/ai"
 	"pln-backend/internal/auth"
 	"pln-backend/internal/config"
 	"pln-backend/internal/db"
 	"pln-backend/internal/handlers"
+	"pln-backend/internal/middleware"
 )
 
 func main() {
@@ -35,6 +37,15 @@ func main() {
 
 	// CORS
 	r.Use(corsMiddleware(cfg.AllowedOrigins))
+
+	// Security headers (nosniff, frame-deny, referrer policy, HSTS on TLS)
+	r.Use(middleware.SecurityHeaders())
+
+	// Request guards: cap body size (5 MB, enough for a 500-row import) and
+	// rate-limit every route per client IP to blunt probing/abuse.
+	r.Use(middleware.BodyLimit(5 << 20))
+	ipKey := func(c *gin.Context) string { return c.ClientIP() }
+	r.Use(middleware.NewRateLimiter(rate.Every(100*time.Millisecond), 50).Middleware(ipKey))
 
 	// Health
 	r.GET("/api/health", func(c *gin.Context) {
@@ -86,11 +97,23 @@ func main() {
 		authed.GET("/workflow/approval-queue", h.ApprovalQueue)
 		authed.GET("/workflow/tasks", h.MyTasks)
 
-		authed.POST("/ai/generate-content", h.AIGenerateContent)
-		authed.POST("/ai/improve-content", h.AIImproveContent)
-		authed.POST("/ai/review-content", h.AIReviewContent)
-		authed.POST("/ai/analyze-performance", h.AIAnalyzePerformance)
-		authed.POST("/ai/recommendations", h.AIRecommendations)
+		// AI endpoints hit the paid Gemini API, so they get a strict
+		// per-user quota on top of the global per-IP limit: 10 requests
+		// immediately, then 1 every 6 seconds per user.
+		userKey := func(c *gin.Context) string {
+			if u := auth.FromContext(c); u != nil {
+				return u.ID
+			}
+			return ""
+		}
+		aiGroup := authed.Group("/ai", middleware.NewRateLimiter(rate.Every(6*time.Second), 10).Middleware(userKey))
+		{
+			aiGroup.POST("/generate-content", h.AIGenerateContent)
+			aiGroup.POST("/improve-content", h.AIImproveContent)
+			aiGroup.POST("/review-content", h.AIReviewContent)
+			aiGroup.POST("/analyze-performance", h.AIAnalyzePerformance)
+			aiGroup.POST("/recommendations", h.AIRecommendations)
+		}
 
 		admin := authed.Group("/admin", auth.RequireRole("ADMIN"))
 		{

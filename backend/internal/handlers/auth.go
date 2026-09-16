@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"pln-backend/internal/ai"
@@ -37,8 +36,14 @@ func (h *Handler) Me(c *gin.Context) {
 }
 
 // POST /api/auth/logout
+//
+// NOTE: This backend uses stateless JWT (Supabase access tokens). Logout is
+// client-side only (discard the token); the token remains technically valid
+// until it expires. For full revocation, implement a server-side denylist
+// (e.g. a Redis set of revoked jti/sub values checked in the auth middleware)
+// or use Supabase's session revocation API. This is an accepted trade-off
+// for this app's current threat model; document it if the model changes.
 func (h *Handler) Logout(c *gin.Context) {
-	// Stateless JWT: client discards tokens. Respond success for API compat.
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -53,19 +58,4 @@ func requireUser(c *gin.Context) *models.Profile {
 		user.Role = "STAFF"
 	}
 	return user
-}
-
-func isTokenSubject(c *gin.Context) string {
-	header := c.GetHeader("Authorization")
-	if len(header) > 7 && header[:7] == "Bearer " {
-		token, _, err := jwt.NewParser().ParseUnverified(header[7:], jwt.MapClaims{})
-		if err == nil {
-			if claims, ok := token.Claims.(jwt.MapClaims); ok {
-				if sub, ok := claims["sub"].(string); ok {
-					return sub
-				}
-			}
-		}
-	}
-	return ""
 }

@@ -74,6 +74,37 @@ func monthLabel(key string) string {
 	return monthLabels[m-1] + " " + year[2:]
 }
 
+// semesterKey returns "YYYY-S1" or "YYYY-S2" from an ISO date string.
+// Semester 1 = January–June, Semester 2 = July–December.
+func semesterKey(dateStr string) string {
+	if len(dateStr) < 7 {
+		return dateStr
+	}
+	year := dateStr[:4]
+	m, err := strconv.Atoi(dateStr[5:7])
+	if err != nil {
+		return dateStr
+	}
+	s := "S2"
+	if m >= 1 && m <= 6 {
+		s = "S1"
+	}
+	return year + "-" + s
+}
+
+// semesterLabel returns "Semester 1 YYYY" or "Semester 2 YYYY" from a "YYYY-Sn" key.
+func semesterLabel(key string) string {
+	// key = "YYYY-Sn"
+	if len(key) < 7 {
+		return key
+	}
+	year := key[:4]
+	if key[5:7] == "S1" {
+		return "Semester 1 " + year
+	}
+	return "Semester 2 " + year
+}
+
 // --- Period Date Range helpers (Monthly & Semester Recap) ---
 
 // getPeriodDateRange returns (start, end) as ISO date strings (YYYY-MM-DD)

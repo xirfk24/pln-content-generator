@@ -36,6 +36,37 @@ LEFT JOIN categories ca ON ca.id = c.category_id
 LEFT JOIN platforms pl ON pl.id = c.platform_id
 `
 
+// canModifyContent is the ownership rule shared by all mutating endpoints:
+// ADMIN passes, other roles must be the creator. A nil createdBy (legacy
+// rows without a creator) is treated as modifiable by any authenticated user.
+func canModifyContent(role string, createdBy *string, userID string) bool {
+	if role == "ADMIN" {
+		return true
+	}
+	if createdBy == nil {
+		return true
+	}
+	return *createdBy == userID
+}
+
+// requireContentAccess enforces ownership on the content row with the given
+// id using canModifyContent. It writes the HTTP error response itself and
+// returns false when access is denied or the content does not exist.
+func (h *Handler) requireContentAccess(c *gin.Context, user *models.Profile, id string) bool {
+	var createdBy *string
+	err := h.Pool.QueryRow(c.Request.Context(),
+		"SELECT created_by FROM contents WHERE id = $1", id).Scan(&createdBy)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
+		return false
+	}
+	if !canModifyContent(user.Role, createdBy, user.ID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Anda tidak memiliki izin mengubah konten ini"})
+		return false
+	}
+	return true
+}
+
 // GET /api/contents
 func (h *Handler) ListContents(c *gin.Context) {
 	where := []string{"TRUE"}
@@ -288,7 +319,7 @@ func (h *Handler) CreateContent(c *gin.Context) {
 		cleanStr(in.BriefLink), cleanStr(in.Pic), cleanStr(in.Priority), cleanUUIDStr(in.SourceIdeaID), isSavings, cleanStr(in.SavingsReason), cleanStr(in.SavingsMonth), user.ID).Scan(&id)
 	if err != nil {
 		log.Printf("CreateContent error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan konten baru: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan konten baru"})
 		return
 	}
 
@@ -333,7 +364,7 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 	}
 
 	// Hak kepemilikan data: STAFF hanya boleh mengedit miliknya sendiri jika draft/dalam proses
-	if user.Role != "ADMIN" && createdBy != nil && *createdBy != user.ID {
+	if !canModifyContent(user.Role, createdBy, user.ID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Anda tidak memiliki izin mengedit konten milik pengguna lain"})
 		return
 	}
@@ -498,7 +529,7 @@ func (h *Handler) DeleteContent(c *gin.Context) {
 		return
 	}
 
-	if user.Role != "ADMIN" && createdBy != nil && *createdBy != user.ID {
+	if !canModifyContent(user.Role, createdBy, user.ID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Anda tidak memiliki izin menghapus konten ini"})
 		return
 	}

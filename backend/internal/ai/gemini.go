@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
+	// URL tanpa key di query — key dikirim via header x-goog-api-key
+	// supaya nggak bocor ke log (url.Error mencetak URL lengkap).
+	geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 	geminiModel    = "gemini-2.0-flash"
 	geminiTimeout  = 45 * time.Second
 )
@@ -36,8 +38,8 @@ func (g *GeminiProvider) Model() string { return geminiModel }
 // ── API wire types ──────────────────────────────────────────
 
 type geminiRequest struct {
-	Contents         []geminiContent    `json:"contents"`
-	GenerationConfig geminiGenConfig    `json:"generationConfig"`
+	Contents         []geminiContent `json:"contents"`
+	GenerationConfig geminiGenConfig `json:"generationConfig"`
 }
 
 type geminiContent struct {
@@ -85,12 +87,13 @@ func (g *GeminiProvider) callGemini(ctx context.Context, prompt string) (string,
 		return "", err
 	}
 
-	url := fmt.Sprintf(geminiEndpoint, geminiModel, g.apiKey)
+	url := fmt.Sprintf(geminiEndpoint, geminiModel)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", g.apiKey)
 
 	resp, err := g.client.Do(req)
 	if err != nil {

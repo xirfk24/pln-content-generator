@@ -10,21 +10,46 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// validFormats and validPurposes are the canonical whitelists shared by both
+// the validation endpoint (/import/validate) and the execution endpoint
+// (/import). The execute path must not trust client-supplied ParsedRowData
+// blindly, since a client can call /import directly and skip /validate.
+var validFormats = map[string]bool{
+	"Vid/Reels/Shorts": true, "Feed/Photo": true, "Carousel": true,
+	"Story": true, "Article": true, "Infographic": true,
+}
+
+var validPurposes = map[string]string{
+	"EDUCATION": "EDUCATION", "EDUKASI": "EDUCATION",
+	"ENTERTAINMENT": "ENTERTAINMENT", "HIBURAN": "ENTERTAINMENT",
+	"INSPIRATIONAL": "INSPIRATIONAL", "INSPIRASI": "INSPIRATIONAL",
+	"PROMOTION": "PROMOTION", "PROMOSI": "PROMOTION",
+	"INFORMATION": "INFORMATION", "INFORMASI": "INFORMATION",
+}
+
+var validPostingCats = map[string]string{
+	"ORIGINAL":      "ORIGINAL",
+	"REPOST_PLN_ID": "REPOST_PLN_ID", "REPOST PLN ID": "REPOST_PLN_ID",
+	"REPOST_UP3": "REPOST_UP3", "REPOST UP3": "REPOST_UP3",
+	"CAMPAIGN": "CAMPAIGN", "KAMPANYE": "CAMPAIGN",
+	"OTHER": "OTHER", "LAINNYA": "OTHER",
+}
+
 type ImportRowInput struct {
-	RowNumber       int      `json:"row_number"`
-	Title           string   `json:"title"`
-	Topic           string   `json:"topic"`
-	PlannedDate     string   `json:"planned_date"`
-	Platform        string   `json:"platform"`
-	Format          string   `json:"format"`
-	Category        string   `json:"category"`
-	Pillar          string   `json:"pillar"`
-	ContentPurpose  string   `json:"content_purpose"`
-	PostingCategory string   `json:"posting_category"`
-	PIC             string   `json:"pic"`
-	Brief           string   `json:"brief"`
-	TargetAudience  string   `json:"target_audience"`
-	Reference       string   `json:"reference"`
+	RowNumber       int    `json:"row_number"`
+	Title           string `json:"title"`
+	Topic           string `json:"topic"`
+	PlannedDate     string `json:"planned_date"`
+	Platform        string `json:"platform"`
+	Format          string `json:"format"`
+	Category        string `json:"category"`
+	Pillar          string `json:"pillar"`
+	ContentPurpose  string `json:"content_purpose"`
+	PostingCategory string `json:"posting_category"`
+	PIC             string `json:"pic"`
+	Brief           string `json:"brief"`
+	TargetAudience  string `json:"target_audience"`
+	Reference       string `json:"reference"`
 }
 
 type importError struct {
@@ -38,25 +63,25 @@ type ValidateImportInput struct {
 }
 
 type ParsedRowData struct {
-	Title           string   `json:"title"`
-	Topic           string   `json:"topic"`
-	PlannedDate     string   `json:"planned_date"`
-	PlannedWeek     int      `json:"planned_week"`
-	Day             string   `json:"day"`
-	PillarID        *string  `json:"pillar_id"`
-	PillarName      string   `json:"pillar_name"`
-	CategoryID      *string  `json:"category_id"`
-	PrimaryPlatformID *string `json:"primary_platform_id"`
-	PlatformIDs     []string `json:"platform_ids"`
-	PlatformNames   []string `json:"platform_names"`
-	Format          string   `json:"format"`
-	ContentPurpose  *string  `json:"content_purpose"`
-	ContentPurposes []string `json:"content_purposes"`
-	PostingCategory *string  `json:"posting_category"`
-	PIC             *string  `json:"pic"`
-	Brief           *string  `json:"brief"`
-	TargetAudience  *string  `json:"target_audience"`
-	Reference       *string  `json:"reference"`
+	Title             string   `json:"title"`
+	Topic             string   `json:"topic"`
+	PlannedDate       string   `json:"planned_date"`
+	PlannedWeek       int      `json:"planned_week"`
+	Day               string   `json:"day"`
+	PillarID          *string  `json:"pillar_id"`
+	PillarName        string   `json:"pillar_name"`
+	CategoryID        *string  `json:"category_id"`
+	PrimaryPlatformID *string  `json:"primary_platform_id"`
+	PlatformIDs       []string `json:"platform_ids"`
+	PlatformNames     []string `json:"platform_names"`
+	Format            string   `json:"format"`
+	ContentPurpose    *string  `json:"content_purpose"`
+	ContentPurposes   []string `json:"content_purposes"`
+	PostingCategory   *string  `json:"posting_category"`
+	PIC               *string  `json:"pic"`
+	Brief             *string  `json:"brief"`
+	TargetAudience    *string  `json:"target_audience"`
+	Reference         *string  `json:"reference"`
 }
 
 type RowValidationResult struct {
@@ -92,7 +117,7 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 
 	var in ValidateImportInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
 		return
 	}
 
@@ -109,25 +134,6 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 	platformMap, platformNamesList := h.loadPlatformMap(c.Request.Context())
 	categoryMap := h.loadNameMap("categories")
 	pillarMap, pillarNamesList := h.loadPillarMap(c.Request.Context())
-
-	validFormats := map[string]bool{
-		"Vid/Reels/Shorts": true, "Feed/Photo": true, "Carousel": true,
-		"Story": true, "Article": true, "Infographic": true,
-	}
-	validPurposes := map[string]string{
-		"EDUCATION": "EDUCATION", "EDUKASI": "EDUCATION",
-		"ENTERTAINMENT": "ENTERTAINMENT", "HIBURAN": "ENTERTAINMENT",
-		"INSPIRATIONAL": "INSPIRATIONAL", "INSPIRASI": "INSPIRATIONAL",
-		"PROMOTION": "PROMOTION", "PROMOSI": "PROMOTION",
-		"INFORMATION": "INFORMATION", "INFORMASI": "INFORMATION",
-	}
-	validPostingCats := map[string]string{
-		"ORIGINAL": "ORIGINAL",
-		"REPOST_PLN_ID": "REPOST_PLN_ID", "REPOST PLN ID": "REPOST_PLN_ID",
-		"REPOST_UP3": "REPOST_UP3", "REPOST UP3": "REPOST_UP3",
-		"CAMPAIGN": "CAMPAIGN", "KAMPANYE": "CAMPAIGN",
-		"OTHER": "OTHER", "LAINNYA": "OTHER",
-	}
 
 	// Track in-file duplicates
 	seenInFile := make(map[string]int)
@@ -402,12 +408,18 @@ func (h *Handler) ImportContents(c *gin.Context) {
 
 	var in ExecuteImportInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format payload import tidak valid: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format payload import tidak valid"})
 		return
 	}
 
 	if len(in.Rows) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data valid yang dikirim untuk diimport"})
+		return
+	}
+	// Mirror the /import/validate cap so a client hitting /import directly
+	// cannot bypass the 500-row limit.
+	if len(in.Rows) > 500 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Maksimal 500 baris data per proses import"})
 		return
 	}
 
@@ -426,6 +438,63 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			continue
 		}
 
+		// Re-validate on the execute path: a client can POST to /import
+		// directly, bypassing /import/validate, so we cannot trust
+		// ParsedRowData to contain only canonical values.
+		if _, ok := parseDateStr(row.PlannedDate); !ok {
+			skipped++
+			errs = append(errs, importError{Row: rowNum, Field: "planned_date", Message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD."})
+			continue
+		}
+		format := strings.TrimSpace(row.Format)
+		if format == "" {
+			format = "Carousel"
+		} else if !validFormats[format] {
+			skipped++
+			errs = append(errs, importError{Row: rowNum, Field: "format", Message: fmt.Sprintf("Format konten '%s' tidak valid", format)})
+			continue
+		}
+		var contentPurpose *string
+		if row.ContentPurpose != nil {
+			cp := strings.TrimSpace(*row.ContentPurpose)
+			if cp != "" {
+				canon, ok := validPurposes[strings.ToUpper(cp)]
+				if !ok {
+					skipped++
+					errs = append(errs, importError{Row: rowNum, Field: "content_purpose", Message: fmt.Sprintf("Tujuan konten '%s' tidak valid", cp)})
+					continue
+				}
+				canonPtr := canon
+				contentPurpose = &canonPtr
+			}
+		}
+		var postingCategory *string
+		if row.PostingCategory != nil {
+			pc := strings.TrimSpace(*row.PostingCategory)
+			if pc != "" {
+				canon, ok := validPostingCats[strings.ToUpper(pc)]
+				if !ok {
+					skipped++
+					errs = append(errs, importError{Row: rowNum, Field: "posting_category", Message: fmt.Sprintf("Kategori posting '%s' tidak valid", pc)})
+					continue
+				}
+				canonPtr := canon
+				postingCategory = &canonPtr
+			}
+		}
+		// Resolve pillar/category/platform by ID or name — do not persist
+		// raw client-supplied UUIDs (may be foreign keys to other tenants'
+		// rows or simply invalid).
+		resolvedPillar := h.resolvePillarID(c.Request.Context(), row.PillarID)
+		resolvedCategory := h.resolveCategoryID(c.Request.Context(), row.CategoryID)
+		resolvedPrimaryPlatform := h.resolvePlatformID(c.Request.Context(), row.PrimaryPlatformID)
+		var resolvedPlatformIDs []string
+		for _, pid := range row.PlatformIDs {
+			if res := h.resolvePlatformID(c.Request.Context(), &pid); res != nil {
+				resolvedPlatformIDs = append(resolvedPlatformIDs, *res)
+			}
+		}
+
 		// Re-check duplicate in DB
 		var count int
 		_ = h.Pool.QueryRow(c.Request.Context(),
@@ -435,11 +504,6 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			skipped++
 			errs = append(errs, importError{Row: rowNum, Field: "title", Message: fmt.Sprintf("Duplikat: '%s' pada %s sudah ada di database", title, row.PlannedDate)})
 			continue
-		}
-
-		format := row.Format
-		if format == "" {
-			format = "Carousel"
 		}
 
 		var plannedDate *string
@@ -457,7 +521,7 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			}
 		}
 
-		platformIDs := row.PlatformIDs
+		platformIDs := resolvedPlatformIDs
 		if platformIDs == nil {
 			platformIDs = []string{}
 		}
@@ -476,15 +540,15 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				reference, pic, created_by, status
 			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'DRAFT')
 			RETURNING id
-		`, title, topic, cleanUUIDStr(row.PillarID), cleanUUIDStr(row.CategoryID), cleanUUIDStr(row.PrimaryPlatformID), platformIDs, format,
-			cleanStr(row.Brief), cleanStr(row.ContentPurpose), contentPurposes, cleanStr(row.PostingCategory), cleanStr(row.TargetAudience),
+		`, title, topic, resolvedPillar, resolvedCategory, resolvedPrimaryPlatform, platformIDs, format,
+			cleanStr(row.Brief), contentPurpose, contentPurposes, postingCategory, cleanStr(row.TargetAudience),
 			plannedDate, plannedWeek, dayStr,
 			cleanStr(row.Reference), cleanStr(row.PIC), user.ID).Scan(&insertedID)
 
 		if err != nil {
 			log.Printf("Import row %d insert error: %v", rowNum, err)
 			skipped++
-			errs = append(errs, importError{Row: rowNum, Field: "general", Message: "Gagal menyimpan baris ke database: " + err.Error()})
+			errs = append(errs, importError{Row: rowNum, Field: "general", Message: "Gagal menyimpan baris ke database"})
 			continue
 		}
 

@@ -6,6 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// masterTables is the fixed whitelist of tables the generic master-data CRUD
+// may touch. The `table` argument comes from route closures in main.go (not
+// user input), but validating it here is defense-in-depth: a future code
+// change that passes user-controlled input would otherwise allow SQL
+// injection via table-name concatenation.
+var masterTables = map[string]bool{
+	"categories": true,
+	"pillars":    true,
+	"platforms":  true,
+}
+
+func validMasterTable(table string) bool {
+	return masterTables[table]
+}
+
 type masterInput struct {
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
@@ -18,6 +33,10 @@ type masterInput struct {
 // conditionally include/exclude both columns based on flags.
 func (h *Handler) ListMaster(table string, hasIcon bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !validMasterTable(table) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid master table"})
+			return
+		}
 		// platforms: id, name, icon, created_at (no description)
 		// categories/pillars: id, name, description, created_at (no icon)
 		cols := "id, name, description, created_at"
@@ -60,6 +79,10 @@ func (h *Handler) ListMaster(table string, hasIcon bool) gin.HandlerFunc {
 
 func (h *Handler) CreateMaster(table string, hasIcon bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !validMasterTable(table) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid master table"})
+			return
+		}
 		var in masterInput
 		if err := c.ShouldBindJSON(&in); err != nil || in.Name == nil || *in.Name == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
@@ -95,6 +118,10 @@ func (h *Handler) CreateMaster(table string, hasIcon bool) gin.HandlerFunc {
 
 func (h *Handler) UpdateMaster(table string, hasIcon bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !validMasterTable(table) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid master table"})
+			return
+		}
 		id := c.Param("id")
 		var in masterInput
 		if err := c.ShouldBindJSON(&in); err != nil {
@@ -136,6 +163,10 @@ func (h *Handler) UpdateMaster(table string, hasIcon bool) gin.HandlerFunc {
 
 func (h *Handler) DeleteMaster(table string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !validMasterTable(table) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid master table"})
+			return
+		}
 		id := c.Param("id")
 		res, err := h.Pool.Exec(h.ctx(), "DELETE FROM "+table+" WHERE id = $1", id)
 		if err != nil || res.RowsAffected() == 0 {
@@ -181,11 +212,21 @@ type updateUserInput struct {
 	FullName *string `json:"full_name"`
 }
 
+// validRoles is the fixed set of profile roles an admin may assign.
+var validRoles = map[string]bool{
+	"ADMIN": true,
+	"STAFF": true,
+}
+
 // PUT /api/admin/users
 func (h *Handler) UpdateUser(c *gin.Context) {
 	var in updateUserInput
 	if err := c.ShouldBindJSON(&in); err != nil || in.UserID == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required"})
+		return
+	}
+	if in.Role != nil && !validRoles[*in.Role] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Role tidak valid. Gunakan ADMIN atau STAFF"})
 		return
 	}
 
