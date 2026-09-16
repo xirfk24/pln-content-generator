@@ -96,10 +96,7 @@ export function ContentPlanningCharts({
   const statusData = useMemo(() => {
     const keys = ['DRAFT', 'IN_PROGRESS', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED']
     return keys.map((key) => {
-      const count = contents.filter((c) => {
-        if (key === 'DRAFT') return c.status === 'DRAFT' || c.status === 'PLANNED'
-        return c.status === key
-      }).length
+      const count = contents.filter((c) => c.status === key).length
       return {
         key,
         name: STATUS_LABELS[key] || key,
@@ -134,7 +131,7 @@ export function ContentPlanningCharts({
   // 3. Ringkasan Metrik Operasional Tambahan
   const operationalMetrics = useMemo(() => {
     const inProgressCount = contents.filter((c) => c.status === 'IN_PROGRESS').length
-    const draftCount = contents.filter((c) => c.status === 'DRAFT' || c.status === 'PLANNED').length
+    const draftCount = contents.filter((c) => c.status === 'DRAFT').length
     const publishedCount = contents.filter((c) => c.status === 'PUBLISHED').length
     const notRealizedCount = contents.filter((c) => c.status === 'NOT_REALIZED').length
     const rescheduledCount = contents.filter((c) => c.status === 'RESCHEDULED').length

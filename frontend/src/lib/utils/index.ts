@@ -24,7 +24,7 @@ export function formatDateWithDay(date: string | Date | null | undefined): strin
   const dayName = INDO_DAYS[d.getDay()]
   const dateFormatted = d.toLocaleDateString('id-ID', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric',
   })
   return `${dayName}, ${dateFormatted}`

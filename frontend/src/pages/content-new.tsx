@@ -534,7 +534,7 @@ function NewContentForm() {
                     Menyimpan...
                   </>
                 ) : (
-                  'Simpan Rencana Konten'
+                  'Simpan sebagai Draft'
                 )}
               </Button>
             </div>

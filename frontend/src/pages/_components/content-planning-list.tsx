@@ -182,12 +182,7 @@ export default function ContentPlanningList() {
 
     // 2. Status
     if (statusFilter) {
-      list = list.filter((item) => {
-        if (statusFilter === 'DRAFT') {
-          return item.status === 'DRAFT' || item.status === 'PLANNED'
-        }
-        return item.status === statusFilter
-      })
+      list = list.filter((item) => item.status === statusFilter)
     }
 
     // 3. Pillar

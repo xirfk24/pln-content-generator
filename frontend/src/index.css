@@ -66,13 +66,27 @@
   --shadow-lg: 0 10px 20px -6px rgb(17 24 39 / 0.10);
 
   /* ──────────────────────────────────────
-     Typography
+     Typography Design System (Poppins)
      ────────────────────────────────────── */
-  --font-size-base: 14px;
-  --font-size-sm: 13px;
-  --font-size-xs: 12px;
-  --font-size-card-title: 15px;
+  --font-family-base: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-size-micro: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 14px;
+  --font-size-card-title: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 28px;
+
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
   --line-tight: 1.25;
   --line-snug: 1.375;
   --line-normal: 1.5;
@@ -80,16 +94,26 @@
 }
 
 html {
-  font-family: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-family-base);
 }
 
 body {
+  font-family: var(--font-family-base);
   color: var(--text);
   background: var(--background);
   font-size: var(--font-size-base);
   line-height: var(--line-normal);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+input,
+button,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
 }
 
 * {

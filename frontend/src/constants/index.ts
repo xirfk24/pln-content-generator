@@ -20,7 +20,6 @@ export const CONTENT_STATUSES: ContentStatus[] = [
 
 export const CONTENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft',
-  PLANNED: 'Direncanakan',
   IN_PROGRESS: 'Dalam Proses',
   PENDING_REVIEW: 'Menunggu Persetujuan',
   REVISION_REQUIRED: 'Perlu Revisi',
@@ -34,7 +33,6 @@ export const CONTENT_STATUS_LABELS: Record<string, string> = {
 
 export const CONTENT_STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  PLANNED: 'bg-blue-50 text-blue-700 border-blue-200',
   IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
   PENDING_REVIEW: 'bg-purple-50 text-purple-700 border-purple-200',
   REVISION_REQUIRED: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -49,12 +47,12 @@ export const CONTENT_STATUS_COLORS: Record<string, string> = {
 export const PUBLICATION_STATUSES: PublicationStatus[] = ['PLANNED', 'PUBLISHED', 'DELAYED', 'CANCELLED']
 
 export const PUBLICATION_STATUS_LABELS: Record<string, string> = {
-  PLANNED: 'Direncanakan',
-  PUBLISHED: 'Dipublikasikan',
-  DELAYED: 'Tertunda',
-  DELAY: 'Tertunda',
-  CANCELLED: 'Dibatalkan',
-  CANCEL: 'Dibatalkan',
+  PLANNED: 'Belum Ditayangkan',
+  PUBLISHED: 'Sudah Ditayangkan',
+  DELAYED: 'Terlambat',
+  DELAY: 'Terlambat',
+  CANCELLED: 'Tidak Jadi Ditayangkan',
+  CANCEL: 'Tidak Jadi Ditayangkan',
 }
 
 export const PUBLICATION_STATUS_COLORS: Record<string, string> = {

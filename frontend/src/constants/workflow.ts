@@ -5,7 +5,6 @@ import type { UserRole, ContentStatus, ApprovalAction } from '@/types'
  */
 export const STATUS_TRANSITIONS: Record<ContentStatus, ContentStatus[]> = {
   DRAFT: ['IN_PROGRESS', 'PENDING_REVIEW', 'NOT_REALIZED'],
-  PLANNED: ['DRAFT', 'IN_PROGRESS', 'PENDING_REVIEW', 'NOT_REALIZED'],
   IN_PROGRESS: ['PENDING_REVIEW', 'RESCHEDULED', 'NOT_REALIZED'],
   PENDING_REVIEW: ['IN_PROGRESS', 'REVISION_REQUIRED', 'APPROVED'],
   REVISION_REQUIRED: ['IN_PROGRESS', 'PENDING_REVIEW', 'NOT_REALIZED'],
@@ -39,7 +38,7 @@ export const WORKFLOW_ACTIONS: Record<
   SUBMITTED: {
     label: 'Ajukan untuk Ditinjau',
     allowedRoles: ['ADMIN', 'STAFF'],
-    allowedFromStatuses: ['DRAFT', 'PLANNED', 'IN_PROGRESS'],
+    allowedFromStatuses: ['DRAFT', 'IN_PROGRESS'],
     toStatus: 'PENDING_REVIEW',
     requiresComment: false,
   },

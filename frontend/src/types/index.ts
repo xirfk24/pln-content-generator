@@ -2,7 +2,6 @@ export type UserRole = 'ADMIN' | 'STAFF'
 
 export type ContentStatus =
   | 'DRAFT'
-  | 'PLANNED'
   | 'IN_PROGRESS'
   | 'PENDING_REVIEW'
   | 'REVISION_REQUIRED'
@@ -134,6 +133,7 @@ export interface Publication {
     topic: string
     status: string
     pic: string | null
+    pillar_name?: string | null
   }
   performance_metrics?: PerformanceMetric[]
 }
@@ -165,7 +165,8 @@ export interface ApprovalHistory {
 
 export interface DashboardStats {
   totalContent: number
-  planned: number
+  draft: number
+  planned?: number // backward compatibility
   inProgress: number
   pendingReview: number
   approved: number

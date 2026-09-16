@@ -383,7 +383,7 @@ export default function RecapPage() {
           {/* --- Summary KPI Cards --- */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
-              label="Direncanakan"
+              label="Total Rencana"
               value={data.summary.planned}
               icon={<BarChart3 className="h-5 w-5" />}
               color="text-ink-secondary"

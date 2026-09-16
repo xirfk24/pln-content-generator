@@ -52,7 +52,7 @@ export default function EditContentPage() {
     posting_category: '',
   })
 
-  const isLocked = ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(contentStatus)
+  const isLocked = ['PENDING_REVIEW', 'APPROVED', 'READY_TO_PUBLISH', 'PUBLISHED'].includes(contentStatus)
 
   useEffect(() => {
     apiFetch('/api/master-data')

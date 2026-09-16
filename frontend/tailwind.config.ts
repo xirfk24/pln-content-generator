@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["'Poppins'", 'var(--font-family-base)', '-apple-system', 'BlinkMacSystemFont', "'Segoe UI'", 'Roboto', 'sans-serif'],
+        poppins: ["'Poppins'", 'sans-serif'],
+      },
       colors: {
         /* ── Surfaces ── */
         background: "var(--background)",

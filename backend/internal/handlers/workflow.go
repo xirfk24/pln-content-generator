@@ -33,7 +33,7 @@ var workflowActions = map[string]workflowActionDef{
 	"SUBMITTED": {
 		Label:               "Ajukan untuk Ditinjau",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"DRAFT", "PLANNED", "IN_PROGRESS"},
+		AllowedFromStatuses: []string{"DRAFT", "IN_PROGRESS"},
 		ToStatus:            "PENDING_REVIEW",
 		RequiresComment:     false,
 	},
@@ -243,7 +243,7 @@ func (h *Handler) MyTasks(c *gin.Context) {
 	submitted := []models.Content{}
 	for _, ct := range contents {
 		switch ct.Status {
-		case "DRAFT", "PLANNED", "IN_PROGRESS":
+		case "DRAFT", "IN_PROGRESS":
 			drafts = append(drafts, ct)
 		case "REVISION_REQUIRED":
 			revisions = append(revisions, ct)

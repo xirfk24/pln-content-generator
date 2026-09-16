@@ -96,11 +96,12 @@ type Publication struct {
 }
 
 type PublicationContent struct {
-	ID     string  `json:"id"`
-	Title  string  `json:"title"`
-	Topic  string  `json:"topic"`
-	Status string  `json:"status"`
-	Pic    *string `json:"pic"`
+	ID         string  `json:"id"`
+	Title      string  `json:"title"`
+	Topic      string  `json:"topic"`
+	Status     string  `json:"status"`
+	Pic        *string `json:"pic"`
+	PillarName *string `json:"pillar_name,omitempty"`
 }
 
 type PerformanceMetric struct {

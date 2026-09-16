@@ -277,10 +277,12 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 	}
 	publishedCount := len(publishedByContent)
 
+	draftCount := statusCount["DRAFT"] + statusCount["PLANNED"]
 	return gin.H{
 		"content": gin.H{
 			"total":             total,
-			"planned":           statusCount["PLANNED"],
+			"draft":             draftCount,
+			"planned":           draftCount, // backward compatibility
 			"inProgress":        statusCount["IN_PROGRESS"],
 			"pendingReview":     statusCount["PENDING_REVIEW"],
 			"approved":          statusCount["APPROVED"],

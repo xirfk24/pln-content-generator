@@ -171,7 +171,7 @@ export default function AnalyticsOverviewPage() {
                             cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
                             content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                           />
-                          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8, fontFamily: "'Poppins', sans-serif" }} />
                           <Bar dataKey="views" name="Penayangan" fill={CHART_COLORS.primary} radius={[3, 3, 0, 0]} />
                           <Bar dataKey="likes" name="Suka" fill={CHART_COLORS.danger} radius={[3, 3, 0, 0]} />
                           <Bar dataKey="shares" name="Bagikan" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
@@ -304,8 +304,8 @@ export default function AnalyticsOverviewPage() {
                           cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
                           content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                         />
-                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                        <Bar dataKey="planned" name="Direncanakan" fill={CHART_COLORS.neutral} radius={[3, 3, 0, 0]} />
+                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8, fontFamily: "'Poppins', sans-serif" }} />
+                        <Bar dataKey="planned" name="Rencana Konten" fill={CHART_COLORS.neutral} radius={[3, 3, 0, 0]} />
                         <Bar dataKey="published" name="Diterbitkan" fill={CHART_COLORS.success} radius={[3, 3, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>

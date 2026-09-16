@@ -100,9 +100,12 @@ func (h *Handler) ListContents(c *gin.Context) {
 		where = append(where, "(c.category_id::TEXT = $"+idx+" OR LOWER(ca.name) = LOWER($"+idx+"))")
 	}
 	if v := c.Query("status"); v != "" {
+		if v == "PLANNED" {
+			v = "DRAFT"
+		}
 		args = append(args, v)
 		idx := itoa(len(args))
-		where = append(where, "(c.status = $"+idx+" OR ($"+idx+" = 'DRAFT' AND c.status IN ('DRAFT', 'PLANNED')))")
+		where = append(where, "(c.status = $"+idx+" OR ($"+idx+" = 'DRAFT' AND c.status = 'PLANNED'))")
 	}
 	if v := c.Query("date_from"); v != "" {
 		args = append(args, v)
@@ -355,8 +358,8 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		return
 	}
 
-	// ATURAN PENGUNCIAN: Status Menunggu Persetujuan, Disetujui, dan Dipublikasikan TIDAK boleh diedit
-	if currentStatus == "PENDING_REVIEW" || currentStatus == "APPROVED" || currentStatus == "PUBLISHED" {
+	// ATURAN PENGUNCIAN: Status Menunggu Persetujuan, Disetujui, Siap Publikasi, dan Dipublikasikan TIDAK boleh diedit
+	if currentStatus == "PENDING_REVIEW" || currentStatus == "APPROVED" || currentStatus == "READY_TO_PUBLISH" || currentStatus == "PUBLISHED" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "Konten dengan status '" + currentStatus + "' terkunci dari pengeditan data utama.",
 		})

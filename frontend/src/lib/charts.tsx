@@ -40,7 +40,7 @@ export const CATEGORY_COLORS = [
 
 /** Shared axis/label styling so every chart reads at the same size */
 export const AXIS_PROPS = {
-  tick: { fontSize: 12, fill: '#4b5563' },
+  tick: { fontSize: 12, fill: '#4b5563', fontFamily: "'Poppins', sans-serif" },
   axisLine: { stroke: '#e5e7eb' },
   tickLine: false as const,
 } as const
@@ -57,6 +57,7 @@ const tooltipStyle: CSSProperties = {
   borderRadius: '8px',
   boxShadow: '0 4px 12px -2px rgb(17 24 39 / 0.08)',
   fontSize: '13px',
+  fontFamily: "'Poppins', sans-serif",
   padding: '8px 12px',
 }
 

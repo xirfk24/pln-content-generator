@@ -179,6 +179,7 @@ function renderSliceLabel(props: SliceLabelProps) {
       dominantBaseline="central"
       fontSize={11}
       fontWeight={600}
+      fontFamily="'Poppins', sans-serif"
     >
       {`${pct.toFixed(1)}%`}
     </text>
@@ -683,7 +684,7 @@ export default function DashboardPage() {
                             verticalAlign="middle"
                             iconType="circle"
                             iconSize={8}
-                            wrapperStyle={{ fontSize: 12, paddingLeft: 8 }}
+                            wrapperStyle={{ fontSize: 12, paddingLeft: 8, fontFamily: "'Poppins', sans-serif" }}
                             formatter={(value: string) => {
                               const item = data.platformPerformance.find((p) => p.platform === value)
                               const pct =
@@ -729,13 +730,13 @@ export default function DashboardPage() {
                         <Tooltip
                           content={(props) => <ChartTooltip {...props} formatter={formatNumber} />}
                         />
-                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8, fontFamily: "'Poppins', sans-serif" }} />
                         <Line
                           yAxisId="left"
                           type="monotone"
                           dataKey="planned"
                           stroke={CHART_COLORS.neutral}
-                          name="Direncanakan"
+                          name="Rencana Konten"
                           strokeWidth={2}
                           strokeDasharray="5 4"
                           dot={false}

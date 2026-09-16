@@ -282,9 +282,10 @@ export function PlatformCluster({
 
   const displayList = maxDisplay ? resolvedNames.slice(0, maxDisplay) : resolvedNames
   const remainingCount = maxDisplay && resolvedNames.length > maxDisplay ? resolvedNames.length - maxDisplay : 0
+  const remainingNames = remainingCount > 0 ? resolvedNames.slice(maxDisplay).join(', ') : ''
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-1', className)}>
+    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {displayList.map((p) =>
         showText ? (
           <PlatformBadge key={p} name={p} size={size} />
@@ -293,8 +294,11 @@ export function PlatformCluster({
         )
       )}
       {remainingCount > 0 && (
-        <span className="text-[10px] font-semibold text-ink-muted">
-          +{remainingCount}
+        <span
+          className="inline-flex items-center rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink-secondary border border-border/60 hover:text-ink cursor-help"
+          title={`Platform lainnya: ${remainingNames}`}
+        >
+          +{remainingCount} platform
         </span>
       )}
     </div>

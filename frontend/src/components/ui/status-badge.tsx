@@ -26,7 +26,6 @@ const CONTENT_MAP: Record<
   { variant: Variant; icon: LucideIcon; label: string }
 > = {
   DRAFT: { variant: 'secondary', icon: CircleDashed, label: CONTENT_STATUS_LABELS.DRAFT },
-  PLANNED: { variant: 'info', icon: CalendarClock, label: CONTENT_STATUS_LABELS.PLANNED },
   IN_PROGRESS: { variant: 'warning', icon: Loader, label: CONTENT_STATUS_LABELS.IN_PROGRESS },
   PENDING_REVIEW: { variant: 'warning', icon: ClipboardList, label: CONTENT_STATUS_LABELS.PENDING_REVIEW },
   REVISION_REQUIRED: { variant: 'error', icon: RotateCcw, label: CONTENT_STATUS_LABELS.REVISION_REQUIRED },

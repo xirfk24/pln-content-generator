@@ -448,10 +448,12 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		SELECT p.id, p.content_id, p.platform_id, p.planned_publish_date::TEXT, p.actual_publish_date::TEXT,
 		       p.url, p.status, p.notes, p.cancel_reason, p.created_at, p.updated_at,
 		       pl.id, pl.name, pl.icon, pl.created_at,
-		       c.id, c.title, c.topic, c.status, c.pic
+		       c.id, c.title, c.topic, c.status, c.pic,
+		       pil.name
 		FROM publications p
 		LEFT JOIN platforms pl ON pl.id = p.platform_id
 		LEFT JOIN contents c ON c.id = p.content_id
+		LEFT JOIN pillars pil ON pil.id = c.pillar_id
 		WHERE `+where+`
 		ORDER BY p.planned_publish_date ASC`, args...)
 	if err != nil {
@@ -467,11 +469,11 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		var plID, plName, plIcon *string
 		var plCreated *timeDb
 		var cID, cTitle, cTopic, cStatus *string
-		var cPic, cancelReason *string
+		var cPic, cancelReason, pilName *string
 		if err := rows.Scan(&p.ID, &p.ContentID, &p.PlatformID, &p.PlannedPublishDate, &p.ActualPublishDate,
 			&p.URL, &p.Status, &p.Notes, &cancelReason, &p.CreatedAt, &p.UpdatedAt,
 			&plID, &plName, &plIcon, &plCreated,
-			&cID, &cTitle, &cTopic, &cStatus, &cPic); err != nil {
+			&cID, &cTitle, &cTopic, &cStatus, &cPic, &pilName); err != nil {
 			log.Printf("queryPublicationsWithContent scan error: %v", err)
 			continue
 		}
@@ -480,7 +482,14 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 			p.Platform = &models.Platform{ID: *plID, Name: derefString(plName), Icon: plIcon, CreatedAt: derefTime(plCreated)}
 		}
 		if cID != nil {
-			p.Content = &models.PublicationContent{ID: *cID, Title: derefString(cTitle), Topic: derefString(cTopic), Status: derefString(cStatus), Pic: cPic}
+			p.Content = &models.PublicationContent{
+				ID:         *cID,
+				Title:      derefString(cTitle),
+				Topic:      derefString(cTopic),
+				Status:     derefString(cStatus),
+				Pic:        cPic,
+				PillarName: pilName,
+			}
 		}
 		out = append(out, p)
 		ids = append(ids, p.ID)
