@@ -36,7 +36,16 @@ function RequireAuth({ children }: { children: ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getSession().then(({ data }) => {
-      setAuthed(Boolean(data.session))
+      // getSession() returns a session even when the access token is expired.
+      // Supabase auto-refreshes on the next API call, but if the refresh
+      // token itself is expired (or the user was signed out server-side),
+      // we'd briefly render the dashboard with a dead session. Validate
+      // the expiry here so a stale session is treated as unauthenticated.
+      const session = data.session
+      const isValid = session && session.expires_at
+        ? session.expires_at * 1000 > Date.now()
+        : false
+      setAuthed(isValid)
       setChecking(false)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {

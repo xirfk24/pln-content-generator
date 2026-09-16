@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from '@/compat/next'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,34 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Already signed in (session persists in the sb-* auth cookie)? Go straight
+  // to the dashboard instead of showing the login form again.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session
+      const isValid = session && session.expires_at
+        ? session.expires_at * 1000 > Date.now()
+        : false
+      if (isValid) {
+        router.replace('/dashboard')
+        return
+      }
+      setChecking(false)
+    })
+  }, [supabase, router])
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-ink-secondary">Loading...</p>
+      </div>
+    )
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
