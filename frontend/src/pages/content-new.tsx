@@ -461,16 +461,19 @@ function NewContentForm() {
               />
             </div>
 
-            {/* Link Brief Pendukung */}
+            {/* Tautan Google Drive / Canva */}
             <div className="space-y-2">
-              <Label htmlFor="brief_link">Tautan Brief / File Pendukung (Opsional)</Label>
+              <Label htmlFor="brief_link">Tautan Google Drive / Canva (Opsional)</Label>
               <Input
                 id="brief_link"
                 type="url"
                 value={form.brief_link}
                 onChange={(e) => setForm({ ...form, brief_link: e.target.value })}
-                placeholder="https://drive.google.com/..."
+                placeholder="https://drive.google.com/... atau https://canva.com/..."
               />
+              <p className="text-[11px] text-ink-muted">
+                Tautan materi, brief, atau file desain konten (opsional, dapat diisi saat pengajuan maupun setelah selesai produksi)
+              </p>
             </div>
 
             {/* Tombol Simpan */}

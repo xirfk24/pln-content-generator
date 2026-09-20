@@ -345,7 +345,7 @@ export default function ContentDetailPage() {
                 {content.brief_link && (
                   <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-                      Tautan Brief / Konsep
+                      Tautan Google Drive / Canva
                     </p>
                     <a
                       href={content.brief_link}

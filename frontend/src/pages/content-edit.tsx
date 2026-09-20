@@ -458,14 +458,17 @@ export default function EditContentPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="brief_link">Link Desain / File Pendukung (Opsional)</Label>
+              <Label htmlFor="brief_link">Tautan Google Drive / Canva (Opsional)</Label>
               <Input
                 id="brief_link"
                 value={form.brief_link}
                 onChange={(e) => setForm({ ...form, brief_link: e.target.value })}
                 disabled={isLocked}
-                placeholder="https://canva.com/... atau Drive"
+                placeholder="https://drive.google.com/... atau https://canva.com/..."
               />
+              <p className="text-[11px] text-ink-muted">
+                Tautan materi, brief, atau file desain konten (opsional, dapat diisi saat pengajuan maupun setelah selesai produksi)
+              </p>
             </div>
 
             {/* AI Improvement Panel (hanya jika belum terkunci) */}

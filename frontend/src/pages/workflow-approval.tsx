@@ -160,7 +160,7 @@ export default function ApprovalPage() {
                                 className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
-                                <span>Tautan Brief: {content.brief_link}</span>
+                                <span>Tautan Google Drive / Canva: {content.brief_link}</span>
                               </a>
                             </div>
                           )}
