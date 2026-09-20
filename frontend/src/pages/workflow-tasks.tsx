@@ -161,8 +161,8 @@ export default function MyTasksPage() {
     },
     {
       key: 'drafts' as const,
-      title: 'Draf & Dalam Pengerjaan',
-      description: 'Konten berstatus draf atau sedang aktif Anda susun.',
+      title: 'Draft',
+      description: 'Konten berstatus draft atau dalam pengerjaan yang belum diajukan ke reviewer.',
       icon: FileEdit,
       iconColor: 'text-primary',
       badgeColor: 'bg-blue-100 text-blue-800',

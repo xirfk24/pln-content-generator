@@ -69,8 +69,19 @@ func (h *Handler) requireContentAccess(c *gin.Context, user *models.Profile, id 
 
 // GET /api/contents
 func (h *Handler) ListContents(c *gin.Context) {
+	user := requireUser(c)
+	if user == nil {
+		return
+	}
+
 	where := []string{"TRUE"}
 	args := []any{}
+
+	// Data privacy: STAFF users only see their own content
+	if user.Role != "ADMIN" {
+		args = append(args, user.ID)
+		where = append(where, "c.created_by = $"+itoa(len(args)))
+	}
 
 	// Tabungan filter
 	if c.Query("is_savings") == "true" || c.Query("tabungan") == "true" {

@@ -106,8 +106,6 @@ export const CONTENT_PURPOSE_LABELS: Record<string, string> = {
 
 export const POSTING_CATEGORIES = [
   'ORIGINAL',
-  'REPOST_PLN_ID',
-  'REPOST_UP3',
   'CAMPAIGN',
   'OTHER',
 ] as const

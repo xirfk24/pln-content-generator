@@ -13,8 +13,6 @@ import {
   CONTENT_FORMATS,
   CONTENT_PRIORITIES,
   CONTENT_PRIORITY_LABELS,
-  CONTENT_PURPOSES,
-  CONTENT_PURPOSE_LABELS,
   POSTING_CATEGORIES,
   POSTING_CATEGORY_LABELS,
   PLN_TOPIC_OPTIONS,
@@ -58,7 +56,6 @@ function NewContentForm() {
     brief_link: '',
     pic: '',
     priority: 'MEDIUM',
-    content_purposes: [] as string[],
     posting_category: '',
   })
 
@@ -87,17 +84,7 @@ function NewContentForm() {
     return found ? found.name : ''
   }, [pillars, form.pillar_id])
 
-  function togglePurpose(purposeKey: string) {
-    setForm((prev) => {
-      const exists = prev.content_purposes.includes(purposeKey)
-      return {
-        ...prev,
-        content_purposes: exists
-          ? prev.content_purposes.filter((p) => p !== purposeKey)
-          : [...prev.content_purposes, purposeKey],
-      }
-    })
-  }
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -132,7 +119,6 @@ function NewContentForm() {
       brief_link: form.brief_link.trim() || null,
       pic: form.pic.trim() || null,
       priority: form.priority || 'MEDIUM',
-      content_purposes: form.content_purposes,
       posting_category: form.posting_category || null,
     }
 
@@ -375,39 +361,7 @@ function NewContentForm() {
               </div>
             </div>
 
-            {/* SEKSI 3: TUJUAN KONTEN (CONTENT PURPOSE - Di Atas Target Platform) */}
-            <div className="space-y-2 rounded-xl border p-4 bg-slate-50/50 dark:bg-slate-900/20">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold uppercase tracking-wider text-ink">
-                  Tujuan Konten (Content Purpose)
-                </Label>
-                <span className="text-xs text-ink-muted">
-                  Pilih satu atau beberapa tujuan komunikasi
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {CONTENT_PURPOSES.map((purposeKey) => {
-                  const isSelected = form.content_purposes.includes(purposeKey)
-                  return (
-                    <button
-                      key={purposeKey}
-                      type="button"
-                      onClick={() => togglePurpose(purposeKey)}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-300 dark:ring-indigo-900'
-                          : 'bg-white text-ink border-border hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700'
-                      }`}
-                    >
-                      {CONTENT_PURPOSE_LABELS[purposeKey]}
-                      {isSelected && <span>✓</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* SEKSI 4: TARGET PLATFORM BERBASIS IKON VISUAL */}
+            {/* SEKSI 3: TARGET PLATFORM BERBASIS IKON VISUAL */}
             <div className="space-y-3 rounded-xl border p-4 bg-slate-50/50 dark:bg-slate-900/20">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold uppercase tracking-wider text-ink">
@@ -419,7 +373,9 @@ function NewContentForm() {
               </div>
 
               <PlatformSelector
-                platforms={platforms}
+                platforms={platforms.filter(
+                  (p) => !['website', 'linkedin'].includes(p.name.toLowerCase())
+                )}
                 selectedIds={form.platform_ids}
                 onChange={(newIds) => setForm({ ...form, platform_ids: newIds })}
               />
