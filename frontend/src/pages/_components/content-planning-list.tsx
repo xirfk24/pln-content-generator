@@ -25,7 +25,19 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  AlertCircle,
+  BookmarkCheck,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import Link from '@/compat/next'
 import { formatDateWithDay, getWeekOfMonth } from '@/lib/utils'
 import { SkeletonTable } from '@/components/ui/skeleton'
@@ -239,26 +251,41 @@ export default function ContentPlanningList() {
   const endIndex = Math.min(startIndex + pageSize, totalItems)
   const paginatedContents = filteredContents.slice(startIndex, endIndex)
 
-  async function handleMoveToTabungan(content: Content) {
+  const [tabunganTarget, setTabunganTarget] = useState<Content | null>(null)
+  const [tabunganReason, setTabunganReason] = useState('')
+  const [tabunganLoading, setTabunganLoading] = useState(false)
+  const [tabunganError, setTabunganError] = useState<string | null>(null)
+
+  function openMoveToTabungan(content: Content) {
     setActiveMenuId(null)
-    const reason = prompt(`Masukkan alasan pemindahan "${content.title}" ke Konten Tabungan:`)
-    if (reason === null) return
+    setTabunganTarget(content)
+    setTabunganReason('')
+    setTabunganError(null)
+  }
+
+  async function handleConfirmMoveToTabungan() {
+    if (!tabunganTarget) return
+    setTabunganLoading(true)
+    setTabunganError(null)
 
     try {
-      const res = await apiFetch(`/api/tabungan/${content.id}/save`, {
+      const res = await apiFetch(`/api/tabungan/${tabunganTarget.id}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason || 'Dipindahkan dari Rencana Konten' }),
+        body: JSON.stringify({ reason: tabunganReason.trim() || 'Dipindahkan dari Rencana Konten' }),
       })
       if (res.ok) {
+        setTabunganTarget(null)
         loadContents()
       } else {
         const d = await res.json()
-        alert(d.error || 'Gagal memindahkan ke Konten Tabungan')
+        setTabunganError(d.error || 'Gagal memindahkan ke Konten Tabungan')
       }
     } catch (e) {
       console.error(e)
-      alert('Terjadi kesalahan saat memindahkan ke Konten Tabungan')
+      setTabunganError('Terjadi kesalahan saat memindahkan ke Konten Tabungan')
+    } finally {
+      setTabunganLoading(false)
     }
   }
 
@@ -390,11 +417,13 @@ export default function ContentPlanningList() {
               >
                 <option value="">Semua Status</option>
                 <option value="DRAFT">Draft</option>
-                <option value="IN_PROGRESS">Dalam Proses</option>
-                <option value="PENDING_REVIEW">Menunggu Persetujuan</option>
-                <option value="APPROVED">Disetujui</option>
+                <option value="PENDING_REVIEW">Menunggu Persetujuan Konsep</option>
+                <option value="APPROVED">Konsep Disetujui</option>
+                <option value="PRODUCTION">Produksi Konten</option>
+                <option value="PENDING_PRODUCTION_REVIEW">Menunggu Review Produksi</option>
+                <option value="READY_TO_PUBLISH">Siap Publikasi</option>
                 <option value="PUBLISHED">Dipublikasikan</option>
-                <option value="REVISION_REQUIRED">Perlu Revisi</option>
+                <option value="REJECTED">Ditolak</option>
                 <option value="RESCHEDULED">Dijadwalkan Ulang</option>
                 <option value="NOT_REALIZED">Tidak Direalisasikan</option>
               </Select>
@@ -771,11 +800,11 @@ export default function ContentPlanningList() {
                                 )}
                               </button>
 
-                              {/* Opsi 4: Pindahkan ke Tabungan (hanya jika belum published) */}
-                              {content.status !== 'PUBLISHED' && (
+                              {/* Opsi 4: Pindahkan ke Tabungan (hanya jika belum published dan belum ditolak) */}
+                              {content.status !== 'PUBLISHED' && content.status !== 'REJECTED' && (
                                 <button
                                   type="button"
-                                  onClick={() => handleMoveToTabungan(content)}
+                                  onClick={() => openMoveToTabungan(content)}
                                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                                 >
                                   <BookmarkPlus className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
@@ -889,6 +918,69 @@ export default function ContentPlanningList() {
           </div>
         </Card>
       )}
+
+      {/* Dialog Pindah ke Konten Tabungan */}
+      <Dialog open={!!tabunganTarget} onOpenChange={(open) => !open && setTabunganTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-ink">
+              <BookmarkCheck className="h-5 w-5 text-indigo-600" />
+              Simpan ke Konten Tabungan
+            </DialogTitle>
+            <DialogDescription>
+              Pindahkan &quot;{tabunganTarget?.title}&quot; ke daftar Konten Tabungan. Konten dapat dijadwalkan ulang sewaktu-waktu.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="plan-tabungan-reason" className="text-xs font-semibold text-ink">
+                Alasan Penyimpanan (Opsional)
+              </Label>
+              <Textarea
+                id="plan-tabungan-reason"
+                placeholder="Contoh: Menunggu momen kampanye, materi visual perlu disempurnakan..."
+                value={tabunganReason}
+                onChange={(e) => setTabunganReason(e.target.value)}
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
+            {tabunganError && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{tabunganError}</span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTabunganTarget(null)}
+              disabled={tabunganLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={handleConfirmMoveToTabungan}
+              disabled={tabunganLoading}
+            >
+              {tabunganLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan ke Tabungan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

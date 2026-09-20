@@ -74,10 +74,17 @@ func (h *Handler) MoveToPlan(c *gin.Context) {
 		}
 	}
 
+	targetStatus := "PRODUCTION"
+	var prevStatus string
+	_ = h.Pool.QueryRow(c.Request.Context(), "SELECT status FROM contents WHERE id = $1", id).Scan(&prevStatus)
+	if prevStatus == "DRAFT" {
+		targetStatus = "DRAFT"
+	}
+
 	query := `
 		UPDATE contents
 		SET is_savings = FALSE,
-		    status = CASE WHEN status = 'DRAFT' THEN 'DRAFT' ELSE 'IN_PROGRESS' END,
+		    status = CASE WHEN status = 'DRAFT' THEN 'DRAFT' ELSE 'PRODUCTION' END,
 		    planned_date = COALESCE($1, planned_date),
 		    planned_week = COALESCE($2, planned_week),
 		    day = COALESCE($3, day),
@@ -93,15 +100,28 @@ func (h *Handler) MoveToPlan(c *gin.Context) {
 		return
 	}
 
-	// Catat di history
-	comment := "Konten dipindahkan kembali dari Konten Tabungan ke Rencana Konten"
-	if in.Reason != nil && *in.Reason != "" {
-		comment += ": " + *in.Reason
+	// Sinkronkan juga tanggal rencana di tabel publications jika ada
+	if in.PlannedDate != nil && *in.PlannedDate != "" {
+		_, _ = h.Pool.Exec(c.Request.Context(), `
+			UPDATE publications SET planned_publish_date = $1, updated_at = now()
+			WHERE content_id = $2 AND status != 'PUBLISHED'
+		`, in.PlannedDate, id)
 	}
-	_, _ = h.Pool.Exec(c.Request.Context(), `
+
+	// Catat di history
+	comment := "Konten direncanakan kembali tayang"
+	if in.PlannedDate != nil && *in.PlannedDate != "" {
+		comment += " pada tanggal " + *in.PlannedDate
+	}
+	if in.Reason != nil && *in.Reason != "" {
+		comment += " (Alasan: " + *in.Reason + ")"
+	}
+	if _, errHist := h.Pool.Exec(c.Request.Context(), `
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
-		VALUES ($1, 'RESCHEDULED', 'TABUNGAN', 'IN_PROGRESS', $2, $3)
-	`, id, comment, user.ID)
+		VALUES ($1, 'RESCHEDULED', 'TABUNGAN', $2, $3, $4)
+	`, id, targetStatus, comment, user.ID); errHist != nil {
+		log.Printf("MoveToPlan history error: %v", errHist)
+	}
 
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {
@@ -151,7 +171,7 @@ func (h *Handler) RescheduleTabungan(c *gin.Context) {
 	}
 
 	isSavings := !in.ToPlan
-	status := "IN_PROGRESS"
+	status := "PRODUCTION"
 	if isSavings {
 		status = "RESCHEDULED"
 	}
@@ -174,14 +194,22 @@ func (h *Handler) RescheduleTabungan(c *gin.Context) {
 		return
 	}
 
+	// Sinkronkan juga tanggal rencana di tabel publications jika ada
+	_, _ = h.Pool.Exec(c.Request.Context(), `
+		UPDATE publications SET planned_publish_date = $1, updated_at = now()
+		WHERE content_id = $2 AND status != 'PUBLISHED'
+	`, in.PlannedDate, id)
+
 	comment := "Konten dijadwalkan ulang ke tanggal " + in.PlannedDate
 	if in.Reason != nil && *in.Reason != "" {
 		comment += " (Alasan: " + *in.Reason + ")"
 	}
-	_, _ = h.Pool.Exec(c.Request.Context(), `
+	if _, errHist := h.Pool.Exec(c.Request.Context(), `
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
 		VALUES ($1, 'RESCHEDULED', 'TABUNGAN', $2, $3, $4)
-	`, id, status, comment, user.ID)
+	`, id, status, comment, user.ID); errHist != nil {
+		log.Printf("RescheduleTabungan history error: %v", errHist)
+	}
 
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {
@@ -207,6 +235,17 @@ func (h *Handler) MoveToTabungan(c *gin.Context) {
 		return
 	}
 
+	var currentStatus string
+	err := h.Pool.QueryRow(c.Request.Context(), "SELECT status FROM contents WHERE id = $1", id).Scan(&currentStatus)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
+		return
+	}
+	if currentStatus == "REJECTED" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Konten yang berstatus Ditolak tidak dapat dipindahkan ke Konten Tabungan"})
+		return
+	}
+
 	var in saveToTabunganInput
 	_ = c.ShouldBindJSON(&in)
 
@@ -226,7 +265,7 @@ func (h *Handler) MoveToTabungan(c *gin.Context) {
 		WHERE id = $4 RETURNING id
 	`
 	var updatedID string
-	err := h.Pool.QueryRow(c.Request.Context(), query, in.Reason, savingsMonth, user.ID, id).Scan(&updatedID)
+	err = h.Pool.QueryRow(c.Request.Context(), query, in.Reason, savingsMonth, user.ID, id).Scan(&updatedID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memindahkan ke Konten Tabungan"})
 		return
@@ -236,10 +275,12 @@ func (h *Handler) MoveToTabungan(c *gin.Context) {
 	if in.Reason != "" {
 		comment += ": " + in.Reason
 	}
-	_, _ = h.Pool.Exec(c.Request.Context(), `
+	if _, errHist := h.Pool.Exec(c.Request.Context(), `
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
-		VALUES ($1, 'SAVED_TO_TABUNGAN', 'IN_PROGRESS', 'TABUNGAN', $2, $3)
-	`, id, comment, user.ID)
+		VALUES ($1, 'SAVED_TO_TABUNGAN', $2, 'TABUNGAN', $3, $4)
+	`, id, currentStatus, comment, user.ID); errHist != nil {
+		log.Printf("MoveToTabungan history error: %v", errHist)
+	}
 
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {

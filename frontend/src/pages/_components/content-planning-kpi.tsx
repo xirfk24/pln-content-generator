@@ -24,26 +24,24 @@ export function ContentPlanningKpi({
   // 1. Total Konten
   const totalContents = contents.length
 
-  // 2. Menunggu Review (PENDING_REVIEW)
-  const pendingReviewCount = contents.filter((c) => c.status === 'PENDING_REVIEW').length
+  // 2. Menunggu Review (PENDING_REVIEW & PENDING_PRODUCTION_REVIEW)
+  const pendingReviewCount = contents.filter((c) => c.status === 'PENDING_REVIEW' || c.status === 'PENDING_PRODUCTION_REVIEW').length
 
-  // 3. Siap Tayang (APPROVED atau READY_TO_PUBLISH dan belum dipublikasikan)
+  // 3. Siap Tayang (READY_TO_PUBLISH & APPROVED)
   const approvedUnpublishedCount = contents.filter((c) => {
-    if (c.status === 'APPROVED' || c.status === 'READY_TO_PUBLISH') {
+    if (c.status === 'APPROVED' || c.status === 'READY_TO_PUBLISH' || c.status === 'PRODUCTION') {
       const isAlreadyPublished = c.publications?.some((p) => p.status === 'PUBLISHED')
       return !isAlreadyPublished
     }
     return false
   }).length
 
-  // 4. Perlu Tindakan: REVISION_REQUIRED, RESCHEDULED, NOT_REALIZED, atau melewati planned_date tanpa publish
+  // 4. Perlu Tindakan: RESCHEDULED, NOT_REALIZED, atau melewati planned_date tanpa publish
   const followUpCount = contents.filter((c) => {
-    // Hindari double count
-    if (['REVISION_REQUIRED', 'RESCHEDULED', 'NOT_REALIZED'].includes(c.status)) {
+    if (['RESCHEDULED', 'NOT_REALIZED'].includes(c.status)) {
       return true
     }
-    // Melewati tanggal rencana publikasi tetapi belum berstatus dipublikasikan
-    if (c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED') {
+    if (c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED' && c.status !== 'REJECTED') {
       return true
     }
     return false

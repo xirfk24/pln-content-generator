@@ -335,7 +335,7 @@ func TestPublishableContentStatuses(t *testing.T) {
 
 	// Statuses that must NOT allow a publish shortcut (workflow lock states
 	// and pre-approval states).
-	blocked := []string{"DRAFT", "IN_PROGRESS", "PENDING_REVIEW", "REVISION_REQUIRED"}
+	blocked := []string{"DRAFT", "PRODUCTION", "PENDING_REVIEW", "PENDING_PRODUCTION_REVIEW"}
 	for _, s := range blocked {
 		if publishableContentStatuses[s] {
 			t.Errorf("publishableContentStatuses[%q] = true, want false — this would bypass the approval chain", s)

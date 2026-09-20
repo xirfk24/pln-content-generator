@@ -22,7 +22,7 @@ SELECT c.id, c.title, c.topic, c.pillar_id, c.category_id, c.platform_id,
        c.format, c.brief, c.content_purpose,
        COALESCE(c.content_purposes, '{}') AS content_purposes,
        c.posting_category, c.target_audience, c.planned_date::TEXT, c.planned_week, c.day,
-       c.brief_link, c.pic, c.priority, c.status,
+       c.brief_link, c.production_link, c.pic, c.priority, c.status,
        COALESCE(c.is_savings, FALSE) AS is_savings,
        c.savings_reason, c.savings_month, c.saved_at,
        c.source_idea_id, c.created_by, c.created_at,
@@ -369,10 +369,10 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		return
 	}
 
-	// ATURAN PENGUNCIAN: Status Menunggu Persetujuan, Disetujui, Siap Publikasi, dan Dipublikasikan TIDAK boleh diedit
-	if currentStatus == "PENDING_REVIEW" || currentStatus == "APPROVED" || currentStatus == "READY_TO_PUBLISH" || currentStatus == "PUBLISHED" {
+	// ATURAN PENGUNCIAN: Form edit umum hanya diizinkan saat status DRAFT
+	if currentStatus != "DRAFT" {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Konten dengan status '" + currentStatus + "' terkunci dari pengeditan data utama.",
+			"error": "Konten dengan status '" + currentStatus + "' terkunci dari pengeditan form umum. Perubahan hanya dapat dilakukan melalui aksi workflow resmi.",
 		})
 		return
 	}
@@ -512,6 +512,19 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		return
 	}
 
+	// Sinkronkan planned_publish_date pada publications jika planned_date diperbarui
+	if in.PlannedDate != nil {
+		var pDate *string
+		if t, ok := parseDateStr(strings.TrimSpace(*in.PlannedDate)); ok {
+			formatted := t.Format("2006-01-02")
+			pDate = &formatted
+		}
+		_, _ = h.Pool.Exec(c.Request.Context(), `
+			UPDATE publications SET planned_publish_date = $1, updated_at = now()
+			WHERE content_id = $2 AND status != 'PUBLISHED'
+		`, pDate, id)
+	}
+
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
@@ -642,7 +655,7 @@ func (h *Handler) queryContents(ctx context.Context, query string, args ...any) 
 			&platformIDs, &ct.Format, &ct.Brief, &ct.ContentPurpose,
 			&contentPurposes, &ct.PostingCategory, &ct.TargetAudience,
 			&ct.PlannedDate, &ct.PlannedWeek, &ct.Day,
-			&ct.BriefLink, &ct.Pic, &ct.Priority, &ct.Status,
+			&ct.BriefLink, &ct.ProductionLink, &ct.Pic, &ct.Priority, &ct.Status,
 			&isSavings, &savingsReason, &savingsMonth, &savedAt,
 			&ct.SourceIdeaID, &ct.CreatedBy,
 			&ct.CreatedAt, &ct.UpdatedAt, &ct.UpdatedBy,

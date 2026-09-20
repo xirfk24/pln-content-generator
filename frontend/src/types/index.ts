@@ -2,27 +2,35 @@ export type UserRole = 'ADMIN' | 'STAFF'
 
 export type ContentStatus =
   | 'DRAFT'
-  | 'IN_PROGRESS'
   | 'PENDING_REVIEW'
-  | 'REVISION_REQUIRED'
   | 'APPROVED'
+  | 'PRODUCTION'
+  | 'PENDING_PRODUCTION_REVIEW'
   | 'READY_TO_PUBLISH'
   | 'PUBLISHED'
+  | 'REJECTED'
   | 'RESCHEDULED'
   | 'NOT_REALIZED'
 
 export type PublicationStatus = 'PLANNED' | 'PUBLISHED' | 'DELAYED' | 'CANCELLED' | 'DELAY' | 'CANCEL'
 
 export type ApprovalAction =
-  | 'START_PROGRESS'
   | 'SUBMITTED'
-  | 'REVISION_REQUESTED'
   | 'APPROVED'
-  | 'FINAL_APPROVED'
-  | 'REJECTED'
-  | 'RESUBMITTED'
+  | 'CONCEPT_REVISION_REQUESTED'
+  | 'START_PRODUCTION'
+  | 'PRODUCTION_SUBMITTED'
+  | 'PRODUCTION_APPROVED'
+  | 'PRODUCTION_REVISION_REQUESTED'
+  | 'SHORTCUT_READY'
   | 'MARK_PUBLISHED'
+  | 'REVISION_FROM_READY'
+  | 'REJECTED'
   // legacy actions
+  | 'START_PROGRESS'
+  | 'REVISION_REQUESTED'
+  | 'FINAL_APPROVED'
+  | 'RESUBMITTED'
   | 'REVIEWED'
   | 'REVIEW_APPROVED'
 
@@ -95,6 +103,7 @@ export interface Content {
   planned_week: number | null
   day: string | null
   brief_link?: string | null
+  production_link?: string | null
   pic: string | null
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | null
   status: ContentStatus

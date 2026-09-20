@@ -122,12 +122,13 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           >
             <option value="">Semua Status</option>
             <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">Dalam Proses</option>
-            <option value="PENDING_REVIEW">Menunggu Persetujuan</option>
-            <option value="REVISION_REQUIRED">Perlu Revisi</option>
-            <option value="APPROVED">Disetujui</option>
+            <option value="PENDING_REVIEW">Menunggu Persetujuan Konsep</option>
+            <option value="APPROVED">Konsep Disetujui</option>
+            <option value="PRODUCTION">Produksi Konten</option>
+            <option value="PENDING_PRODUCTION_REVIEW">Menunggu Review Produksi</option>
             <option value="READY_TO_PUBLISH">Siap Publikasi</option>
             <option value="PUBLISHED">Dipublikasikan</option>
+            <option value="REJECTED">Ditolak</option>
             <option value="RESCHEDULED">Dijadwalkan Ulang</option>
             <option value="NOT_REALIZED">Tidak Direalisasikan</option>
           </Select>

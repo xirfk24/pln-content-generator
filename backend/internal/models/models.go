@@ -56,6 +56,7 @@ type Content struct {
 	Day             *string     `json:"day"`
 	Reference       *string     `json:"reference,omitempty"`
 	BriefLink       *string     `json:"brief_link"`
+	ProductionLink *string     `json:"production_link"`
 	ResultLink      *string     `json:"result_link,omitempty"`
 	Pic             *string     `json:"pic"`
 	Priority        *string     `json:"priority"`
@@ -96,12 +97,13 @@ type Publication struct {
 }
 
 type PublicationContent struct {
-	ID         string  `json:"id"`
-	Title      string  `json:"title"`
-	Topic      string  `json:"topic"`
-	Status     string  `json:"status"`
-	Pic        *string `json:"pic"`
-	PillarName *string `json:"pillar_name,omitempty"`
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Topic       string  `json:"topic"`
+	Status      string  `json:"status"`
+	Pic         *string `json:"pic"`
+	PillarName  *string `json:"pillar_name,omitempty"`
+	PlannedDate *string `json:"planned_date,omitempty"`
 }
 
 type PerformanceMetric struct {

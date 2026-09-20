@@ -226,7 +226,19 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		add("platform_id", nullable(*in.PlatformID))
 	}
 	if in.PlannedPublishDate != nil {
-		add("planned_publish_date", nullable(*in.PlannedPublishDate))
+		pDate := nullable(*in.PlannedPublishDate)
+		add("planned_publish_date", pDate)
+		var cID string
+		_ = h.Pool.QueryRow(c.Request.Context(), "SELECT content_id FROM publications WHERE id = $1", id).Scan(&cID)
+		if cID != "" && pDate != nil {
+			_, _ = h.Pool.Exec(c.Request.Context(), `
+				UPDATE contents SET planned_date = $1, updated_at = now() WHERE id = $2
+			`, pDate, cID)
+			_, _ = h.Pool.Exec(c.Request.Context(), `
+				UPDATE publications SET planned_publish_date = $1, updated_at = now()
+				WHERE content_id = $2 AND status != 'PUBLISHED'
+			`, pDate, cID)
+		}
 	}
 	if in.ActualPublishDate != nil {
 		add("actual_publish_date", nullable(*in.ActualPublishDate))
@@ -445,17 +457,26 @@ func (h *Handler) getPublication(ctx context.Context, id string) *models.Publica
 // queryPublicationsWithContent fetches publications joined with platform and content.
 func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string, args ...any) ([]models.Publication, []string) {
 	rows, err := h.Pool.Query(ctx, `
-		SELECT p.id, p.content_id, p.platform_id, p.planned_publish_date::TEXT, p.actual_publish_date::TEXT,
+		SELECT p.id, p.content_id, p.platform_id,
+		       CASE
+		           WHEN p.status != 'PUBLISHED' AND c.planned_date IS NOT NULL THEN c.planned_date::TEXT
+		           ELSE COALESCE(p.planned_publish_date, c.planned_date::TEXT)
+		       END,
+		       p.actual_publish_date::TEXT,
 		       p.url, p.status, p.notes, p.cancel_reason, p.created_at, p.updated_at,
 		       pl.id, pl.name, pl.icon, pl.created_at,
 		       c.id, c.title, c.topic, c.status, c.pic,
-		       pil.name
+		       pil.name,
+		       c.planned_date::TEXT
 		FROM publications p
 		LEFT JOIN platforms pl ON pl.id = p.platform_id
 		LEFT JOIN contents c ON c.id = p.content_id
 		LEFT JOIN pillars pil ON pil.id = c.pillar_id
 		WHERE `+where+`
-		ORDER BY p.planned_publish_date ASC`, args...)
+		ORDER BY CASE
+		    WHEN p.status != 'PUBLISHED' AND c.planned_date IS NOT NULL THEN c.planned_date::TEXT
+		    ELSE COALESCE(p.planned_publish_date, c.planned_date::TEXT)
+		END ASC`, args...)
 	if err != nil {
 		log.Printf("queryPublicationsWithContent query error: %v (where=%s)", err, where)
 		return []models.Publication{}, nil
@@ -469,11 +490,11 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		var plID, plName, plIcon *string
 		var plCreated *timeDb
 		var cID, cTitle, cTopic, cStatus *string
-		var cPic, cancelReason, pilName *string
+		var cPic, cancelReason, pilName, cPlannedDate *string
 		if err := rows.Scan(&p.ID, &p.ContentID, &p.PlatformID, &p.PlannedPublishDate, &p.ActualPublishDate,
 			&p.URL, &p.Status, &p.Notes, &cancelReason, &p.CreatedAt, &p.UpdatedAt,
 			&plID, &plName, &plIcon, &plCreated,
-			&cID, &cTitle, &cTopic, &cStatus, &cPic, &pilName); err != nil {
+			&cID, &cTitle, &cTopic, &cStatus, &cPic, &pilName, &cPlannedDate); err != nil {
 			log.Printf("queryPublicationsWithContent scan error: %v", err)
 			continue
 		}
@@ -483,12 +504,13 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		}
 		if cID != nil {
 			p.Content = &models.PublicationContent{
-				ID:         *cID,
-				Title:      derefString(cTitle),
-				Topic:      derefString(cTopic),
-				Status:     derefString(cStatus),
-				Pic:        cPic,
-				PillarName: pilName,
+				ID:          *cID,
+				Title:       derefString(cTitle),
+				Topic:       derefString(cTopic),
+				Status:      derefString(cStatus),
+				Pic:         cPic,
+				PillarName:  pilName,
+				PlannedDate: cPlannedDate,
 			}
 		}
 		out = append(out, p)

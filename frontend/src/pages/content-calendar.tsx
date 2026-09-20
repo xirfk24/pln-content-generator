@@ -215,7 +215,7 @@ export default function ContentCalendarPage() {
         </CardHeader>
         <CardContent className="py-2 px-4">
           <div className="flex flex-wrap gap-2">
-            {['DRAFT', 'IN_PROGRESS', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'REVISION_REQUIRED'].map((status) => (
+            {['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PRODUCTION', 'PENDING_PRODUCTION_REVIEW', 'READY_TO_PUBLISH', 'PUBLISHED', 'REJECTED'].map((status) => (
               <Badge key={status} variant="outline" className={`text-xs ${CONTENT_STATUS_COLORS[status as keyof typeof CONTENT_STATUS_COLORS]}`}>
                 {CONTENT_STATUS_LABELS[status] || status}
               </Badge>

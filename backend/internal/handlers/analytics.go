@@ -281,16 +281,19 @@ func (h *Handler) dashboardKPIs(f analyticsFilters) gin.H {
 	return gin.H{
 		"content": gin.H{
 			"total":             total,
-			"draft":             draftCount,
-			"planned":           draftCount, // backward compatibility
-			"inProgress":        statusCount["IN_PROGRESS"],
-			"pendingReview":     statusCount["PENDING_REVIEW"],
-			"approved":          statusCount["APPROVED"],
-			"readyToPublish":    statusCount["READY_TO_PUBLISH"],
-			"published":         publishedCount,
-			"publishedByStatus": statusCount["PUBLISHED"], // kept for reference
-			"rescheduled":       statusCount["RESCHEDULED"],
-			"notRealized":       statusCount["NOT_REALIZED"],
+			"draft":                   draftCount,
+			"planned":                 draftCount, // backward compatibility
+			"inProgress":              statusCount["PRODUCTION"], // backward compatibility
+			"production":              statusCount["PRODUCTION"],
+			"pendingReview":           statusCount["PENDING_REVIEW"],
+			"pendingProductionReview": statusCount["PENDING_PRODUCTION_REVIEW"],
+			"approved":                statusCount["APPROVED"],
+			"readyToPublish":          statusCount["READY_TO_PUBLISH"],
+			"published":               publishedCount,
+			"publishedByStatus":       statusCount["PUBLISHED"], // kept for reference
+			"rejected":                statusCount["REJECTED"],
+			"rescheduled":             statusCount["RESCHEDULED"],
+			"notRealized":             statusCount["NOT_REALIZED"],
 		},
 		"performance": gin.H{
 			"totalViews":        totals.Views,

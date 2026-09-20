@@ -12,83 +12,105 @@ import (
 
 // Workflow action definitions
 type workflowActionDef struct {
-	Label               string
-	AllowedRoles        []string
-	AllowedFromStatuses []string
-	ToStatus            string
-	RequiresComment     bool
+	Label                  string
+	AllowedRoles           []string
+	AllowedFromStatuses    []string
+	ToStatus               string
+	RequiresComment        bool
+	RequiresProductionLink bool
 }
 
-// Alur kerja PLN:
-// - STAFF: Kerjakan, Ajukan untuk ditinjau, Kirim ulang revisi
-// - ADMIN: Setujui, Minta Revisi, Tandai Publikasi, Ditolak
+// Workflow Actions Map (v2)
 var workflowActions = map[string]workflowActionDef{
-	"START_PROGRESS": {
-		Label:               "Mulai Dikerjakan",
+	"SUBMITTED": {
+		Label:               "Ajukan Konsep",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
 		AllowedFromStatuses: []string{"DRAFT"},
-		ToStatus:            "IN_PROGRESS",
-		RequiresComment:     false,
-	},
-	"SUBMITTED": {
-		Label:               "Ajukan untuk Ditinjau",
-		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"DRAFT", "IN_PROGRESS"},
-		ToStatus:            "PENDING_REVIEW",
-		RequiresComment:     false,
-	},
-	"RESUBMITTED": {
-		Label:               "Ajukan Ulang Revisi",
-		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"REVISION_REQUIRED", "IN_PROGRESS"},
 		ToStatus:            "PENDING_REVIEW",
 		RequiresComment:     false,
 	},
 	"APPROVED": {
-		Label:               "Setujui Konten",
+		Label:               "Setujui Konsep",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
 		ToStatus:            "APPROVED",
 		RequiresComment:     false,
 	},
-	"REVISION_REQUESTED": {
-		Label:               "Minta Revisi",
+	"CONCEPT_REVISION_REQUESTED": {
+		Label:               "Minta Revisi Konsep",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
-		ToStatus:            "IN_PROGRESS", // Kembali ke Dalam Proses sesuai Alur Revisi
+		ToStatus:            "DRAFT",
 		RequiresComment:     true,
+	},
+	"START_PRODUCTION": {
+		Label:               "Mulai Produksi Konten",
+		AllowedRoles:        []string{"ADMIN", "STAFF"},
+		AllowedFromStatuses: []string{"APPROVED"},
+		ToStatus:            "PRODUCTION",
+		RequiresComment:     false,
+	},
+	"PRODUCTION_SUBMITTED": {
+		Label:                  "Setor Hasil Produksi",
+		AllowedRoles:           []string{"ADMIN", "STAFF"},
+		AllowedFromStatuses:    []string{"PRODUCTION"},
+		ToStatus:               "PENDING_PRODUCTION_REVIEW",
+		RequiresComment:        false,
+		RequiresProductionLink: true,
+	},
+	"PRODUCTION_APPROVED": {
+		Label:               "Setujui Produksi",
+		AllowedRoles:        []string{"ADMIN"},
+		AllowedFromStatuses: []string{"PENDING_PRODUCTION_REVIEW"},
+		ToStatus:            "READY_TO_PUBLISH",
+		RequiresComment:     false,
+	},
+	"PRODUCTION_REVISION_REQUESTED": {
+		Label:               "Minta Revisi Hasil Produksi",
+		AllowedRoles:        []string{"ADMIN"},
+		AllowedFromStatuses: []string{"PENDING_PRODUCTION_REVIEW"},
+		ToStatus:            "PRODUCTION",
+		RequiresComment:     true,
+	},
+	"SHORTCUT_READY": {
+		Label:               "Langsung Siap Publikasi",
+		AllowedRoles:        []string{"ADMIN"},
+		AllowedFromStatuses: []string{"PENDING_REVIEW", "APPROVED"},
+		ToStatus:            "READY_TO_PUBLISH",
+		RequiresComment:     false,
 	},
 	"MARK_PUBLISHED": {
 		Label:               "Tandai Dipublikasikan",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"APPROVED", "READY_TO_PUBLISH"},
+		AllowedFromStatuses: []string{"READY_TO_PUBLISH"},
 		ToStatus:            "PUBLISHED",
 		RequiresComment:     false,
 	},
-	"FINAL_APPROVED": {
-		Label:               "Setujui Final",
+	"REVISION_FROM_READY": {
+		Label:               "Minta Revisi",
 		AllowedRoles:        []string{"ADMIN"},
-		AllowedFromStatuses: []string{"APPROVED"},
-		ToStatus:            "READY_TO_PUBLISH",
-		RequiresComment:     false,
+		AllowedFromStatuses: []string{"READY_TO_PUBLISH"},
+		ToStatus:            "PRODUCTION",
+		RequiresComment:     true,
 	},
 	"REJECTED": {
-		Label:               "Tolak / Minta Revisi",
+		Label:               "Tolak Konten",
 		AllowedRoles:        []string{"ADMIN"},
-		AllowedFromStatuses: []string{"APPROVED", "READY_TO_PUBLISH"},
-		ToStatus:            "IN_PROGRESS",
+		AllowedFromStatuses: []string{"PENDING_REVIEW", "APPROVED", "PRODUCTION", "PENDING_PRODUCTION_REVIEW", "READY_TO_PUBLISH"},
+		ToStatus:            "REJECTED",
 		RequiresComment:     true,
 	},
 }
 
 var approvalQueueStatuses = map[string][]string{
-	"ADMIN": {"PENDING_REVIEW", "APPROVED"},
+	"ADMIN": {"PENDING_REVIEW", "PENDING_PRODUCTION_REVIEW"},
 	"STAFF": {},
 }
 
 type workflowBody struct {
-	Action  string  `json:"action" binding:"required"`
-	Comment *string `json:"comment"`
+	Action         string  `json:"action" binding:"required"`
+	Comment        *string `json:"comment"`
+	ProductionLink *string `json:"production_link"`
 }
 
 // POST /api/contents/:id/workflow
@@ -120,6 +142,15 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 		return
 	}
 
+	prodLink := ""
+	if body.ProductionLink != nil {
+		prodLink = strings.TrimSpace(*body.ProductionLink)
+	}
+	if def.RequiresProductionLink && prodLink == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tautan hasil produksi (production_link) wajib diisi untuk aksi Setor Hasil Produksi"})
+		return
+	}
+
 	if !containsRole(def.AllowedRoles, user.Role) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Role " + user.Role + " tidak memiliki izin untuk melakukan aksi " + def.Label})
 		return
@@ -139,10 +170,18 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 	}
 
 	var updatedID string
-	err = h.Pool.QueryRow(c.Request.Context(), `
-		UPDATE contents SET status = $1, updated_by = $2, updated_at = now()
-		WHERE id = $3 RETURNING id
-	`, def.ToStatus, user.ID, contentID).Scan(&updatedID)
+	if prodLink != "" {
+		err = h.Pool.QueryRow(c.Request.Context(), `
+			UPDATE contents SET status = $1, production_link = $2, updated_by = $3, updated_at = now()
+			WHERE id = $4 RETURNING id
+		`, def.ToStatus, prodLink, user.ID, contentID).Scan(&updatedID)
+	} else {
+		err = h.Pool.QueryRow(c.Request.Context(), `
+			UPDATE contents SET status = $1, updated_by = $2, updated_at = now()
+			WHERE id = $3 RETURNING id
+		`, def.ToStatus, user.ID, contentID).Scan(&updatedID)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui status alur kerja konten"})
 		return
@@ -154,8 +193,8 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, contentID, body.Action, fromStatus, def.ToStatus, comment, user.ID)
 
-	// Jika status menjadi APPROVED, otomatis buat entri di tabel publications untuk tiap platform
-	if def.ToStatus == "APPROVED" {
+	// Jika status menjadi READY_TO_PUBLISH, otomatis buat entri di tabel publications untuk tiap platform
+	if def.ToStatus == "READY_TO_PUBLISH" {
 		var plannedDate *string
 		var singlePlatID *string
 		var multiPlatIDs []string
@@ -184,6 +223,11 @@ func (h *Handler) WorkflowAction(c *gin.Context) {
 				if errInsert != nil {
 					log.Printf("Auto-create publication error: %v", errInsert)
 				}
+			} else {
+				_, _ = h.Pool.Exec(c.Request.Context(), `
+					UPDATE publications SET planned_publish_date = $1, updated_at = now()
+					WHERE content_id = $2 AND platform_id = $3 AND status != 'PUBLISHED'
+				`, plannedDate, contentID, pid)
 			}
 		}
 	}
@@ -238,27 +282,36 @@ func (h *Handler) MyTasks(c *gin.Context) {
 	h.attachPublications(c.Request.Context(), contents)
 
 	drafts := []models.Content{}
-	revisions := []models.Content{}
+	pendingApproval := []models.Content{}
+	production := []models.Content{}
 	readyToPublish := []models.Content{}
-	submitted := []models.Content{}
+	published := []models.Content{}
+	rejected := []models.Content{}
+
 	for _, ct := range contents {
 		switch ct.Status {
-		case "DRAFT", "IN_PROGRESS":
+		case "DRAFT":
 			drafts = append(drafts, ct)
-		case "REVISION_REQUIRED":
-			revisions = append(revisions, ct)
-		case "READY_TO_PUBLISH", "APPROVED":
+		case "PENDING_REVIEW", "PENDING_PRODUCTION_REVIEW":
+			pendingApproval = append(pendingApproval, ct)
+		case "APPROVED", "PRODUCTION":
+			production = append(production, ct)
+		case "READY_TO_PUBLISH":
 			readyToPublish = append(readyToPublish, ct)
-		case "PENDING_REVIEW":
-			submitted = append(submitted, ct)
+		case "PUBLISHED":
+			published = append(published, ct)
+		case "REJECTED":
+			rejected = append(rejected, ct)
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"drafts":         drafts,
-		"revisions":      revisions,
-		"readyToPublish": readyToPublish,
-		"submitted":      submitted,
+		"drafts":          drafts,
+		"pendingApproval": pendingApproval,
+		"production":      production,
+		"readyToPublish":  readyToPublish,
+		"published":       published,
+		"rejected":        rejected,
 	})
 }
 

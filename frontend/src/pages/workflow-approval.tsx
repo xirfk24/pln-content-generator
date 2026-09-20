@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Loader2, Eye, Inbox, ShieldCheck } from 'lucide-react'
+import { Loader2, Eye, Inbox, ShieldCheck, ExternalLink, FileText, Wrench } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { WorkflowActionButton } from '@/components/workflow/workflow-action-button'
 import type { Content } from '@/types'
@@ -65,6 +65,8 @@ export default function ApprovalPage() {
   }
 
   const isAdmin = role === 'ADMIN'
+  const conceptQueue = queue.filter((c) => c.status === 'PENDING_REVIEW')
+  const productionQueue = queue.filter((c) => c.status === 'PENDING_PRODUCTION_REVIEW')
 
   return (
     <div className="space-y-6">
@@ -79,7 +81,7 @@ export default function ApprovalPage() {
               Persetujuan Konten (Approval Queue)
             </h2>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Modul ini digunakan oleh Admin / Reviewer untuk meninjau, menyetujui, atau meminta revisi atas rencana konten yang diajukan sebelum masuk ke antrean publikasi.
+              Modul ini digunakan oleh Admin / Reviewer untuk meninjau persetujuan konsep dan mereview hasil produksi konten sebelum lanjut ke antrean siap publikasi.
             </p>
           </div>
         </div>
@@ -102,91 +104,224 @@ export default function ApprovalPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {queue.map((content) => (
-            <Card key={content.id}>
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={content.status} />
-                      {content.pillar && (
-                        <Badge variant="outline" className="text-xs">
-                          {content.pillar.name}
-                        </Badge>
-                      )}
-                      {content.platform && (
-                        <Badge variant="secondary" className="text-xs">
-                          {content.platform.name}
-                        </Badge>
-                      )}
-                      <span className="text-xs text-ink-secondary">
-                        Tgl Rencana: {formatDate(content.planned_date)}
-                      </span>
-                      {content.pic && (
-                        <span className="text-xs text-ink-secondary">• PIC: {content.pic}</span>
-                      )}
-                    </div>
+        <div className="space-y-8">
+          {/* Section 1: Review Konsep */}
+          {conceptQueue.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <FileText className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-lg text-ink">Menunggu Persetujuan Konsep ({conceptQueue.length})</h3>
+              </div>
+              <div className="space-y-4">
+                {conceptQueue.map((content) => (
+                  <Card key={content.id}>
+                    <CardContent className="p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={content.status} />
+                            {content.pillar && (
+                              <Badge variant="outline" className="text-xs">
+                                {content.pillar.name}
+                              </Badge>
+                            )}
+                            {content.platform && (
+                              <Badge variant="secondary" className="text-xs">
+                                {content.platform.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-ink-secondary">
+                              Tgl Rencana: {formatDate(content.planned_date)}
+                            </span>
+                            {content.pic && (
+                              <span className="text-xs text-ink-secondary">• PIC: {content.pic}</span>
+                            )}
+                          </div>
 
-                    <h3 className="mt-2 font-semibold text-base text-ink">
-                      <Link href={`/content/${content.id}`} className="hover:text-primary hover:underline">
-                        {content.title}
-                      </Link>
-                    </h3>
-                    <p className="text-xs text-ink-muted mt-0.5">Topik: {content.topic}</p>
+                          <h4 className="mt-2 font-semibold text-base text-ink">
+                            <Link href={`/content/${content.id}`} className="hover:text-primary hover:underline">
+                              {content.title}
+                            </Link>
+                          </h4>
+                          <p className="text-xs text-ink-muted mt-0.5">Topik: {content.topic}</p>
 
-                    {content.brief && (
-                      <p className="mt-2 line-clamp-2 text-sm text-ink-secondary leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-2.5 rounded border">
-                        {content.brief}
-                      </p>
-                    )}
+                          {content.brief && (
+                            <p className="mt-2 line-clamp-2 text-sm text-ink-secondary leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-2.5 rounded border">
+                              {content.brief}
+                            </p>
+                          )}
 
-                    {lastComments[content.id] && (
-                      <div className="mt-2 rounded bg-surface-muted p-2 text-xs italic text-ink-secondary">
-                        Catatan terakhir: &quot;{lastComments[content.id]}&quot;
+                          {content.brief_link && (
+                            <div className="mt-2">
+                              <a
+                                href={content.brief_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                <span>Tautan Brief: {content.brief_link}</span>
+                              </a>
+                            </div>
+                          )}
+
+                          {lastComments[content.id] && (
+                            <div className="mt-2 rounded bg-surface-muted p-2 text-xs italic text-ink-secondary">
+                              Catatan terakhir: &quot;{lastComments[content.id]}&quot;
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 lg:flex-col lg:items-end">
+                          <Link href={`/content/${content.id}`}>
+                            <Button variant="ghost" size="sm" className="h-8 text-xs">
+                              <Eye className="mr-1.5 h-3.5 w-3.5" />
+                              Lihat Detail
+                            </Button>
+                          </Link>
+
+                          <div className="flex flex-wrap gap-2">
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="APPROVED"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="CONCEPT_REVISION_REQUESTED"
+                              variant="outline"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="SHORTCUT_READY"
+                              variant="secondary"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="REJECTED"
+                              variant="destructive"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 lg:flex-col lg:items-end">
-                    <Link href={`/content/${content.id}`}>
-                      <Button variant="ghost" size="sm" className="h-8 text-xs">
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        Lihat Detail
-                      </Button>
-                    </Link>
+          {/* Section 2: Review Hasil Produksi */}
+          {productionQueue.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <Wrench className="h-5 w-5 text-amber-600" />
+                <h3 className="font-semibold text-lg text-ink">Menunggu Review Produksi ({productionQueue.length})</h3>
+              </div>
+              <div className="space-y-4">
+                {productionQueue.map((content) => (
+                  <Card key={content.id}>
+                    <CardContent className="p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={content.status} />
+                            {content.pillar && (
+                              <Badge variant="outline" className="text-xs">
+                                {content.pillar.name}
+                              </Badge>
+                            )}
+                            {content.platform && (
+                              <Badge variant="secondary" className="text-xs">
+                                {content.platform.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-ink-secondary">
+                              Tgl Rencana: {formatDate(content.planned_date)}
+                            </span>
+                            {content.pic && (
+                              <span className="text-xs text-ink-secondary">• PIC: {content.pic}</span>
+                            )}
+                          </div>
 
-                    {content.status === 'PENDING_REVIEW' && (
-                      <div className="flex gap-2">
-                        <WorkflowActionButton
-                          contentId={content.id}
-                          action="APPROVED"
-                          size="sm"
-                          onDone={loadQueue}
-                        />
-                        <WorkflowActionButton
-                          contentId={content.id}
-                          action="REVISION_REQUESTED"
-                          variant="outline"
-                          size="sm"
-                          onDone={loadQueue}
-                        />
+                          <h4 className="mt-2 font-semibold text-base text-ink">
+                            <Link href={`/content/${content.id}`} className="hover:text-primary hover:underline">
+                              {content.title}
+                            </Link>
+                          </h4>
+                          <p className="text-xs text-ink-muted mt-0.5">Topik: {content.topic}</p>
+
+                          {content.production_link ? (
+                            <div className="mt-2 rounded-lg bg-emerald-50/70 border border-emerald-200 p-2.5 dark:bg-emerald-950/30 dark:border-emerald-800">
+                              <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+                                Tautan Hasil Produksi Konten:
+                              </p>
+                              <a
+                                href={content.production_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:underline break-all"
+                              >
+                                <ExternalLink className="h-4 w-4 shrink-0" />
+                                <span>{content.production_link}</span>
+                              </a>
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs text-amber-700 italic">Belum ada tautan produksi yang dilampirkan.</p>
+                          )}
+
+                          {lastComments[content.id] && (
+                            <div className="mt-2 rounded bg-surface-muted p-2 text-xs italic text-ink-secondary">
+                              Catatan terakhir: &quot;{lastComments[content.id]}&quot;
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 lg:flex-col lg:items-end">
+                          <Link href={`/content/${content.id}`}>
+                            <Button variant="ghost" size="sm" className="h-8 text-xs">
+                              <Eye className="mr-1.5 h-3.5 w-3.5" />
+                              Lihat Detail
+                            </Button>
+                          </Link>
+
+                          <div className="flex flex-wrap gap-2">
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="PRODUCTION_APPROVED"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="PRODUCTION_REVISION_REQUESTED"
+                              variant="outline"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                            <WorkflowActionButton
+                              contentId={content.id}
+                              action="REJECTED"
+                              variant="destructive"
+                              size="sm"
+                              onDone={loadQueue}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    )}
-
-                    {content.status === 'APPROVED' && (
-                      <WorkflowActionButton
-                        contentId={content.id}
-                        action="FINAL_APPROVED"
-                        size="sm"
-                        onDone={loadQueue}
-                      />
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

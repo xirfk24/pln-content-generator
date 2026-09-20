@@ -11,15 +11,16 @@ var dayNames = []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "
 var monthLabels = []string{"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
 
 var statusLabels = map[string]string{
-	"DRAFT":             "Draft",
-	"IN_PROGRESS":       "Dalam Proses",
-	"PENDING_REVIEW":    "Menunggu Persetujuan",
-	"REVISION_REQUIRED": "Perlu Revisi",
-	"APPROVED":          "Disetujui",
-	"READY_TO_PUBLISH":  "Siap Publikasi",
-	"PUBLISHED":         "Dipublikasikan",
-	"RESCHEDULED":       "Dijadwalkan Ulang",
-	"NOT_REALIZED":      "Tidak Direalisasikan",
+	"DRAFT":                     "Draft",
+	"PENDING_REVIEW":            "Menunggu Persetujuan Konsep",
+	"APPROVED":                 "Konsep Disetujui",
+	"PRODUCTION":               "Produksi Konten",
+	"PENDING_PRODUCTION_REVIEW": "Menunggu Review Produksi",
+	"READY_TO_PUBLISH":          "Siap Publikasi",
+	"PUBLISHED":                 "Dipublikasikan",
+	"REJECTED":                  "Ditolak",
+	"RESCHEDULED":               "Dijadwalkan Ulang",
+	"NOT_REALIZED":              "Tidak Direalisasikan",
 }
 
 // parseDateStr parses "YYYY-MM-DD" or RFC3339, mirroring JS new Date(str).

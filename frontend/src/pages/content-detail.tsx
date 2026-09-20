@@ -8,6 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
   Loader2,
   Edit,
   ArrowLeft,
@@ -18,6 +28,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Link as LinkIcon,
 } from 'lucide-react'
 import Link from '@/compat/next'
 import {
@@ -37,18 +48,27 @@ type ContentWithPubs = Content & { publications: Publication[] }
 
 const ACTION_LABELS_MAP: Record<string, string> = {
   CREATED: 'Dibuat (Draft)',
+  SUBMITTED: 'Diajukan Konsep',
+  APPROVED: 'Konsep Disetujui',
+  CONCEPT_REVISION_REQUESTED: 'Revisi Konsep Diminta',
+  START_PRODUCTION: 'Mulai Produksi Konten',
+  PRODUCTION_SUBMITTED: 'Hasil Produksi Disetor',
+  PRODUCTION_APPROVED: 'Produksi Disetujui',
+  PRODUCTION_REVISION_REQUESTED: 'Revisi Produksi Diminta',
+  SHORTCUT_READY: 'Langsung Siap Publikasi',
+  MARK_PUBLISHED: 'Dipublikasikan',
+  REVISION_FROM_READY: 'Revisi dari Siap Tayang',
+  REJECTED: 'Ditolak',
+  STATUS_MIGRATED: 'Status Dimigrasi',
+  SAVED_TO_TABUNGAN: 'Disimpan ke Tabungan',
+  RESCHEDULED: 'Dijadwalkan Ulang',
+  // Legacy
   START_PROGRESS: 'Mulai Dikerjakan',
-  SUBMITTED: 'Diajukan untuk Ditinjau',
   REVIEWED: 'Ditinjau',
   REVISION_REQUESTED: 'Diminta Revisi',
   REVIEW_APPROVED: 'Tinjauan Disetujui',
-  APPROVED: 'Disetujui',
   FINAL_APPROVED: 'Disetujui Final',
-  REJECTED: 'Ditolak',
   RESUBMITTED: 'Diajukan Ulang',
-  MARK_PUBLISHED: 'Dipublikasikan',
-  SAVED_TO_TABUNGAN: 'Disimpan ke Tabungan',
-  RESCHEDULED: 'Dijadwalkan Ulang',
 }
 
 export default function ContentDetailPage() {
@@ -59,6 +79,9 @@ export default function ContentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [tabunganLoading, setTabunganLoading] = useState(false)
+  const [tabunganModalOpen, setTabunganModalOpen] = useState(false)
+  const [tabunganReason, setTabunganReason] = useState('')
+  const [tabunganError, setTabunganError] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -91,24 +114,31 @@ export default function ContentDetailPage() {
       .catch(() => {})
   }, [])
 
-  async function handleMoveToTabungan() {
-    const reason = prompt('Masukkan alasan memindahkan konten ini ke Konten Tabungan (opsional):')
-    if (reason === null) return
+  function openMoveToTabunganModal() {
+    setTabunganReason('')
+    setTabunganError(null)
+    setTabunganModalOpen(true)
+  }
+
+  async function handleConfirmMoveToTabungan() {
     setTabunganLoading(true)
+    setTabunganError(null)
     try {
       const res = await apiFetch(`/api/contents/${id}/move-to-tabungan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: tabunganReason.trim() }),
       })
       if (res.ok) {
+        setTabunganModalOpen(false)
         load()
       } else {
         const d = await res.json()
-        alert(d.error || 'Gagal memindahkan ke tabungan')
+        setTabunganError(d.error || 'Gagal memindahkan ke tabungan')
       }
     } catch (err) {
       console.error(err)
+      setTabunganError('Terjadi kesalahan jaringan/server')
     } finally {
       setTabunganLoading(false)
     }
@@ -136,7 +166,7 @@ export default function ContentDetailPage() {
     )
   }
 
-  const isLocked = ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(content.status)
+  const isLocked = content.status !== 'DRAFT'
 
   // Ambil nama-nama platform
   const displayPlatforms: string[] = []
@@ -196,23 +226,23 @@ export default function ContentDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {!content.is_savings && (
+          {!content.is_savings && content.status !== 'REJECTED' && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleMoveToTabungan}
+              onClick={openMoveToTabunganModal}
               disabled={tabunganLoading}
               title="Pindahkan ke Konten Tabungan"
             >
-              <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
+              <BookmarkCheck className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
               Simpan ke Tabungan
             </Button>
           )}
 
           {isLocked ? (
-            <Button variant="outline" size="sm" disabled title="Konten sedang terkunci">
+            <Button variant="outline" size="sm" disabled title="Form edit terkunci untuk status selain DRAFT">
               <Lock className="mr-1.5 h-3.5 w-3.5 text-ink-muted" />
-              Terkunci
+              Form Edit Terkunci
             </Button>
           ) : (
             <Link href={`/content/${content.id}/edit`}>
@@ -304,29 +334,48 @@ export default function ContentDetailPage() {
           {/* Brief & Tautan */}
           <Card>
             <CardHeader className="border-b py-3 px-4">
-              <CardTitle className="text-sm font-semibold">Brief &amp; Naskah Konten</CardTitle>
+              <CardTitle className="text-sm font-semibold">Brief &amp; Tautan Lampiran</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
                 {content.brief || 'Belum ada brief yang dituliskan.'}
               </p>
 
-              {content.brief_link && (
-                <div className="border-t pt-3">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-                    Tautan Desain / Dokumen
-                  </p>
-                  <a
-                    href={content.brief_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span>{content.brief_link}</span>
-                  </a>
-                </div>
-              )}
+              <div className="grid gap-4 sm:grid-cols-2 border-t pt-3">
+                {content.brief_link && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                      Tautan Brief / Konsep
+                    </p>
+                    <a
+                      href={content.brief_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline break-all"
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0" />
+                      <span>{content.brief_link}</span>
+                    </a>
+                  </div>
+                )}
+
+                {content.production_link && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                      Tautan Hasil Produksi
+                    </p>
+                    <a
+                      href={content.production_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline break-all"
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0" />
+                      <span>{content.production_link}</span>
+                    </a>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -355,7 +404,7 @@ export default function ContentDetailPage() {
             <CardContent className="p-4">
               {!content.publications || content.publications.length === 0 ? (
                 <p className="text-sm text-ink-muted py-2">
-                  Belum ada record publikasi. Setelah konten berstatus <strong>Disetujui</strong>, sistem akan otomatis membuat record antrean untuk setiap target platform.
+                  Belum ada record publikasi. Setelah konten berstatus <strong>Siap Publikasi</strong>, sistem akan otomatis membuat record antrean untuk setiap target platform.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -431,23 +480,8 @@ export default function ContentDetailPage() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="flex flex-col gap-2.5">
+                {/* 1. DRAFT */}
                 {content.status === 'DRAFT' && (
-                  <>
-                    <WorkflowActionButton
-                      contentId={content.id}
-                      action="START_PROGRESS"
-                      variant="outline"
-                      onDone={load}
-                    />
-                    <WorkflowActionButton
-                      contentId={content.id}
-                      action="SUBMITTED"
-                      onDone={load}
-                    />
-                  </>
-                )}
-
-                {content.status === 'IN_PROGRESS' && (
                   <WorkflowActionButton
                     contentId={content.id}
                     action="SUBMITTED"
@@ -455,56 +489,155 @@ export default function ContentDetailPage() {
                   />
                 )}
 
-                {content.status === 'REVISION_REQUIRED' && (
-                  <>
-                    <WorkflowActionButton
-                      contentId={content.id}
-                      action="RESUBMITTED"
-                      onDone={load}
-                    />
-                  </>
-                )}
-
-                {content.status === 'PENDING_REVIEW' && userRole === 'ADMIN' && (
-                  <>
-                    <WorkflowActionButton
-                      contentId={content.id}
-                      action="APPROVED"
-                      onDone={load}
-                    />
-                    <WorkflowActionButton
-                      contentId={content.id}
-                      action="REVISION_REQUESTED"
-                      variant="outline"
-                      onDone={load}
-                    />
-                  </>
-                )}
-
-                {content.status === 'PENDING_REVIEW' && userRole !== 'ADMIN' && (
-                  <p className="text-xs text-ink-secondary italic p-2 bg-slate-50 rounded dark:bg-slate-900/50">
-                    Konten telah diajukan dan sedang menunggu persetujuan dari Admin / Reviewer.
-                  </p>
-                )}
-
-                {content.status === 'APPROVED' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-success font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Konten telah disetujui dan siap dipublikasikan.
+                {/* 2. PENDING_REVIEW */}
+                {content.status === 'PENDING_REVIEW' && (
+                  userRole === 'ADMIN' ? (
+                    <>
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="APPROVED"
+                        onDone={load}
+                      />
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="CONCEPT_REVISION_REQUESTED"
+                        variant="outline"
+                        onDone={load}
+                      />
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="SHORTCUT_READY"
+                        variant="secondary"
+                        onDone={load}
+                      />
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="REJECTED"
+                        variant="destructive"
+                        onDone={load}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-xs text-ink-secondary italic p-2 bg-slate-50 rounded dark:bg-slate-900/50">
+                      Konsep telah diajukan dan sedang menunggu persetujuan dari Admin / Reviewer.
                     </p>
-                    <Link href="/publishing" className="w-full block">
-                      <Button size="sm" className="w-full">
-                        <Send className="mr-1.5 h-3.5 w-3.5" />
-                        Buka Antrean Publikasi
-                      </Button>
-                    </Link>
-                  </div>
+                  )
                 )}
 
+                {/* 3. APPROVED */}
+                {content.status === 'APPROVED' && (
+                  <>
+                    <WorkflowActionButton
+                      contentId={content.id}
+                      action="START_PRODUCTION"
+                      onDone={load}
+                    />
+                    {userRole === 'ADMIN' && (
+                      <>
+                        <WorkflowActionButton
+                          contentId={content.id}
+                          action="SHORTCUT_READY"
+                          variant="secondary"
+                          onDone={load}
+                        />
+                        <WorkflowActionButton
+                          contentId={content.id}
+                          action="REJECTED"
+                          variant="destructive"
+                          onDone={load}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* 4. PRODUCTION */}
+                {content.status === 'PRODUCTION' && (
+                  <>
+                    <WorkflowActionButton
+                      contentId={content.id}
+                      action="PRODUCTION_SUBMITTED"
+                      initialProductionLink={content.production_link || ''}
+                      onDone={load}
+                    />
+                    {userRole === 'ADMIN' && (
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="REJECTED"
+                        variant="destructive"
+                        onDone={load}
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* 5. PENDING_PRODUCTION_REVIEW */}
+                {content.status === 'PENDING_PRODUCTION_REVIEW' && (
+                  userRole === 'ADMIN' ? (
+                    <>
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="PRODUCTION_APPROVED"
+                        onDone={load}
+                      />
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="PRODUCTION_REVISION_REQUESTED"
+                        variant="outline"
+                        onDone={load}
+                      />
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="REJECTED"
+                        variant="destructive"
+                        onDone={load}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-xs text-ink-secondary italic p-2 bg-slate-50 rounded dark:bg-slate-900/50">
+                      Hasil produksi telah disetor dan sedang menunggu review dari Admin / Reviewer.
+                    </p>
+                  )
+                )}
+
+                {/* 6. READY_TO_PUBLISH */}
+                {content.status === 'READY_TO_PUBLISH' && (
+                  <>
+                    <WorkflowActionButton
+                      contentId={content.id}
+                      action="MARK_PUBLISHED"
+                      onDone={load}
+                    />
+                    {userRole === 'ADMIN' && (
+                      <>
+                        <WorkflowActionButton
+                          contentId={content.id}
+                          action="REVISION_FROM_READY"
+                          variant="outline"
+                          onDone={load}
+                        />
+                        <WorkflowActionButton
+                          contentId={content.id}
+                          action="REJECTED"
+                          variant="destructive"
+                          onDone={load}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* 7. PUBLISHED */}
                 {content.status === 'PUBLISHED' && (
                   <p className="text-xs text-teal-700 font-medium p-2 bg-teal-50 rounded dark:bg-teal-950/30">
                     Siklus alur kerja selesai — konten telah dipublikasikan.
+                  </p>
+                )}
+
+                {/* 8. REJECTED */}
+                {content.status === 'REJECTED' && (
+                  <p className="text-xs text-rose-700 font-medium p-2 bg-rose-50 rounded dark:bg-rose-950/30">
+                    Konten ini telah ditolak secara permanen oleh Admin.
                   </p>
                 )}
               </div>
@@ -546,6 +679,69 @@ export default function ContentDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Dialog Pindah ke Konten Tabungan */}
+      <Dialog open={tabunganModalOpen} onOpenChange={setTabunganModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-ink">
+              <BookmarkCheck className="h-5 w-5 text-indigo-600" />
+              Simpan ke Konten Tabungan
+            </DialogTitle>
+            <DialogDescription>
+              Konten ini akan dipindahkan ke daftar Konten Tabungan dan dapat dijadwalkan ulang sewaktu-waktu.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="tabungan-reason" className="text-xs font-semibold text-ink">
+                Alasan Penyimpanan (Opsional)
+              </Label>
+              <Textarea
+                id="tabungan-reason"
+                placeholder="Contoh: Menunggu momen kampanye bulan depan, materi visual perlu disempurnakan..."
+                value={tabunganReason}
+                onChange={(e) => setTabunganReason(e.target.value)}
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
+            {tabunganError && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{tabunganError}</span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTabunganModalOpen(false)}
+              disabled={tabunganLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={handleConfirmMoveToTabungan}
+              disabled={tabunganLoading}
+            >
+              {tabunganLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan ke Tabungan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

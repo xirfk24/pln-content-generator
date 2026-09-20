@@ -9,23 +9,26 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const CONTENT_STATUSES: ContentStatus[] = [
   'DRAFT',
-  'IN_PROGRESS',
   'PENDING_REVIEW',
   'APPROVED',
+  'PRODUCTION',
+  'PENDING_PRODUCTION_REVIEW',
+  'READY_TO_PUBLISH',
   'PUBLISHED',
-  'REVISION_REQUIRED',
+  'REJECTED',
   'RESCHEDULED',
   'NOT_REALIZED',
 ]
 
 export const CONTENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft',
-  IN_PROGRESS: 'Dalam Proses',
-  PENDING_REVIEW: 'Menunggu Persetujuan',
-  REVISION_REQUIRED: 'Perlu Revisi',
-  APPROVED: 'Disetujui',
+  PENDING_REVIEW: 'Menunggu Persetujuan Konsep',
+  APPROVED: 'Konsep Disetujui',
+  PRODUCTION: 'Produksi Konten',
+  PENDING_PRODUCTION_REVIEW: 'Menunggu Review Produksi',
   READY_TO_PUBLISH: 'Siap Publikasi',
   PUBLISHED: 'Dipublikasikan',
+  REJECTED: 'Ditolak',
   RESCHEDULED: 'Dijadwalkan Ulang',
   NOT_REALIZED: 'Tidak Direalisasikan',
   TABUNGAN: 'Konten Tabungan',
@@ -33,12 +36,13 @@ export const CONTENT_STATUS_LABELS: Record<string, string> = {
 
 export const CONTENT_STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
   PENDING_REVIEW: 'bg-purple-50 text-purple-700 border-purple-200',
-  REVISION_REQUIRED: 'bg-rose-50 text-rose-700 border-rose-200',
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  PRODUCTION: 'bg-amber-50 text-amber-700 border-amber-200',
+  PENDING_PRODUCTION_REVIEW: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   READY_TO_PUBLISH: 'bg-cyan-50 text-cyan-700 border-cyan-200',
   PUBLISHED: 'bg-teal-50 text-teal-700 border-teal-200',
+  REJECTED: 'bg-rose-50 text-rose-700 border-rose-200',
   RESCHEDULED: 'bg-orange-50 text-orange-700 border-orange-200',
   NOT_REALIZED: 'bg-slate-100 text-slate-500 border-slate-200',
   TABUNGAN: 'bg-indigo-50 text-indigo-700 border-indigo-200',

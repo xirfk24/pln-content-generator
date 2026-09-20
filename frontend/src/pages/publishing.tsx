@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils'
 interface PublicationRow extends Publication {
   content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'pic'> & {
     pillar_name?: string | null
+    planned_date?: string | null
   }
 }
 
@@ -257,6 +258,9 @@ export default function PublishingPage() {
   })
 
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false)
+  const [newScheduleDate, setNewScheduleDate] = useState('')
+  const [scheduleSaving, setScheduleSaving] = useState(false)
 
   const loadPublications = useCallback(async () => {
     setLoading(true)
@@ -318,16 +322,15 @@ export default function PublishingPage() {
     publications.forEach((pub) => {
       const contentId = pub.content_id || pub.id
       const existing = map.get(contentId)
+      // Prioritas 1: Tanggal rencana konten terbaru (pub.content?.planned_date)
+      // Prioritas 2: Tanggal publikasi (pub.planned_publish_date)
+      const effectiveDate = pub.content?.planned_date || pub.planned_publish_date || null
 
       if (existing) {
         existing.platforms.push(pub)
-        if (!existing.plannedDate && pub.planned_publish_date) {
-          existing.plannedDate = pub.planned_publish_date
-        } else if (
-          existing.plannedDate &&
-          pub.planned_publish_date &&
-          pub.planned_publish_date < existing.plannedDate
-        ) {
+        if (pub.content?.planned_date) {
+          existing.plannedDate = pub.content.planned_date
+        } else if (!existing.plannedDate && pub.planned_publish_date) {
           existing.plannedDate = pub.planned_publish_date
         }
       } else {
@@ -337,7 +340,7 @@ export default function PublishingPage() {
           topic: pub.content?.topic || '',
           pillarName: pub.content?.pillar_name || undefined,
           pic: pub.content?.pic || null,
-          plannedDate: pub.planned_publish_date || null,
+          plannedDate: effectiveDate,
           status: 'NOT_PUBLISHED',
           statusLabel: 'Belum Dijadwalkan',
           publishedCount: 0,
@@ -620,6 +623,35 @@ export default function PublishingPage() {
       }
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // Aksi: Update Jadwal Upload Grup Publikasi & Sinkronisasi
+  async function handleUpdateGroupSchedule(group: GroupedContentPublication) {
+    if (!newScheduleDate || group.platforms.length === 0) return
+    setScheduleSaving(true)
+    try {
+      const pubToUpdate = group.platforms[0]
+      const res = await apiFetch(`/api/publications/${pubToUpdate.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planned_publish_date: newScheduleDate,
+        }),
+      })
+      if (res.ok) {
+        setIsEditingSchedule(false)
+        notifySuccess('Jadwal upload berhasil disinkronkan dan diperbarui!')
+        await loadPublications()
+      } else {
+        const d = await res.json()
+        alert(d.error || 'Gagal mengubah jadwal upload')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat menyimpan jadwal baru')
+    } finally {
+      setScheduleSaving(false)
     }
   }
 
@@ -1333,11 +1365,53 @@ export default function PublishingPage() {
                       {activeManageGroup.pic || '-'}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-ink-muted block text-[11px]">Jadwal Upload:</span>
-                    <span className="font-semibold text-ink">
-                      {formatDateWithDay(activeManageGroup.plannedDate)}
-                    </span>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="text-ink-muted block text-[11px] mb-0.5">Jadwal Upload:</span>
+                    {!isEditingSchedule ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-ink">
+                          {formatDateWithDay(activeManageGroup.plannedDate)}
+                        </span>
+                        {activeManageGroup.status !== 'FULLY_PUBLISHED' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewScheduleDate(activeManageGroup.plannedDate?.split('T')[0] || '')
+                              setIsEditingSchedule(true)
+                            }}
+                            className="text-[11px] text-teal-600 hover:text-teal-700 underline font-medium ml-1 cursor-pointer"
+                          >
+                            Ubah
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="date"
+                          value={newScheduleDate}
+                          onChange={(e) => setNewScheduleDate(e.target.value)}
+                          className="text-xs rounded-md border border-border px-2 py-1 bg-surface text-ink shadow-2xs"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+                          disabled={scheduleSaving || !newScheduleDate}
+                          onClick={() => handleUpdateGroupSchedule(activeManageGroup)}
+                        >
+                          {scheduleSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Simpan'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          disabled={scheduleSaving}
+                          onClick={() => setIsEditingSchedule(false)}
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

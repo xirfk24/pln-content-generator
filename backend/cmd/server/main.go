@@ -76,6 +76,7 @@ func main() {
 
 		// Konten Tabungan
 		authed.GET("/tabungan", h.ListTabungan)
+		authed.POST("/tabungan/:id/save", h.MoveToTabungan)
 		authed.POST("/tabungan/:id/move-to-plan", h.MoveToPlan)
 		authed.POST("/tabungan/:id/reschedule", h.RescheduleTabungan)
 
