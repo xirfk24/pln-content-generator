@@ -183,3 +183,32 @@ export interface DashboardStats {
   rescheduled: number
   notRealized: number
 }
+
+export type PlanningPeriodStatus = 'DRAFT' | 'AKTIF' | 'SELESAI' | 'DIARSIPKAN'
+
+export interface PlanningPeriod {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  status: PlanningPeriodStatus
+  description?: string | null
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+  total_contents: number
+  published_count: number
+  draft_count: number
+  pending_count: number
+  approved_count: number
+  production_count: number
+}
+
+export interface MonthBreakdown {
+  month_key: string
+  month_name: string
+  start_date: string
+  end_date: string
+  total_count: number
+}
+

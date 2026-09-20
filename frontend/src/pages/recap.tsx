@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { PageHeader } from '@/components/ui/page-header'
-import { Loader2, Download, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart } from 'lucide-react'
+import { Loader2, Download, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart, FileSpreadsheet } from 'lucide-react'
 import { formatDate, getPeriodDateRange, type PeriodMode } from '@/lib/utils'
+import { exportContentReportToExcel } from '@/lib/excel-export'
 
 // --- Types ---
 
@@ -181,6 +182,37 @@ export default function RecapPage() {
       .catch(console.error)
   }, [])
 
+  const [exportingExcel, setExportingExcel] = useState(false)
+
+  async function handleExportExcel() {
+    if (!data || !data.detail) return
+    setExportingExcel(true)
+    try {
+      const platformObj = masterData.platforms.find((p) => p.id === platformID)
+      const pillarObj = masterData.pillars.find((p) => p.id === pillarID)
+
+      const items = data.detail.map((d) => ({
+        id: d.id,
+        title: d.title,
+        topic: d.topic,
+        pillar: d.pillar,
+        platform: d.platform,
+        status: d.status,
+        planned_date: d.planned_date,
+      }))
+
+      await exportContentReportToExcel(items, {
+        periodLabel: `${data.period.label} (${data.period.date_from} s/d ${data.period.date_to})`,
+        platformName: platformObj?.name,
+        pillarName: pillarObj?.name,
+      })
+    } catch (err) {
+      console.error('Excel export error:', err)
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   async function handleExportCsv() {
     try {
       const params = new URLSearchParams()
@@ -324,10 +356,37 @@ export default function RecapPage() {
 
             <div className="flex-1" />
 
-            <Button onClick={handleExportCsv} disabled={loading || !data} className="self-end">
-              <Download className="mr-2 h-4 w-4" />
-              Ekspor CSV
-            </Button>
+            <div className="flex items-center gap-2 self-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={loading || !data || data.total === 0}
+                className="text-xs"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+                Ekspor CSV
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={loading || !data || data.total === 0 || exportingExcel}
+                className="bg-[#00A2B9] hover:bg-[#008c9f] text-white text-xs font-semibold shadow-sm"
+              >
+                {exportingExcel ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Menyiapkan...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                    Ekspor Excel (.xlsx)
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Date range indicator */}

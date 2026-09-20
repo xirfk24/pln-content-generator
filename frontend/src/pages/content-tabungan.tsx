@@ -30,6 +30,7 @@ import {
   Loader2,
   RefreshCw,
   PlusCircle,
+  AlertCircle,
 } from 'lucide-react'
 import Link from '@/compat/next'
 import { formatDate } from '@/lib/utils'
@@ -162,18 +163,34 @@ export default function ContentTabunganPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Apakah Anda yakin ingin menghapus konten ini dari Konten Tabungan?')) return
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<Content | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function openDeleteModal(content: Content) {
+    setDeleteTarget(content)
+    setDeleteError(null)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    setDeleteError(null)
     try {
-      const res = await apiFetch(`/api/contents/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/contents/${deleteTarget.id}`, { method: 'DELETE' })
       if (res.ok) {
+        setDeleteTarget(null)
         loadData()
       } else {
         const d = await res.json()
-        alert(d.error || 'Gagal menghapus konten')
+        setDeleteError(d.error || 'Gagal menghapus konten.')
       }
     } catch (err) {
       console.error(err)
+      setDeleteError('Terjadi kesalahan jaringan.')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -365,7 +382,7 @@ export default function ContentTabunganPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(content.id)}
+                            onClick={() => openDeleteModal(content)}
                             title="Hapus dari Tabungan"
                             className="text-danger hover:bg-danger-soft hover:text-danger"
                           >
@@ -482,6 +499,72 @@ export default function ContentTabunganPage() {
             <Button onClick={handleReschedule} disabled={saving || !rescheduleDate}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan Jadwal Baru
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus Konten Tabungan */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 className="h-5 w-5" />
+              Hapus Konten dari Tabungan?
+            </DialogTitle>
+            <DialogDescription>
+              Konten ini akan dihapus secara permanen dari sistem dan tidak dapat dipulihkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteTarget && (
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-1">
+                <p className="font-semibold text-slate-900 dark:text-white line-clamp-2">
+                  {deleteTarget.title}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {deleteTarget.topic} • {deleteTarget.pillar?.name || 'Pilar Umum'}
+                </p>
+                {deleteTarget.savings_reason && (
+                  <p className="text-[11px] text-slate-500 italic">
+                    Alasan disimpan: &quot;{deleteTarget.savings_reason}&quot;
+                  </p>
+                )}
+              </div>
+
+              {deleteError && (
+                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                'Hapus Konten'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

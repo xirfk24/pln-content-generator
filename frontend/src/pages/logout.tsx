@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useEffect } from 'react'
 import { useRouter } from '@/compat/next'
+import { apiFetch } from '@/lib/api'
 
 export default function LogoutPage() {
   const router = useRouter()
@@ -10,6 +11,11 @@ export default function LogoutPage() {
 
   useEffect(() => {
     const logout = async () => {
+      try {
+        await apiFetch('/api/auth/logout', { method: 'POST' })
+      } catch {
+        // ignore
+      }
       await supabase.auth.signOut()
       router.push('/login')
     }

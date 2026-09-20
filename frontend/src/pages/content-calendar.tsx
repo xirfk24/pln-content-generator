@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react'
 import { CONTENT_STATUS_COLORS, CONTENT_STATUS_LABELS } from '@/constants'
 import { PlatformCluster } from '@/components/ui/platform-icon'
-import type { Content, Platform } from '@/types'
+import type { Content, Platform, PlanningPeriod } from '@/types'
+import { Select } from '@/components/ui/select'
 import Link from '@/compat/next'
 
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
@@ -20,13 +21,20 @@ const MONTHS = [
 export default function ContentCalendarPage() {
   const [contents, setContents] = useState<Content[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
+  const [periods, setPeriods] = useState<PlanningPeriod[]>([])
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
 
   useEffect(() => {
-    apiFetch('/api/master-data')
-      .then((res) => res.json())
-      .then((d) => setPlatforms(d.platforms || []))
+    Promise.all([
+      apiFetch('/api/master-data').then((res) => (res.ok ? res.json() : { platforms: [] })),
+      apiFetch('/api/planning-periods').then((res) => (res.ok ? res.json() : { periods: [] })),
+    ])
+      .then(([d, pData]: [any, any]) => {
+        setPlatforms(d.platforms || [])
+        setPeriods(pData.periods || [])
+      })
       .catch(() => {})
   }, [])
 
@@ -122,8 +130,31 @@ export default function ContentCalendarPage() {
                 {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
               </CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={goToToday}>
+            <div className="flex flex-wrap items-center gap-2">
+              {periods.length > 0 && (
+                <Select
+                  value={selectedPeriodId}
+                  onChange={(e) => {
+                    const pId = e.target.value
+                    setSelectedPeriodId(pId)
+                    const p = periods.find((item) => item.id === pId)
+                    if (p) {
+                      const sDate = new Date(p.start_date)
+                      if (!isNaN(sDate.getTime())) setCurrentDate(sDate)
+                    }
+                  }}
+                  className="h-8 w-44 text-xs font-medium bg-white dark:bg-slate-900"
+                  aria-label="Pilih Periode Perencanaan"
+                >
+                  <option value="">Lompat ke Periode...</option>
+                  {periods.map((pp) => (
+                    <option key={pp.id} value={pp.id}>
+                      {pp.name} ({pp.status})
+                    </option>
+                  ))}
+                </Select>
+              )}
+              <Button variant="outline" size="sm" onClick={goToToday} className="h-8 text-xs">
                 Hari Ini
               </Button>
               <div className="flex items-center gap-1">

@@ -84,6 +84,38 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 			('Website', 'website'),
 			('Twitter/X', 'twitter')
 		ON CONFLICT (name) DO UPDATE SET icon = EXCLUDED.icon`,
+
+		// Planning Periods (Semester-based planning)
+		`CREATE TABLE IF NOT EXISTS planning_periods (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(255) NOT NULL,
+			start_date DATE NOT NULL,
+			end_date DATE NOT NULL,
+			status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+			description TEXT,
+			created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+			created_at TIMESTAMPTZ DEFAULT now(),
+			updated_at TIMESTAMPTZ DEFAULT now()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_planning_periods_dates ON planning_periods(start_date, end_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_planning_periods_status ON planning_periods(status)`,
+
+		// Seed initial planning periods if table is empty
+		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
+		SELECT 'Semester 2 2026', '2026-07-01'::DATE, '2026-12-31'::DATE, 'AKTIF', 'Periode perencanaan konten Semester 2 Tahun 2026'
+		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2026')`,
+		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
+		SELECT 'Semester 1 2026', '2026-01-01'::DATE, '2026-06-30'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 1 Tahun 2026'
+		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 1 2026')`,
+		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
+		SELECT 'Semester 2 2025', '2025-07-01'::DATE, '2025-12-31'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 2 Tahun 2025'
+		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2025')`,
+		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
+		SELECT 'Semester 1 2025', '2025-01-01'::DATE, '2025-06-30'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 1 Tahun 2025'
+		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 1 2025')`,
+		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
+		SELECT 'Semester 2 2024', '2024-07-01'::DATE, '2024-12-31'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 2 Tahun 2024'
+		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2024')`,
 	}
 	for _, q := range queries {
 		if _, err := pool.Exec(ctx, q); err != nil {

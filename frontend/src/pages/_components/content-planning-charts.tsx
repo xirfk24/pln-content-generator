@@ -130,12 +130,12 @@ export function ContentPlanningCharts({
 
   // 3. Ringkasan Metrik Operasional Tambahan
   const operationalMetrics = useMemo(() => {
-    const inProgressCount = contents.filter((c) => c.status === 'IN_PROGRESS').length
+    const inProgressCount = contents.filter((c) => (c.status as string) === 'IN_PROGRESS' || c.status === 'PRODUCTION').length
     const draftCount = contents.filter((c) => c.status === 'DRAFT').length
     const publishedCount = contents.filter((c) => c.status === 'PUBLISHED').length
     const notRealizedCount = contents.filter((c) => c.status === 'NOT_REALIZED').length
     const rescheduledCount = contents.filter((c) => c.status === 'RESCHEDULED').length
-    const revisionCount = contents.filter((c) => c.status === 'REVISION_REQUIRED').length
+    const revisionCount = contents.filter((c) => (c.status as string) === 'REVISION_REQUIRED').length
     const overdueCount = contents.filter(
       (c) => c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED'
     ).length

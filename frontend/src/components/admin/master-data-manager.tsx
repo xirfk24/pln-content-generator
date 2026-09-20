@@ -148,15 +148,33 @@ export function MasterDataManager({
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this item? It may be referenced by existing content.')) return
+  // Delete Dialog State
+  const [deleteTarget, setDeleteTarget] = useState<MasterItem | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function openDeleteModal(item: MasterItem) {
+    setDeleteTarget(item)
+    setDeleteError(null)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    setDeleteError(null)
     try {
-      const res = await apiFetch(`/api/admin/${apiPath}/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/admin/${apiPath}/${deleteTarget.id}`, { method: 'DELETE' })
       const data = await res.json()
-      if (!res.ok) { alert(data.error || 'Failed to delete'); return }
+      if (!res.ok) {
+        setDeleteError(data.error || 'Gagal menghapus item ini.')
+        return
+      }
+      setDeleteTarget(null)
       load()
     } catch {
-      alert('Network error')
+      setDeleteError('Terjadi kesalahan jaringan.')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -278,7 +296,7 @@ export function MasterDataManager({
                           <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Edit" aria-label={`Edit ${item.name}`}>
                             <Pencil className="h-4 w-4" aria-hidden="true" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} title="Delete" aria-label={`Delete ${item.name}`}>
+                          <Button variant="ghost" size="icon" onClick={() => openDeleteModal(item)} title="Hapus" aria-label={`Hapus ${item.name}`}>
                             <Trash2 className="h-4 w-4 text-danger" aria-hidden="true" />
                           </Button>
                         </div>
@@ -450,6 +468,69 @@ export function MasterDataManager({
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 className="h-5 w-5" />
+              Hapus Data {title}?
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus data ini? Item yang terhubung dengan konten yang sudah ada mungkin tidak dapat dihapus.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteTarget && (
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-1">
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  {deleteTarget.name}
+                </p>
+                {deleteTarget.description && (
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {deleteTarget.description}
+                  </p>
+                )}
+              </div>
+
+              {deleteError && (
+                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                'Hapus Item'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

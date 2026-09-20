@@ -1,73 +1,296 @@
 'use client'
 
 import { apiFetch } from '@/lib/api'
-import { CONTENT_PURPOSE_LABELS, POSTING_CATEGORY_LABELS } from '@/constants'
-import { useState, useEffect, useCallback } from 'react'
+import {
+  CONTENT_STATUS_LABELS,
+  CONTENT_PURPOSE_LABELS,
+  POSTING_CATEGORY_LABELS,
+  CONTENT_PRIORITY_LABELS,
+} from '@/constants'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { Loader2, Download, FileBarChart } from 'lucide-react'
-import { FilterBar, EMPTY_FILTERS, type FilterValues } from '@/components/analytics/filter-bar'
+import {
+  Loader2,
+  FileSpreadsheet,
+  Download,
+  FileBarChart,
+  CalendarRange,
+  Calendar,
+  Layers,
+  Filter,
+  RotateCcw,
+  CheckCircle2,
+  Clock,
+  FileEdit,
+} from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { exportContentReportToExcel, type ReportItem } from '@/lib/excel-export'
+import type { PlanningPeriod } from '@/types'
 
-interface ReportRow {
-  id: string
-  title: string
-  topic: string
-  pillar: string
-  platform: string
-  category: string
-  format: string
-  content_purpose: string | null
-  posting_category: string | null
-  status: string
-  planned_date: string
-  pic: string
-  priority: string
+const INDO_MONTH_NAMES = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+]
+
+interface MonthOption {
+  key: string
+  name: string
+  startDate: string
+  endDate: string
 }
 
 export default function ReportsPage() {
-  const [rows, setRows] = useState<ReportRow[]>([])
+  const [rows, setRows] = useState<ReportItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS)
+  const [exportingExcel, setExportingExcel] = useState(false)
+
+  // Master data & Planning Periods
+  const [periods, setPeriods] = useState<PlanningPeriod[]>([])
   const [masterData, setMasterData] = useState<{
     pillars: Array<{ id: string; name: string }>
     platforms: Array<{ id: string; name: string }>
   }>({ pillars: [], platforms: [] })
 
-  const load = useCallback(async () => {
+  // Active filters
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('')
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('ALL')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
+  const [platformId, setPlatformId] = useState<string>('')
+  const [pillarId, setPillarId] = useState<string>('')
+  const [status, setStatus] = useState<string>('')
+
+  // 1. Load Master Data & Planning Periods on Mount
+  useEffect(() => {
+    Promise.all([
+      apiFetch('/api/planning-periods').then((r) => (r.ok ? r.json() : { periods: [] })),
+      apiFetch('/api/master-data').then((r) => (r.ok ? r.json() : { pillars: [], platforms: [] })),
+    ])
+      .then(([periodData, masterRes]) => {
+        const pList: PlanningPeriod[] = periodData.periods || []
+        setPeriods(pList)
+        setMasterData({
+          pillars: masterRes.pillars || [],
+          platforms: masterRes.platforms || [],
+        })
+
+        // Default to the AKTIF period, or the first period
+        const activeP = pList.find((p) => p.status === 'AKTIF') || pList[0]
+        if (activeP) {
+          setSelectedPeriodId(activeP.id)
+          setDateFrom(activeP.start_date)
+          setDateTo(activeP.end_date)
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load initial report filters:', err)
+      })
+  }, [])
+
+  // 2. Compute dynamic months for the selected period
+  const currentPeriod = useMemo(() => {
+    return periods.find((p) => p.id === selectedPeriodId) || null
+  }, [periods, selectedPeriodId])
+
+  const availableMonths = useMemo<MonthOption[]>(() => {
+    if (!currentPeriod || !currentPeriod.start_date || !currentPeriod.end_date) return []
+
+    const start = new Date(currentPeriod.start_date)
+    const end = new Date(currentPeriod.end_date)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return []
+
+    const months: MonthOption[] = []
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1)
+    const last = new Date(end.getFullYear(), end.getMonth(), 1)
+
+    while (cur <= last) {
+      const y = cur.getFullYear()
+      const m = cur.getMonth()
+      const mKey = `${y}-${String(m + 1).padStart(2, '0')}`
+      const mName = `${INDO_MONTH_NAMES[m]} ${y}`
+
+      const mStart = `${y}-${String(m + 1).padStart(2, '0')}-01`
+      const lastDayDate = new Date(y, m + 1, 0)
+      const mEnd = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`
+
+      months.push({
+        key: mKey,
+        name: mName,
+        startDate: mStart,
+        endDate: mEnd,
+      })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+
+    return months
+  }, [currentPeriod])
+
+  // Handle Period Change
+  const handlePeriodChange = (pId: string) => {
+    setSelectedPeriodId(pId)
+    setSelectedMonthKey('ALL')
+
+    if (pId === 'ALL') {
+      setDateFrom('')
+      setDateTo('')
+    } else {
+      const p = periods.find((item) => item.id === pId)
+      if (p) {
+        setDateFrom(p.start_date)
+        setDateTo(p.end_date)
+      }
+    }
+  }
+
+  // Handle Month Change
+  const handleMonthChange = (mKey: string) => {
+    setSelectedMonthKey(mKey)
+
+    if (mKey === 'ALL') {
+      if (currentPeriod) {
+        setDateFrom(currentPeriod.start_date)
+        setDateTo(currentPeriod.end_date)
+      }
+    } else {
+      const opt = availableMonths.find((m) => m.key === mKey)
+      if (opt) {
+        setDateFrom(opt.startDate)
+        setDateTo(opt.endDate)
+      }
+    }
+  }
+
+  // Reset Filters
+  const handleResetFilters = () => {
+    const activeP = periods.find((p) => p.status === 'AKTIF') || periods[0]
+    if (activeP) {
+      setSelectedPeriodId(activeP.id)
+      setSelectedMonthKey('ALL')
+      setDateFrom(activeP.start_date)
+      setDateTo(activeP.end_date)
+    } else {
+      setSelectedPeriodId('ALL')
+      setSelectedMonthKey('ALL')
+      setDateFrom('')
+      setDateTo('')
+    }
+    setPlatformId('')
+    setPillarId('')
+    setStatus('')
+  }
+
+  // Fetch Report Data
+  const loadReports = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      Object.entries(filters).forEach(([k, v]) => v && params.set(k, v))
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      if (platformId) params.set('platform_id', platformId)
+      if (pillarId) params.set('pillar_id', pillarId)
+      if (status) params.set('status', status)
+
       const res = await apiFetch(`/api/reports?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         setRows(data.rows || [])
       }
     } catch (error) {
-      console.error(error)
+      console.error('Failed to fetch reports:', error)
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [dateFrom, dateTo, platformId, pillarId, status])
 
   useEffect(() => {
-    load()
-  }, [load])
+    loadReports()
+  }, [loadReports])
 
-  useEffect(() => {
-    apiFetch('/api/master-data')
-      .then((r) => r.json())
-      .then((d) => setMasterData({ pillars: d.pillars || [], platforms: d.platforms || [] }))
-      .catch(console.error)
-  }, [])
+  // Compute summary metrics for filtered rows
+  const summaryMetrics = useMemo(() => {
+    const total = rows.length
+    const published = rows.filter((r) => r.status === 'PUBLISHED').length
+    const inProgress = rows.filter((r) =>
+      ['APPROVED', 'PRODUCTION', 'PENDING_PRODUCTION_REVIEW', 'READY_TO_PUBLISH'].includes(r.status)
+    ).length
+    const draftReview = rows.filter((r) =>
+      ['DRAFT', 'PENDING_REVIEW'].includes(r.status)
+    ).length
+    const publishedPercent = total > 0 ? Math.round((published / total) * 100) : 0
 
-  async function handleExportCsv() {
+    return { total, published, inProgress, draftReview, publishedPercent }
+  }, [rows])
+
+  // Dynamic label for current period selection
+  const currentPeriodLabel = useMemo(() => {
+    if (selectedPeriodId === 'ALL') {
+      if (dateFrom && dateTo) {
+        return `Kustom (${formatDate(dateFrom)} – ${formatDate(dateTo)})`
+      }
+      return 'Semua Periode'
+    }
+
+    if (currentPeriod) {
+      if (selectedMonthKey !== 'ALL') {
+        const m = availableMonths.find((item) => item.key === selectedMonthKey)
+        return `${currentPeriod.name} — Bulan ${m?.name || selectedMonthKey}`
+      }
+      return `${currentPeriod.name} (${formatDate(currentPeriod.start_date)} – ${formatDate(currentPeriod.end_date)})`
+    }
+
+    return 'Laporan Konten'
+  }, [selectedPeriodId, currentPeriod, selectedMonthKey, availableMonths, dateFrom, dateTo])
+
+  // Export to Excel with PLN Theme
+  const handleExportExcel = async () => {
+    if (rows.length === 0) return
+    setExportingExcel(true)
+    try {
+      const platformObj = masterData.platforms.find((p) => p.id === platformId)
+      const pillarObj = masterData.pillars.find((p) => p.id === pillarId)
+      const monthObj = availableMonths.find((m) => m.key === selectedMonthKey)
+
+      await exportContentReportToExcel(rows, {
+        periodLabel: currentPeriodLabel,
+        semesterName: currentPeriod?.name,
+        monthName: monthObj?.name,
+        dateFrom,
+        dateTo,
+        platformName: platformObj?.name,
+        pillarName: pillarObj?.name,
+        statusName: status ? CONTENT_STATUS_LABELS[status] || status : undefined,
+      })
+    } catch (err) {
+      console.error('Excel export error:', err)
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
+  // Export to CSV
+  const handleExportCsv = async () => {
     try {
       const params = new URLSearchParams()
-      Object.entries(filters).forEach(([k, v]) => v && params.set(k, v))
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      if (platformId) params.set('platform_id', platformId)
+      if (pillarId) params.set('pillar_id', pillarId)
+      if (status) params.set('status', status)
       params.set('format', 'csv')
 
       const res = await apiFetch(`/api/reports?${params.toString()}`)
@@ -79,6 +302,7 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
+      a.download = `Laporan_Konten_PLN_${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -87,85 +311,390 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 pb-16">
+      {/* Header Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Reports</h1>
-          <p className="mt-1 text-sm text-ink-secondary">Generate and export content reports</p>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#00A2B9]" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Laporan Berkala
+            </h1>
+          </div>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Ekspor dan analisis data perencanaan serta performa konten media sosial PLN UID Jawa Barat.
+          </p>
         </div>
-        <Button onClick={handleExportCsv} disabled={loading || rows.length === 0} className="self-start sm:self-auto">
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={loading || rows.length === 0}
+            className="text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200"
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+            Ekspor CSV
+          </Button>
+
+          <Button
+            onClick={handleExportExcel}
+            disabled={loading || rows.length === 0 || exportingExcel}
+            className="bg-[#00A2B9] hover:bg-[#008c9f] text-white text-xs font-semibold shadow-sm transition-colors"
+          >
+            {exportingExcel ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                Menyiapkan Excel...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                Ekspor Excel (.xlsx)
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <FilterBar filters={filters} onChange={setFilters} masterData={masterData} />
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+        {/* Card 1: Total */}
+        <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-4 shadow-sm dark:border-sky-950/40 dark:bg-sky-950/20">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Total Konten</p>
+            <FileBarChart className="h-4 w-4 text-[#00A2B9]" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+            {summaryMetrics.total}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            Sesuai filter periode aktif
+          </p>
+        </div>
+
+        {/* Card 2: Published */}
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm dark:border-emerald-950/40 dark:bg-emerald-950/20">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Dipublikasikan</p>
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+              {summaryMetrics.published}
+            </p>
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+              {summaryMetrics.publishedPercent}%
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/80">
+            Realisasi publikasi
+          </p>
+        </div>
+
+        {/* Card 3: In Production / Ready */}
+        <div className="rounded-xl border border-cyan-100 bg-cyan-50/40 p-4 shadow-sm dark:border-cyan-950/40 dark:bg-cyan-950/20">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-cyan-800 dark:text-cyan-300">Produksi & Siap</p>
+            <Clock className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-cyan-800 dark:text-cyan-300">
+            {summaryMetrics.inProgress}
+          </p>
+          <p className="mt-0.5 text-[11px] text-cyan-600/80 dark:text-cyan-400/80">
+            Dalam tahap pengerjaan
+          </p>
+        </div>
+
+        {/* Card 4: Draft / Review */}
+        <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4 shadow-sm dark:border-amber-950/40 dark:bg-amber-950/20">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Draft & Review</p>
+            <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-300">
+            {summaryMetrics.draftReview}
+          </p>
+          <p className="mt-0.5 text-[11px] text-amber-600/80 dark:text-amber-400/80">
+            Konsep belum disetujui
+          </p>
+        </div>
+      </div>
+
+      {/* Filter Toolbar Card */}
+      <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
+        <CardContent className="p-4 space-y-3.5">
+          {/* Header Filter */}
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
+              <Filter className="h-3.5 w-3.5 text-[#00A2B9]" />
+              <span>Filter Periode Semester & Kriteria Laporan</span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-7 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            >
+              <RotateCcw className="mr-1 h-3 w-3" />
+              Reset Filter
+            </Button>
+          </div>
+
+          {/* Controls Grid */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            {/* 1. Periode / Semester */}
+            <div className="space-y-1">
+              <label htmlFor="report-period" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Periode Semester
+              </label>
+              <Select
+                id="report-period"
+                value={selectedPeriodId}
+                onChange={(e) => handlePeriodChange(e.target.value)}
+                className="text-xs font-medium"
+              >
+                <option value="ALL">Semua Periode / Kustom</option>
+                {periods.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 2. Bulan (Turunan dari Semester) */}
+            <div className="space-y-1">
+              <label htmlFor="report-month" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Pilih Bulan
+              </label>
+              <Select
+                id="report-month"
+                value={selectedMonthKey}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                disabled={selectedPeriodId === 'ALL'}
+                className="text-xs font-medium"
+              >
+                <option value="ALL">Semua Bulan di Semester Ini</option>
+                {availableMonths.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 3. Dari Tanggal */}
+            <div className="space-y-1">
+              <label htmlFor="report-date-from" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Dari Tanggal
+              </label>
+              <Input
+                id="report-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value)
+                  setSelectedMonthKey('ALL')
+                }}
+                className="text-xs"
+              />
+            </div>
+
+            {/* 4. Sampai Tanggal */}
+            <div className="space-y-1">
+              <label htmlFor="report-date-to" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Sampai Tanggal
+              </label>
+              <Input
+                id="report-date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value)
+                  setSelectedMonthKey('ALL')
+                }}
+                className="text-xs"
+              />
+            </div>
+
+            {/* 5. Platform */}
+            <div className="space-y-1">
+              <label htmlFor="report-platform" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Platform Media
+              </label>
+              <Select
+                id="report-platform"
+                value={platformId}
+                onChange={(e) => setPlatformId(e.target.value)}
+                className="text-xs"
+              >
+                <option value="">Semua Platform</option>
+                {masterData.platforms.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 6. Content Pillar */}
+            <div className="space-y-1">
+              <label htmlFor="report-pillar" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Content Pillar
+              </label>
+              <Select
+                id="report-pillar"
+                value={pillarId}
+                onChange={(e) => setPillarId(e.target.value)}
+                className="text-xs"
+              >
+                <option value="">Semua Pillar</option>
+                {masterData.pillars.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <FileBarChart className="h-5 w-5 text-ink-muted" />
-            <CardTitle className="text-base">
-              Content Report
-              <span className="ml-2 text-sm font-normal text-ink-secondary">
-                {loading ? 'Loading...' : `${rows.length} records`}
-              </span>
-            </CardTitle>
+      {/* Main Content Table Card */}
+      <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
+        <CardHeader className="border-b border-slate-100 py-3.5 px-5 dark:border-slate-800">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <FileBarChart className="h-4 w-4 text-[#00A2B9]" />
+              <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
+                Daftar Konten — {currentPeriodLabel}
+              </CardTitle>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {loading ? 'Memuat data...' : `${rows.length} konten ditemukan`}
+            </span>
           </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-[#00A2B9]" />
+              <p className="text-xs font-medium text-slate-500">Memuat laporan konten...</p>
             </div>
           ) : rows.length === 0 ? (
-            <p className="py-12 text-center text-sm text-ink-muted">
-              No data matches the selected filters.
-            </p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Tidak ada data konten
+              </p>
+              <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+                Tidak ada konten yang sesuai dengan filter periode atau kriteria yang dipilih.
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-surface-muted">
+              <table className="w-full text-xs">
+                <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Tema</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Platform</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Format</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Purpose</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Posting</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Planned Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">PIC</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Priority</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Status</th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      No.
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Judul Konten & Tema
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Content Pillar
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Platform
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Format
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Tujuan
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Kategori
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Tanggal Rencana
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      PIC
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Prioritas
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Status
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
-                  {rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-surface-muted">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {rows.map((row, index) => (
+                    <tr
+                      key={row.id || index}
+                      className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-400 text-center">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <div className="font-semibold text-slate-900 dark:text-white line-clamp-2">
+                          {row.title}
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                          {row.topic}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-ink">{row.title}</div>
-                        <div className="text-xs text-ink-secondary">{row.topic}</div>
+                        {row.pillar ? (
+                          <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {row.pillar}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
-                        {row.pillar ? <Badge variant="outline">{row.pillar}</Badge> : '-'}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {row.platform || '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">{row.platform || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">{row.format}</td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">
-                        {row.content_purpose ? (CONTENT_PURPOSE_LABELS[row.content_purpose] ?? row.content_purpose) : '-'}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {row.format || '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">
-                        {row.posting_category ? (POSTING_CATEGORY_LABELS[row.posting_category] ?? row.posting_category) : '-'}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {row.content_purpose
+                          ? CONTENT_PURPOSE_LABELS[row.content_purpose] ?? row.content_purpose
+                          : '-'}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-secondary">
-                        {formatDate(row.planned_date)}
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {row.posting_category
+                          ? POSTING_CATEGORY_LABELS[row.posting_category] ?? row.posting_category
+                          : '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">{row.pic || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary">{row.priority || '-'}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
+                        {row.planned_date ? formatDate(row.planned_date) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {row.pic || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.priority ? (
+                          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                            {CONTENT_PRIORITY_LABELS[row.priority] || row.priority}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={row.status as never} />
                       </td>

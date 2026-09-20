@@ -80,6 +80,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     roles: ['ADMIN'],
     children: [
       { name: 'Kelola Pengguna', href: '/admin/users', icon: Users },
+      { name: 'Periode Perencanaan', href: '/admin/periods', icon: CalendarRange },
       { name: 'Pilar Konten', href: '/admin/pillars', icon: Settings },
       { name: 'Kategori Konten', href: '/admin/categories', icon: Settings },
       { name: 'Platform Media', href: '/admin/platforms', icon: Settings },
@@ -230,24 +231,24 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       <div className={cn('border-t p-3', sidebarBorder)}>
         {!collapsed ? (
           <div className="space-y-3">
-            <a
-              href="/api/reports?format=csv"
+            <Link
+              href="/reports"
               className="flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              <FileBarChart className="h-3.5 w-3.5" aria-hidden="true" />
               Ekspor Laporan
-            </a>
+            </Link>
             <p className="text-center text-micro text-white/40">&copy; 2026 Humas PLN UID Jabar</p>
           </div>
         ) : (
-          <a
-            href="/api/reports?format=csv"
+          <Link
+            href="/reports"
             className="flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             title="Ekspor Laporan"
             aria-label="Ekspor Laporan"
           >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-          </a>
+            <FileBarChart className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
         )}
       </div>
     </>

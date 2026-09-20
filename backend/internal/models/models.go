@@ -130,3 +130,31 @@ type ApprovalHistory struct {
 	PerformedAt time.Time `json:"performed_at"`
 	Performer   *Profile  `json:"performer,omitempty"`
 }
+
+type PlanningPeriod struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	StartDate   string    `json:"start_date"`
+	EndDate     string    `json:"end_date"`
+	Status      string    `json:"status"` // DRAFT, AKTIF, SELESAI, DIARSIPKAN
+	Description *string   `json:"description,omitempty"`
+	CreatedBy   *string   `json:"created_by,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
+	TotalContents   int `json:"total_contents"`
+	PublishedCount  int `json:"published_count"`
+	DraftCount      int `json:"draft_count"`
+	PendingCount    int `json:"pending_count"`
+	ApprovedCount   int `json:"approved_count"`
+	ProductionCount int `json:"production_count"`
+}
+
+type MonthBreakdown struct {
+	MonthKey   string `json:"month_key"`  // "2026-07"
+	MonthName  string `json:"month_name"` // "Juli 2026"
+	StartDate  string `json:"start_date"` // "2026-07-01"
+	EndDate    string `json:"end_date"`   // "2026-07-31"
+	TotalCount int    `json:"total_count"`
+}
+

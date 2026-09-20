@@ -38,10 +38,11 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { formatDate } from '@/lib/utils'
 import Link from '@/compat/next'
 import { formatDateWithDay, getWeekOfMonth } from '@/lib/utils'
 import { SkeletonTable } from '@/components/ui/skeleton'
-import type { Content, Publication } from '@/types'
+import type { Content, Publication, PlanningPeriod } from '@/types'
 import { PlatformCluster } from '@/components/ui/platform-icon'
 import { ContentPlanningKpi } from './content-planning-kpi'
 import { ContentPlanningCharts } from './content-planning-charts'
@@ -82,6 +83,8 @@ export default function ContentPlanningList() {
     pillars: Array<{ id: string; name: string }>
     platforms: Array<{ id: string; name: string }>
   }>({ pillars: [], platforms: [] })
+  const [planningPeriods, setPlanningPeriods] = useState<PlanningPeriod[]>([])
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('')
 
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -112,12 +115,21 @@ export default function ContentPlanningList() {
 
   async function loadMasterData() {
     try {
-      const res = await apiFetch('/api/master-data')
-      const data = await res.json()
-      setMasterData({
-        pillars: data.pillars || [],
-        platforms: data.platforms || [],
-      })
+      const [res, pRes] = await Promise.all([
+        apiFetch('/api/master-data'),
+        apiFetch('/api/planning-periods'),
+      ])
+      if (res.ok) {
+        const data = await res.json()
+        setMasterData({
+          pillars: data.pillars || [],
+          platforms: data.platforms || [],
+        })
+      }
+      if (pRes.ok) {
+        const pData = await pRes.json()
+        setPlanningPeriods(pData.periods || [])
+      }
     } catch (error) {
       console.error('Failed to load master data:', error)
     }
@@ -289,29 +301,43 @@ export default function ContentPlanningList() {
     }
   }
 
-  async function handleDelete(content: Content) {
+  // Delete Confirmation Modal
+  const [deleteTarget, setDeleteTarget] = useState<Content | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function openDeleteModal(content: Content) {
     setActiveMenuId(null)
     const isLocked = ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(content.status)
     if (isLocked) {
-      alert(`Konten dengan status ${content.status} sedang aktif dalam workflow dan tidak dapat dihapus.`)
-      return
+      setDeleteError(
+        `Konten dengan status "${content.status}" sedang aktif dalam alur workflow dan tidak dapat dihapus.`
+      )
+    } else {
+      setDeleteError(null)
     }
+    setDeleteTarget(content)
+  }
 
-    if (!confirm(`Apakah Anda yakin ingin menghapus rencana konten "${content.title}"?`)) {
-      return
-    }
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    setDeleteError(null)
 
     try {
-      const res = await apiFetch(`/api/contents/${content.id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/contents/${deleteTarget.id}`, { method: 'DELETE' })
       if (res.ok) {
+        setDeleteTarget(null)
         loadContents()
       } else {
         const d = await res.json()
-        alert(d.error || 'Gagal menghapus konten')
+        setDeleteError(d.error || 'Gagal menghapus rencana konten.')
       }
     } catch (e) {
       console.error(e)
-      alert('Terjadi kesalahan saat menghapus konten')
+      setDeleteError('Terjadi kesalahan jaringan saat menghapus konten.')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -458,6 +484,34 @@ export default function ContentPlanningList() {
                 {masterData.platforms.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 3.5. Periode Perencanaan (Semester) */}
+            <div>
+              <Select
+                value={selectedPeriodId}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSelectedPeriodId(val)
+                  const p = planningPeriods.find((item) => item.id === val)
+                  if (p) {
+                    setDateFrom(p.start_date)
+                    setDateTo(p.end_date)
+                  } else {
+                    setDateFrom('')
+                    setDateTo('')
+                  }
+                }}
+                className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
+                aria-label="Filter Periode Perencanaan"
+              >
+                <option value="">Semua Periode</option>
+                {planningPeriods.map((pp) => (
+                  <option key={pp.id} value={pp.id}>
+                    {pp.name} ({pp.status})
                   </option>
                 ))}
               </Select>
@@ -818,13 +872,8 @@ export default function ContentPlanningList() {
                               {/* Opsi 5: Hapus Konten */}
                               <button
                                 type="button"
-                                onClick={() => handleDelete(content)}
-                                disabled={isLocked}
-                                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                                  isLocked
-                                    ? 'text-ink-muted opacity-40 cursor-not-allowed'
-                                    : 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'
-                                }`}
+                                onClick={() => openDeleteModal(content)}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                                 <span>Hapus Konten</span>
@@ -976,6 +1025,78 @@ export default function ContentPlanningList() {
                 </>
               ) : (
                 'Simpan ke Tabungan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Konfirmasi Hapus Konten */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 className="h-5 w-5" />
+              Hapus Rencana Konten?
+            </DialogTitle>
+            <DialogDescription>
+              Tindakan ini permanen dan tidak dapat dibatalkan. Data rencana konten akan dihapus dari sistem.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteTarget && (
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-1">
+                <p className="font-semibold text-slate-900 dark:text-white line-clamp-2">
+                  {deleteTarget.title}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {deleteTarget.topic} • {deleteTarget.pillar?.name || 'Pilar Umum'}
+                </p>
+                {deleteTarget.planned_date && (
+                  <p className="text-[11px] text-slate-400">
+                    Rencana Publikasi: {formatDate(deleteTarget.planned_date)}
+                  </p>
+                )}
+              </div>
+
+              {deleteError && (
+                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={handleConfirmDelete}
+              disabled={
+                deleteLoading ||
+                Boolean(
+                  deleteTarget &&
+                    ['PENDING_REVIEW', 'APPROVED', 'PUBLISHED'].includes(deleteTarget.status)
+                )
+              }
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                'Hapus Konten'
               )}
             </Button>
           </DialogFooter>

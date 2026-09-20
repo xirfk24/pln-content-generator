@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -539,6 +540,23 @@ func (h *Handler) periodTrend(f analyticsFilters, keyFn func(string) string, lab
 	all := h.loadFilteredContents(f, false)
 
 	byMonth := map[string]*[2]int{} // [planned, published]
+
+	// Pre-populate all intervals in the requested date range so 0-count months/semesters are displayed
+	if f.dateFrom != "" && f.dateTo != "" {
+		sDate, errS := time.Parse("2006-01-02", f.dateFrom)
+		eDate, errE := time.Parse("2006-01-02", f.dateTo)
+		if errS == nil && errE == nil && !sDate.After(eDate) {
+			cur := time.Date(sDate.Year(), sDate.Month(), 1, 0, 0, 0, 0, time.UTC)
+			for !cur.After(eDate) {
+				k := keyFn(cur.Format("2006-01-02"))
+				if _, ok := byMonth[k]; !ok {
+					byMonth[k] = &[2]int{0, 0}
+				}
+				cur = cur.AddDate(0, 1, 0)
+			}
+		}
+	}
+
 	for _, r := range all {
 		if r.PlannedDate == nil || *r.PlannedDate == "" {
 			continue

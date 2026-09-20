@@ -28,6 +28,8 @@ import AdminUsersPage from './pages/admin-users'
 import AdminCategoriesPage from './pages/admin-categories'
 import AdminPillarsPage from './pages/admin-pillars'
 import AdminPlatformsPage from './pages/admin-platforms'
+import AdminPeriodsPage from './pages/admin-periods'
+import NotificationsPage from './pages/notifications'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true)
@@ -107,6 +109,9 @@ export default function App() {
         <Route path="/admin/categories" element={<AdminCategoriesPage />} />
         <Route path="/admin/pillars" element={<AdminPillarsPage />} />
         <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
+        <Route path="/admin/periods" element={<AdminPeriodsPage />} />
+        <Route path="/periode-perencanaan" element={<AdminPeriodsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -460,7 +460,7 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		SELECT p.id, p.content_id, p.platform_id,
 		       CASE
 		           WHEN p.status != 'PUBLISHED' AND c.planned_date IS NOT NULL THEN c.planned_date::TEXT
-		           ELSE COALESCE(p.planned_publish_date, c.planned_date::TEXT)
+		           ELSE COALESCE(p.planned_publish_date::TEXT, c.planned_date::TEXT)
 		       END,
 		       p.actual_publish_date::TEXT,
 		       p.url, p.status, p.notes, p.cancel_reason, p.created_at, p.updated_at,
@@ -475,7 +475,7 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		WHERE `+where+`
 		ORDER BY CASE
 		    WHEN p.status != 'PUBLISHED' AND c.planned_date IS NOT NULL THEN c.planned_date::TEXT
-		    ELSE COALESCE(p.planned_publish_date, c.planned_date::TEXT)
+		    ELSE COALESCE(p.planned_publish_date::TEXT, c.planned_date::TEXT)
 		END ASC`, args...)
 	if err != nil {
 		log.Printf("queryPublicationsWithContent query error: %v (where=%s)", err, where)

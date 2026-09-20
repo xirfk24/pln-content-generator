@@ -98,6 +98,14 @@ func main() {
 		authed.GET("/workflow/approval-queue", h.ApprovalQueue)
 		authed.GET("/workflow/tasks", h.MyTasks)
 
+		authed.GET("/planning-periods", h.ListPlanningPeriods)
+		authed.GET("/planning-periods/:id", h.GetPlanningPeriod)
+		authed.POST("/planning-periods", h.CreatePlanningPeriod)
+		authed.PUT("/planning-periods/:id", h.UpdatePlanningPeriod)
+		authed.DELETE("/planning-periods/:id", h.DeletePlanningPeriod)
+		authed.POST("/planning-periods/:id/activate", h.ActivatePlanningPeriod)
+		authed.POST("/planning-periods/:id/archive", h.ArchivePlanningPeriod)
+
 		// AI endpoints hit the paid Gemini API, so they get a strict
 		// per-user quota on top of the global per-IP limit: 10 requests
 		// immediately, then 1 every 6 seconds per user.
