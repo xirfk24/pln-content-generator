@@ -11,21 +11,44 @@ import (
 
 // GET /api/tabungan — Ambil daftar konten tabungan
 func (h *Handler) ListTabungan(c *gin.Context) {
+	user := requireUser(c)
+	if user == nil {
+		return
+	}
+
 	where := []string{"COALESCE(c.is_savings, FALSE) = TRUE"}
 	args := []any{}
+
+	// Pastikan hanya yang dibuat atau ditambahkan oleh user itu sendiri (khususnya untuk user role STAFF)
+	if user.Role != "ADMIN" {
+		args = append(args, user.ID)
+		where = append(where, "c.created_by = $"+itoa(len(args)))
+	}
 
 	if search := c.Query("search"); search != "" {
 		args = append(args, "%"+strings.ToLower(search)+"%")
 		where = append(where, "(LOWER(c.title) LIKE $"+itoa(len(args))+" OR LOWER(c.topic) LIKE $"+itoa(len(args))+")")
 	}
+	if v := c.Query("topic"); v != "" {
+		cleanTopic := strings.TrimSpace(v)
+		if idx := strings.Index(cleanTopic, " - "); idx != -1 {
+			cleanTopic = strings.TrimSpace(cleanTopic[idx+3:])
+		}
+		args = append(args, "%"+strings.ToLower(cleanTopic)+"%")
+		where = append(where, "LOWER(c.topic) LIKE $"+itoa(len(args)))
+	}
 	if v := c.Query("pillar_id"); v != "" {
 		args = append(args, v)
+		where = append(where, "c.pillar_id = $"+itoa(len(args)))
 	}
 	if v := c.Query("category_id"); v != "" {
 		args = append(args, v)
 		where = append(where, "c.category_id = $"+itoa(len(args)))
 	}
-	if v := c.Query("month"); v != "" {
+	if v := c.Query("date"); v != "" {
+		args = append(args, v)
+		where = append(where, "(c.planned_date::DATE = $"+itoa(len(args))+" OR c.saved_at::DATE = $"+itoa(len(args))+")")
+	} else if v := c.Query("month"); v != "" {
 		// month formatted as YYYY-MM or substring of planned_date / savings_month
 		args = append(args, v+"%")
 		where = append(where, "(c.savings_month LIKE $"+itoa(len(args))+" OR c.planned_date::TEXT LIKE $"+itoa(len(args))+")")
@@ -35,7 +58,7 @@ func (h *Handler) ListTabungan(c *gin.Context) {
 	contents, err := h.queryContents(c.Request.Context(), query, args...)
 	if err != nil {
 		log.Printf("listTabungan error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil daftar konten tabungan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil daftar bank konten"})
 		return
 	}
 

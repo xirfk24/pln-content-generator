@@ -45,7 +45,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     name: 'Perencanaan Konten',
     children: [
       { name: 'Rencana Konten', href: '/content/planning', icon: FileText },
-      { name: 'Konten Tabungan', href: '/content/tabungan', icon: BookmarkCheck },
+      { name: 'Bank Konten', href: '/content/tabungan', icon: BookmarkCheck },
     ],
   },
   {

@@ -48,6 +48,15 @@ type pillarBreakdownRow struct {
 	Realization float64 `json:"realization_rate"`
 }
 
+type topicBreakdownRow struct {
+	TopicCode   string  `json:"topic_code"`
+	Topic       string  `json:"topic"`
+	Planned     int     `json:"planned"`
+	Published   int     `json:"published"`
+	Unverified  int     `json:"unverified"`
+	Realization float64 `json:"realization_rate"`
+}
+
 type platformBreakdownRow struct {
 	Platform    string  `json:"platform"`
 	Planned     int     `json:"planned"`
@@ -134,6 +143,7 @@ func (h *Handler) Recap(c *gin.Context) {
 	periodStr := c.DefaultQuery("period", "1")
 	platformID := c.Query("platform_id")
 	pillarID := c.Query("pillar_id")
+	topic := c.Query("topic")
 
 	if yearStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "year is required"})
@@ -173,12 +183,18 @@ func (h *Handler) Recap(c *gin.Context) {
 	args = append(args, dateTo)
 	contentWhere = append(contentWhere, "c.planned_date <= $2")
 	if pillarID != "" {
-		args = append(args, pillarID)
-		contentWhere = append(contentWhere, "c.pillar_id = $"+itoa(len(args)))
+		cleanPillar := strings.Split(pillarID, " ")[0]
+		args = append(args, "%"+strings.ToLower(cleanPillar)+"%")
+		idx := itoa(len(args))
+		contentWhere = append(contentWhere, "(c.pillar_id::TEXT = $"+idx+" OR LOWER(pi.name) LIKE $"+idx+")")
 	}
 	if platformID != "" {
 		args = append(args, platformID)
 		contentWhere = append(contentWhere, "c.platform_id = $"+itoa(len(args)))
+	}
+	if topic != "" {
+		args = append(args, "%"+strings.ToLower(strings.TrimSpace(topic))+"%")
+		contentWhere = append(contentWhere, "LOWER(c.topic) LIKE $"+itoa(len(args)))
 	}
 
 	// content_pillar_code is derived from the pillar name in Go (first char)
@@ -462,6 +478,58 @@ func (h *Handler) Recap(c *gin.Context) {
 		return platformBreakdown[i].Platform < platformBreakdown[j].Platform
 	})
 
+	// --- Per-topic breakdown ---
+	topicMap := map[string]*topicBreakdownRow{}
+	topicOrder := []string{}
+	for _, ct := range contents {
+		tName := strings.TrimSpace(ct.Topic)
+		if tName == "" {
+			tName = "Z - Lain-Lain"
+		}
+		tCode, cleanName := parseTopicCodeAndName(tName)
+		if _, ok := topicMap[tName]; !ok {
+			topicMap[tName] = &topicBreakdownRow{
+				Topic:     cleanName,
+				TopicCode: tCode,
+			}
+			topicOrder = append(topicOrder, tName)
+		}
+		topicMap[tName].Planned++
+		if publishedContentIDs[ct.ID] {
+			topicMap[tName].Published++
+		}
+	}
+	for _, p := range pubResolved {
+		for _, ct := range contents {
+			if ct.ID == p.ContentID {
+				tName := strings.TrimSpace(ct.Topic)
+				if tName == "" {
+					tName = "Z - Lain-Lain"
+				}
+				if !p.Verified {
+					if row, ok := topicMap[tName]; ok {
+						row.Unverified++
+					}
+				}
+				break
+			}
+		}
+	}
+	topicBreakdown := make([]topicBreakdownRow, 0, len(topicOrder))
+	for _, key := range topicOrder {
+		row := *topicMap[key]
+		if row.Planned > 0 {
+			row.Realization = float64(row.Published) / float64(row.Planned) * 100
+		}
+		topicBreakdown = append(topicBreakdown, row)
+	}
+	sort.Slice(topicBreakdown, func(i, j int) bool {
+		if topicBreakdown[i].TopicCode != topicBreakdown[j].TopicCode {
+			return topicBreakdown[i].TopicCode < topicBreakdown[j].TopicCode
+		}
+		return topicBreakdown[i].Topic < topicBreakdown[j].Topic
+	})
+
 	// --- Build response ---
 	response := gin.H{
 		"period": gin.H{
@@ -480,6 +548,7 @@ func (h *Handler) Recap(c *gin.Context) {
 			"realization_rate":     realizationRate,
 		},
 		"pillar_breakdown":   pillarBreakdown,
+		"topic_breakdown":    topicBreakdown,
 		"platform_breakdown": platformBreakdown,
 		"detail":             detailRows,
 		"total":              len(detailRows),
@@ -541,6 +610,29 @@ func (h *Handler) writeRecapCSV(c *gin.Context, data gin.H, label string) {
 			sb.WriteString(csvEscape(cell))
 		}
 		sb.WriteString("\n")
+	}
+
+	// --- Topic breakdown ---
+	if tb, ok := data["topic_breakdown"].([]topicBreakdownRow); ok && len(tb) > 0 {
+		sb.WriteString("\nTOPIC BREAKDOWN\n")
+		sb.WriteString("Code,Topic,Planned,Published,Unverified,Realization Rate\n")
+		for _, r := range tb {
+			cells := []string{
+				r.TopicCode,
+				r.Topic,
+				itoa(r.Planned),
+				itoa(r.Published),
+				itoa(r.Unverified),
+				fmtPercent(r.Realization) + "%",
+			}
+			for j, cell := range cells {
+				if j > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString(csvEscape(cell))
+			}
+			sb.WriteString("\n")
+		}
 	}
 
 	// --- Platform breakdown ---
@@ -613,6 +705,30 @@ func derefStringPtr(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func parseTopicCodeAndName(rawTopic string) (string, string) {
+	trimmed := strings.TrimSpace(rawTopic)
+	if trimmed == "" {
+		return "-", "Lain-Lain"
+	}
+	parts := strings.SplitN(trimmed, "-", 2)
+	if len(parts) == 2 {
+		code := strings.TrimSpace(parts[0])
+		name := strings.TrimSpace(parts[1])
+		if len(code) <= 3 {
+			return strings.ToUpper(code), name
+		}
+	}
+	parts = strings.SplitN(trimmed, "–", 2)
+	if len(parts) == 2 {
+		code := strings.TrimSpace(parts[0])
+		name := strings.TrimSpace(parts[1])
+		if len(code) <= 3 {
+			return strings.ToUpper(code), name
+		}
+	}
+	return "-", trimmed
 }
 
 func fmtPercent(v float64) string {

@@ -23,6 +23,7 @@ type analyticsFilters struct {
 	dateTo     string
 	platformID string
 	pillarID   string
+	topic      string
 	status     string
 }
 
@@ -32,6 +33,7 @@ func readFilters(c *gin.Context) analyticsFilters {
 		dateTo:     c.Query("date_to"),
 		platformID: c.Query("platform_id"),
 		pillarID:   c.Query("pillar_id"),
+		topic:      c.Query("topic"),
 		status:     c.Query("status"),
 	}
 }
@@ -42,6 +44,7 @@ type analyticsContentRow struct {
 	PlannedDate  *string
 	PillarName   *string
 	PlatformName *string
+	Topic        string
 	Title        string
 }
 
@@ -60,6 +63,14 @@ func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []ana
 		args = append(args, f.pillarID)
 		where = append(where, "c.pillar_id = $"+itoa(len(args)))
 	}
+	if f.topic != "" {
+		cleanTopic := strings.TrimSpace(f.topic)
+		if idx := strings.Index(cleanTopic, " - "); idx != -1 {
+			cleanTopic = strings.TrimSpace(cleanTopic[idx+3:])
+		}
+		args = append(args, "%"+strings.ToLower(cleanTopic)+"%")
+		where = append(where, "LOWER(c.topic) LIKE $"+itoa(len(args)))
+	}
 	if f.platformID != "" {
 		args = append(args, f.platformID)
 		where = append(where, "c.platform_id = $"+itoa(len(args)))
@@ -69,7 +80,7 @@ func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []ana
 		where = append(where, "c.status = $"+itoa(len(args)))
 	}
 
-	query := `SELECT c.id, c.status, c.planned_date::TEXT, pi.name, pl.name` + map[bool]string{true: ", c.title", false: ""}[needTitle] + `
+	query := `SELECT c.id, c.status, c.planned_date::TEXT, pi.name, pl.name, COALESCE(c.topic, '')` + map[bool]string{true: ", c.title", false: ""}[needTitle] + `
 		FROM contents c
 		LEFT JOIN pillars pi ON pi.id = c.pillar_id
 		LEFT JOIN platforms pl ON pl.id = c.platform_id
@@ -86,9 +97,9 @@ func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []ana
 		var r analyticsContentRow
 		var err error
 		if needTitle {
-			err = rows.Scan(&r.ID, &r.Status, &r.PlannedDate, &r.PillarName, &r.PlatformName, &r.Title)
+			err = rows.Scan(&r.ID, &r.Status, &r.PlannedDate, &r.PillarName, &r.PlatformName, &r.Topic, &r.Title)
 		} else {
-			err = rows.Scan(&r.ID, &r.Status, &r.PlannedDate, &r.PillarName, &r.PlatformName)
+			err = rows.Scan(&r.ID, &r.Status, &r.PlannedDate, &r.PillarName, &r.PlatformName, &r.Topic)
 		}
 		if err != nil {
 			continue
@@ -192,6 +203,7 @@ func (h *Handler) Analytics(c *gin.Context) {
 		"kpis":                h.dashboardKPIs(f),
 		"platformPerformance": h.platformPerformance(f),
 		"pillarPerformance":   h.pillarPerformance(f),
+		"topicPerformance":    h.topicPerformance(f),
 		"monthlyTrend":        h.monthlyTrend(f),
 		"semesterTrend":       h.semesterTrend(f),
 		"topContent":          h.topContent(f, rankMetric, 10),
@@ -488,6 +500,104 @@ func (h *Handler) pillarPerformance(f analyticsFilters) []pillarPerfRow {
 		if name == "Unknown" {
 			continue
 		}
+		row := rows[name]
+		if row.PublishedCount > 0 {
+			row.AvgViews = int(float64(row.Views)/float64(row.PublishedCount) + 0.5)
+		}
+		if row.Reach > 0 {
+			row.AvgEngagementRate = float64(row.TotalEngagement) / float64(row.Reach) * 100
+		}
+		out = append(out, *row)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Views > out[j].Views })
+	return out
+}
+
+type topicPerfRow struct {
+	Topic             string  `json:"topic"`
+	TopicCode         string  `json:"topicCode"`
+	ContentCount      int     `json:"contentCount"`
+	PublishedCount    int     `json:"publishedCount"`
+	Views             int     `json:"views"`
+	Reach             int     `json:"reach"`
+	AvgViews          int     `json:"avgViews"`
+	TotalEngagement   int     `json:"totalEngagement"`
+	AvgEngagementRate float64 `json:"avgEngagementRate"`
+}
+
+func (h *Handler) topicPerformance(f analyticsFilters) []topicPerfRow {
+	all := h.loadFilteredContents(f, false)
+	rows := map[string]*topicPerfRow{}
+	order := []string{}
+	for _, r := range all {
+		name := "Lain-Lain"
+		if strings.TrimSpace(r.Topic) != "" {
+			name = strings.TrimSpace(r.Topic)
+		}
+		code := ""
+		if len(name) >= 3 && name[1] == ' ' && name[2] == '-' {
+			code = string(name[0])
+		}
+		if _, ok := rows[name]; !ok {
+			rows[name] = &topicPerfRow{Topic: name, TopicCode: code}
+			order = append(order, name)
+		}
+		rows[name].ContentCount++
+	}
+
+	contentIDs := make([]string, len(all))
+	for i, r := range all {
+		contentIDs[i] = r.ID
+	}
+	pubs := h.loadPublicationsForContents(contentIDs, "")
+	pubToContent := map[string]string{}
+	pubIDs := make([]string, len(pubs))
+	for i, p := range pubs {
+		pubToContent[p.id] = p.contentID
+		pubIDs[i] = p.id
+	}
+
+	publishedContentIDs := map[string]bool{}
+	for _, p := range pubs {
+		if p.actualPublishDate != nil && *p.actualPublishDate != "" {
+			publishedContentIDs[p.contentID] = true
+		}
+	}
+
+	contentTopic := map[string]string{}
+	for _, r := range all {
+		name := "Lain-Lain"
+		if strings.TrimSpace(r.Topic) != "" {
+			name = strings.TrimSpace(r.Topic)
+		}
+		contentTopic[r.ID] = name
+	}
+
+	for _, r := range all {
+		if publishedContentIDs[r.ID] {
+			name := contentTopic[r.ID]
+			if row, ok := rows[name]; ok {
+				row.PublishedCount++
+			}
+		}
+	}
+
+	byPub := h.loadMetricsForPubs(pubIDs)
+	for _, p := range pubs {
+		name := contentTopic[pubToContent[p.id]]
+		row := rows[name]
+		if row == nil {
+			continue
+		}
+		if agg := byPub[p.id]; agg != nil {
+			row.Views += agg.Views
+			row.Reach += agg.Reach
+			row.TotalEngagement += agg.Likes + agg.Comments + agg.Shares + agg.Saves
+		}
+	}
+
+	out := make([]topicPerfRow, 0, len(rows))
+	for _, name := range order {
 		row := rows[name]
 		if row.PublishedCount > 0 {
 			row.AvgViews = int(float64(row.Views)/float64(row.PublishedCount) + 0.5)

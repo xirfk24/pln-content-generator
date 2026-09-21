@@ -94,6 +94,7 @@ func main() {
 		authed.GET("/recap/years", h.RecapYears)
 		authed.GET("/recap", h.Recap)
 		authed.GET("/master-data", h.MasterData)
+		authed.GET("/important-events", h.ListImportantEvents)
 
 		authed.GET("/workflow/approval-queue", h.ApprovalQueue)
 		authed.GET("/workflow/tasks", h.MyTasks)

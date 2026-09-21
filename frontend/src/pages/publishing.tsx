@@ -600,12 +600,12 @@ export default function PublishingPage() {
     }
   }
 
-  // Aksi: Pindahkan Konten Terlambat ke Konten Tabungan
+  // Aksi: Pindahkan Konten Terlambat ke Bank Konten
   async function handleMoveDelayToTabungan(pub: PublicationRow) {
     if (!pub.content_id) return
     if (
       !confirm(
-        'Pindahkan konten yang terlambat ini ke Konten Tabungan agar dapat dijadwalkan ulang dengan aman di kemudian hari?'
+        'Pindahkan konten yang terlambat ini ke Bank Konten agar dapat dijadwalkan ulang dengan aman di kemudian hari?'
       )
     )
       return
@@ -618,7 +618,7 @@ export default function PublishingPage() {
         }),
       })
       if (res.ok) {
-        notifySuccess('Konten berhasil dipindahkan ke Konten Tabungan.')
+        notifySuccess('Konten berhasil dipindahkan ke Bank Konten.')
         await loadPublications()
       }
     } catch (err) {
@@ -1021,14 +1021,21 @@ export default function PublishingPage() {
               <Select
                 value={platformFilter}
                 onChange={(e) => setPlatformFilter(e.target.value)}
-                className="text-xs h-9 w-full"
+                className="text-xs h-9 w-full font-normal"
               >
                 <option value="">Semua Platform</option>
-                {platforms.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
+                {platforms
+                  .filter(
+                    (p) =>
+                      !['linkedin', 'website', 'twitter/x', 'twitter', 'x'].includes(
+                        p.name.toLowerCase().trim()
+                      )
+                  )
+                  .map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
               </Select>
             </div>
 
@@ -1649,17 +1656,17 @@ export default function PublishingPage() {
                             </>
                           )}
 
-                          {/* 3. Terlambat: Tombol Pindah ke Tabungan */}
+                          {/* 3. Terlambat: Tombol Pindah ke Bank Konten */}
                           {isPubDelayed && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleMoveDelayToTabungan(pub)}
                               className="text-xs h-8 rounded-lg text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-800"
-                              title="Pindahkan ke Konten Tabungan untuk dijadwalkan ulang"
+                              title="Pindahkan ke Bank Konten untuk dijadwalkan ulang"
                             >
                               <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
-                              Ke Tabungan
+                              Ke Bank Konten
                             </Button>
                           )}
 
@@ -1855,7 +1862,7 @@ export default function PublishingPage() {
                 htmlFor="moveTabungan"
                 className="text-xs font-normal cursor-pointer leading-relaxed text-ink-secondary"
               >
-                Otomatis simpan ide konten ini ke <strong>Konten Tabungan</strong> agar dapat
+                Otomatis simpan ide konten ini ke <strong>Bank Konten</strong> agar dapat
                 dimanfaatkan kembali nanti.
               </Label>
             </div>

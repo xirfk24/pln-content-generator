@@ -22,6 +22,8 @@ import { SkeletonCard, SkeletonKPI } from '@/components/ui/skeleton'
 import {
   ENGAGEMENT_FORMULA,
   CONTENT_STATUS_LABELS,
+  PLN_TOPIC_OPTIONS,
+  CONTENT_PILLAR_OPTIONS,
 } from '@/constants'
 import {
   AXIS_PROPS,
@@ -117,6 +119,16 @@ interface AnalyticsData {
     totalEngagement: number
     avgEngagementRate: number
   }>
+  topicPerformance?: Array<{
+    topic: string
+    topicCode?: string
+    contentCount: number
+    publishedCount: number
+    views: number
+    avgViews: number
+    totalEngagement: number
+    avgEngagementRate: number
+  }>
   monthlyTrend: Array<{
     month: string
     label: string
@@ -161,6 +173,7 @@ export default function AnalyticsOverviewPage() {
   const [dateTo, setDateTo] = useState<string>('')
   const [platformId, setPlatformId] = useState<string>('')
   const [pillarId, setPillarId] = useState<string>('')
+  const [topicFilter, setTopicFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
 
   // Advanced date filter toggle
@@ -420,25 +433,15 @@ export default function AnalyticsOverviewPage() {
                   </>
                 )}
               </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResetFilters}
-                className="h-7 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              >
-                <RotateCcw className="mr-1 h-3 w-3" />
-                Reset Filter
-              </Button>
             </div>
           </div>
 
-          {/* Controls Grid */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            {/* 1. Periode Perencanaan (Semester) */}
+          {/* Quick Select Filter Row */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+            {/* 1. Periode Rencana */}
             <div className="space-y-1">
               <label htmlFor="analytics-period" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Periode Perencanaan
+                Periode Master
               </label>
               <Select
                 id="analytics-period"
@@ -446,7 +449,7 @@ export default function AnalyticsOverviewPage() {
                 onChange={(e) => handlePeriodChange(e.target.value)}
                 className="text-xs font-medium"
               >
-                <option value="ALL">Semua Periode / Kustom</option>
+                <option value="ALL">Semua Periode</option>
                 {periods.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
@@ -455,10 +458,10 @@ export default function AnalyticsOverviewPage() {
               </Select>
             </div>
 
-            {/* 2. Bulan (Dependent to Selected Semester) */}
+            {/* 2. Bulan di Semester */}
             <div className="space-y-1">
               <label htmlFor="analytics-month" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Bulan
+                Bulan Pelaksanaan
               </label>
               <Select
                 id="analytics-month"
@@ -476,7 +479,7 @@ export default function AnalyticsOverviewPage() {
               </Select>
             </div>
 
-            {/* 3. Platform Media */}
+            {/* 3. Platform Media (Tanpa LinkedIn, Website, Twitter/X) */}
             <div className="space-y-1">
               <label htmlFor="analytics-platform" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 Platform
@@ -485,18 +488,45 @@ export default function AnalyticsOverviewPage() {
                 id="analytics-platform"
                 value={platformId}
                 onChange={(e) => setPlatformId(e.target.value)}
-                className="text-xs"
+                className="text-xs font-normal"
               >
                 <option value="">Semua Platform</option>
-                {masterData.platforms.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                {masterData.platforms
+                  .filter(
+                    (p) =>
+                      !['linkedin', 'website', 'twitter/x', 'twitter', 'x'].includes(
+                        p.name.toLowerCase().trim()
+                      )
+                  )
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </Select>
+            </div>
+
+            {/* 4. Topik Konten (A - Z) */}
+            <div className="space-y-1">
+              <label htmlFor="analytics-topic" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Topik Konten
+              </label>
+              <Select
+                id="analytics-topic"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="text-xs font-normal"
+              >
+                <option value="">Semua Topik Konten</option>
+                {PLN_TOPIC_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </Select>
             </div>
 
-            {/* 4. Content Pillar */}
+            {/* 5. Content Pillar */}
             <div className="space-y-1">
               <label htmlFor="analytics-pillar" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 Content Pillar
@@ -505,18 +535,26 @@ export default function AnalyticsOverviewPage() {
                 id="analytics-pillar"
                 value={pillarId}
                 onChange={(e) => setPillarId(e.target.value)}
-                className="text-xs"
+                className="text-xs font-normal"
               >
-                <option value="">Semua Pillar</option>
-                {masterData.pillars.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                <option value="">Semua Content Pillar</option>
+                {CONTENT_PILLAR_OPTIONS.map((cp) => {
+                  const match = masterData.pillars.find(
+                    (p) =>
+                      p.name.toLowerCase() === cp.toLowerCase() ||
+                      p.name.toLowerCase().startsWith(cp.split(' ')[0].toLowerCase())
+                  )
+                  const val = match ? match.id : cp
+                  return (
+                    <option key={cp} value={val}>
+                      {cp}
+                    </option>
+                  )
+                })}
               </Select>
             </div>
 
-            {/* 5. Status Konten */}
+            {/* 6. Status Konten */}
             <div className="space-y-1">
               <label htmlFor="analytics-status" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 Status Konten
@@ -525,7 +563,7 @@ export default function AnalyticsOverviewPage() {
                 id="analytics-status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs"
+                className="text-xs font-normal"
               >
                 <option value="">Semua Status</option>
                 <option value="PUBLISHED">Dipublikasikan</option>
@@ -908,29 +946,32 @@ export default function AnalyticsOverviewPage() {
             </Card>
           </div>
 
-          {/* Table: Performa Berdasarkan Content Pillar */}
+          {/* Table: Performa Berdasarkan Topik Konten */}
           <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
             <CardHeader className="border-b border-slate-100 py-3.5 px-5 dark:border-slate-800">
               <div className="flex flex-col gap-0.5">
                 <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
-                  Performa Berdasarkan Content Pillar
+                  Performa Berdasarkan Topik Konten
                 </CardTitle>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Rincian ketercapaian dan interaksi konten per pilar tema pada {activePeriodContextLabel}
+                  Rincian ketercapaian dan interaksi konten per topik konten resmi pada {activePeriodContextLabel}
                 </p>
               </div>
             </CardHeader>
 
             <CardContent className="p-0">
-              {data.pillarPerformance.length === 0 ? (
-                <p className="py-8 text-center text-xs text-slate-500">Belum ada data pilar konten</p>
+              {(!data.topicPerformance || data.topicPerformance.length === 0) ? (
+                <p className="py-8 text-center text-xs text-slate-500">Belum ada data performa topik konten</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60">
                       <tr>
                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          Pilar Konten
+                          Kode
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Topik Konten
                         </th>
                         <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Total Konten
@@ -953,36 +994,46 @@ export default function AnalyticsOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {data.pillarPerformance.map((p) => (
-                        <tr
-                          key={p.pillar}
-                          className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
-                        >
-                          <td className="px-4 py-3">
-                            <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                              {p.pillar}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
-                            {p.contentCount}
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
-                            {p.publishedCount}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                            {p.views.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                            {p.avgViews.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                            {p.totalEngagement.toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                            {p.avgEngagementRate.toFixed(2)}%
-                          </td>
-                        </tr>
-                      ))}
+                      {data.topicPerformance.map((p) => {
+                        const code =
+                          p.topicCode ||
+                          (p.topic.length >= 3 && p.topic[1] === ' ' && p.topic[2] === '-'
+                            ? p.topic[0]
+                            : '-')
+                        return (
+                          <tr
+                            key={p.topic}
+                            className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                          >
+                            <td className="px-4 py-3">
+                              <span className="inline-block rounded bg-primary-soft text-primary font-bold px-2 py-0.5 text-xs">
+                                {code}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
+                              {p.topic}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
+                              {p.contentCount}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
+                              {p.publishedCount}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
+                              {p.views.toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
+                              {p.avgViews.toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
+                              {p.totalEngagement.toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                              {p.avgEngagementRate.toFixed(2)}%
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                   <div className="p-3 border-t border-slate-100 dark:border-slate-800">

@@ -60,7 +60,7 @@ const ACTION_LABELS_MAP: Record<string, string> = {
   REVISION_FROM_READY: 'Revisi dari Siap Tayang',
   REJECTED: 'Ditolak',
   STATUS_MIGRATED: 'Status Dimigrasi',
-  SAVED_TO_TABUNGAN: 'Disimpan ke Tabungan',
+  SAVED_TO_TABUNGAN: 'Disimpan ke Bank Konten',
   RESCHEDULED: 'Dijadwalkan Ulang',
   // Legacy
   START_PROGRESS: 'Mulai Dikerjakan',
@@ -134,7 +134,7 @@ export default function ContentDetailPage() {
         load()
       } else {
         const d = await res.json()
-        setTabunganError(d.error || 'Gagal memindahkan ke tabungan')
+        setTabunganError(d.error || 'Gagal memindahkan ke Bank Konten')
       }
     } catch (err) {
       console.error(err)
@@ -210,7 +210,7 @@ export default function ContentDetailPage() {
             {content.is_savings && (
               <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-700">
                 <BookmarkCheck className="mr-1 h-3 w-3" />
-                Konten Tabungan
+                Bank Konten
               </Badge>
             )}
             {content.pillar && (
@@ -232,10 +232,10 @@ export default function ContentDetailPage() {
               size="sm"
               onClick={openMoveToTabunganModal}
               disabled={tabunganLoading}
-              title="Pindahkan ke Konten Tabungan"
+              title="Pindahkan ke Bank Konten"
             >
               <BookmarkCheck className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
-              Simpan ke Tabungan
+              Simpan ke Bank Konten
             </Button>
           )}
 
@@ -680,23 +680,23 @@ export default function ContentDetailPage() {
         </div>
       </div>
 
-      {/* Dialog Pindah ke Konten Tabungan */}
+      {/* Dialog Pindah ke Bank Konten */}
       <Dialog open={tabunganModalOpen} onOpenChange={setTabunganModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-ink">
               <BookmarkCheck className="h-5 w-5 text-indigo-600" />
-              Simpan ke Konten Tabungan
+              Simpan ke Bank Konten
             </DialogTitle>
             <DialogDescription>
-              Konten ini akan dipindahkan ke daftar Konten Tabungan dan dapat dijadwalkan ulang sewaktu-waktu.
+              Konten ini akan dipindahkan ke daftar Bank Konten dan dapat dijadwalkan ulang sewaktu-waktu.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="tabungan-reason" className="text-xs font-semibold text-ink">
-                Alasan Penyimpanan (Opsional)
+                Alasan Penyimpanan ke Bank Konten (Opsional)
               </Label>
               <Textarea
                 id="tabungan-reason"
@@ -736,7 +736,7 @@ export default function ContentDetailPage() {
                   Menyimpan...
                 </>
               ) : (
-                'Simpan ke Tabungan'
+                'Simpan ke Bank Konten'
               )}
             </Button>
           </DialogFooter>

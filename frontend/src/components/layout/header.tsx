@@ -51,7 +51,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Dasbor Utama',
   '/content/planning': 'Rencana Konten',
   '/content/planning/new': 'Buat Rencana Konten Baru',
-  '/content/tabungan': 'Konten Tabungan',
+  '/content/tabungan': 'Bank Konten',
   '/content/calendar': 'Rencana Konten — Kalender',
   '/content/import': 'Rencana Konten — Import Data',
   '/publishing': 'Antrean Publikasi',
@@ -76,7 +76,7 @@ const ROUTE_SUBTITLES: Record<string, string> = {
   '/dashboard': 'Ringkasan aktivitas konten, alur kerja, dan performa media sosial Humas PLN UID Jawa Barat.',
   '/content/planning': 'Modul ini digunakan untuk menyusun, mengelola, mengajukan, dan memantau proses pengelolaan konten sebelum dipublikasikan.',
   '/content/planning/new': 'Form penyusunan rencana konten baru dengan pengelompokan pilar komunikasi dan multi-platform.',
-  '/content/tabungan': 'Modul ini digunakan untuk menampung konten yang ditunda, belum memiliki waktu publikasi pasti, atau disimpan untuk periode berikutnya.',
+  '/content/tabungan': 'Modul ini digunakan untuk menampung konten yang ditunda, belum memiliki waktu publikasi pasti, atau disimpan untuk periode berikutnya dalam Bank Konten.',
   '/content/calendar': 'Tampilan kalender terintegrasi dari jadwal publikasi rencana konten.',
   '/content/import': 'Impor massal rencana konten melalui file spreadsheet/CSV.',
   '/publishing': 'Modul ini digunakan untuk memantau status tayang, mengelola jadwal, mencatat URL publikasi, dan merekam data performa.',
@@ -100,7 +100,7 @@ const ROUTE_SUBTITLES: Record<string, string> = {
 function usePageTitle(pathname: string): string {
   return React.useMemo(() => {
     if (ROUTE_TITLES[pathname]) return ROUTE_TITLES[pathname]
-    if (pathname.startsWith('/content/tabungan')) return 'Konten Tabungan'
+    if (pathname.startsWith('/content/tabungan')) return 'Bank Konten'
     if (pathname.startsWith('/content/planning/')) return 'Detail Rencana Konten'
     if (pathname.startsWith('/content/')) {
       return pathname.endsWith('/edit') ? 'Edit Rencana Konten' : 'Detail Rencana Konten'
@@ -112,7 +112,7 @@ function usePageTitle(pathname: string): string {
 function usePageSubtitle(pathname: string): string {
   return React.useMemo(() => {
     if (ROUTE_SUBTITLES[pathname]) return ROUTE_SUBTITLES[pathname]
-    if (pathname.startsWith('/content/tabungan')) return 'Kelola konten simpanan dan jadwalkan ulang saat siap tayang.'
+    if (pathname.startsWith('/content/tabungan')) return 'Kelola konten simpanan di Bank Konten dan jadwalkan ulang saat siap tayang.'
     if (pathname.startsWith('/content/')) {
       return pathname.endsWith('/edit')
         ? 'Perbarui rincian, brief, dan platform rencana konten.'

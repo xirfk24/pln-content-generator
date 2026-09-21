@@ -46,6 +46,7 @@ import type { Content, Publication, PlanningPeriod } from '@/types'
 import { PlatformCluster } from '@/components/ui/platform-icon'
 import { ContentPlanningKpi } from './content-planning-kpi'
 import { ContentPlanningCharts } from './content-planning-charts'
+import { PLN_TOPIC_OPTIONS } from '@/constants'
 
 /** Ambil URL publikasi pertama yang published (kalau ada) */
 function getPublishedUrl(content: Content): string | null {
@@ -64,6 +65,7 @@ export default function ContentPlanningList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [topicFilter, setTopicFilter] = useState('')
   const [pillarFilter, setPillarFilter] = useState('')
   const [platformFilter, setPlatformFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -95,12 +97,12 @@ export default function ContentPlanningList() {
   useEffect(() => {
     loadContents()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder])
+  }, [search, statusFilter, topicFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder])
 
   // Reset current page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, statusFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder, specialFilter])
+  }, [search, statusFilter, topicFilter, pillarFilter, platformFilter, dateFrom, dateTo, sortBy, sortOrder, specialFilter])
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -141,6 +143,7 @@ export default function ContentPlanningList() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter) params.set('status', statusFilter)
+      if (topicFilter) params.set('topic', topicFilter)
       if (pillarFilter) params.set('pillar_id', pillarFilter)
       if (platformFilter) params.set('platform_id', platformFilter)
       if (dateFrom) params.set('date_from', dateFrom)
@@ -161,6 +164,7 @@ export default function ContentPlanningList() {
   function handleResetFilters() {
     setSearch('')
     setStatusFilter('')
+    setTopicFilter('')
     setPillarFilter('')
     setPlatformFilter('')
     setDateFrom('')
@@ -209,7 +213,19 @@ export default function ContentPlanningList() {
       list = list.filter((item) => item.status === statusFilter)
     }
 
-    // 3. Pillar
+    // 3. Topik Konten
+    if (topicFilter) {
+      const cleanTopic = topicFilter.includes(' - ')
+        ? topicFilter.split(' - ')[1].toLowerCase().trim()
+        : topicFilter.toLowerCase().trim()
+      list = list.filter(
+        (item) =>
+          item.topic === topicFilter ||
+          (item.topic && item.topic.toLowerCase().includes(cleanTopic))
+      )
+    }
+
+    // 3.5. Pillar
     if (pillarFilter) {
       list = list.filter(
         (item) =>
@@ -284,18 +300,18 @@ export default function ContentPlanningList() {
       const res = await apiFetch(`/api/tabungan/${tabunganTarget.id}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: tabunganReason.trim() || 'Dipindahkan dari Rencana Konten' }),
+        body: JSON.stringify({ reason: tabunganReason.trim() || 'Dipindahkan dari Rencana Konten ke Bank Konten' }),
       })
       if (res.ok) {
         setTabunganTarget(null)
         loadContents()
       } else {
         const d = await res.json()
-        setTabunganError(d.error || 'Gagal memindahkan ke Konten Tabungan')
+        setTabunganError(d.error || 'Gagal memindahkan ke Bank Konten')
       }
     } catch (e) {
       console.error(e)
-      setTabunganError('Terjadi kesalahan saat memindahkan ke Konten Tabungan')
+      setTabunganError('Terjadi kesalahan saat memindahkan ke Bank Konten')
     } finally {
       setTabunganLoading(false)
     }
@@ -354,6 +370,7 @@ export default function ContentPlanningList() {
   const hasFilters =
     Boolean(search) ||
     Boolean(statusFilter) ||
+    Boolean(topicFilter) ||
     Boolean(pillarFilter) ||
     Boolean(platformFilter) ||
     Boolean(dateFrom) ||
@@ -455,18 +472,18 @@ export default function ContentPlanningList() {
               </Select>
             </div>
 
-            {/* 2. Content Pillar */}
+            {/* 2. Topik Konten */}
             <div>
               <Select
-                value={pillarFilter}
-                onChange={(e) => setPillarFilter(e.target.value)}
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
                 className="w-full text-xs bg-white dark:bg-slate-900"
-                aria-label="Filter pilar konten"
+                aria-label="Filter topik konten"
               >
-                <option value="">Semua Content Pillar</option>
-                {masterData.pillars.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                <option value="">Semua Topik Konten</option>
+                {PLN_TOPIC_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </Select>
@@ -584,7 +601,7 @@ export default function ContentPlanningList() {
                 onClick={handleResetFilters}
                 className="font-medium text-primary hover:underline hover:text-primary/80"
               >
-                Reset Semua Filter ↺
+                Reset Semua Filter
               </button>
             </div>
           )}
@@ -854,7 +871,7 @@ export default function ContentPlanningList() {
                                 )}
                               </button>
 
-                              {/* Opsi 4: Pindahkan ke Tabungan (hanya jika belum published dan belum ditolak) */}
+                              {/* Opsi 4: Pindahkan ke Bank Konten (hanya jika belum published dan belum ditolak) */}
                               {content.status !== 'PUBLISHED' && content.status !== 'REJECTED' && (
                                 <button
                                   type="button"
@@ -862,7 +879,7 @@ export default function ContentPlanningList() {
                                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                                 >
                                   <BookmarkPlus className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                                  <span>Pindah ke Tabungan</span>
+                                  <span>Pindah ke Bank Konten</span>
                                 </button>
                               )}
 
@@ -968,23 +985,23 @@ export default function ContentPlanningList() {
         </Card>
       )}
 
-      {/* Dialog Pindah ke Konten Tabungan */}
+      {/* Dialog Pindah ke Bank Konten */}
       <Dialog open={!!tabunganTarget} onOpenChange={(open) => !open && setTabunganTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-ink">
               <BookmarkCheck className="h-5 w-5 text-indigo-600" />
-              Simpan ke Konten Tabungan
+              Simpan ke Bank Konten
             </DialogTitle>
             <DialogDescription>
-              Pindahkan &quot;{tabunganTarget?.title}&quot; ke daftar Konten Tabungan. Konten dapat dijadwalkan ulang sewaktu-waktu.
+              Pindahkan &quot;{tabunganTarget?.title}&quot; ke daftar Bank Konten. Konten dapat dijadwalkan ulang sewaktu-waktu.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="plan-tabungan-reason" className="text-xs font-semibold text-ink">
-                Alasan Penyimpanan (Opsional)
+                Alasan Penyimpanan ke Bank Konten (Opsional)
               </Label>
               <Textarea
                 id="plan-tabungan-reason"
@@ -1024,7 +1041,7 @@ export default function ContentPlanningList() {
                   Menyimpan...
                 </>
               ) : (
-                'Simpan ke Tabungan'
+                'Simpan ke Bank Konten'
               )}
             </Button>
           </DialogFooter>

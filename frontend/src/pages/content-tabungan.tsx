@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/lib/api'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -34,19 +34,32 @@ import {
 } from 'lucide-react'
 import Link from '@/compat/next'
 import { formatDate } from '@/lib/utils'
+import { PLN_TOPIC_OPTIONS } from '@/constants'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import type { Content, Pillar, Category, Platform } from '@/types'
 
 export default function ContentTabunganPage() {
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null)
   const [contents, setContents] = useState<Content[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [pillarFilter, setPillarFilter] = useState('')
+  const [topicFilter, setTopicFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [monthFilter, setMonthFilter] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
   const [pillars, setPillars] = useState<Pillar[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
+
+  useEffect(() => {
+    apiFetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          setCurrentUser(data.user)
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   // Modal dialog states
   const [moveModal, setMoveModal] = useState<{ open: boolean; content: Content | null }>({
@@ -72,9 +85,9 @@ export default function ContentTabunganPage() {
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
-      if (pillarFilter) params.set('pillar_id', pillarFilter)
+      if (topicFilter) params.set('topic', topicFilter)
       if (categoryFilter) params.set('category_id', categoryFilter)
-      if (monthFilter) params.set('month', monthFilter)
+      if (dateFilter) params.set('date', dateFilter)
 
       const res = await apiFetch(`/api/tabungan?${params.toString()}`)
       const data = await res.json()
@@ -84,7 +97,7 @@ export default function ContentTabunganPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, pillarFilter, categoryFilter, monthFilter])
+  }, [search, topicFilter, categoryFilter, dateFilter])
 
   useEffect(() => {
     apiFetch('/api/master-data')
@@ -194,7 +207,14 @@ export default function ContentTabunganPage() {
     }
   }
 
-  const hasFilters = search || pillarFilter || categoryFilter || monthFilter
+  const displayedContents = useMemo(() => {
+    if (currentUser && currentUser.role === 'STAFF') {
+      return contents.filter((c) => c.created_by === currentUser.id)
+    }
+    return contents
+  }, [contents, currentUser])
+
+  const hasFilters = search || topicFilter || categoryFilter || dateFilter
 
   return (
     <div className="space-y-6">
@@ -206,10 +226,10 @@ export default function ContentTabunganPage() {
           </div>
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-indigo-950 dark:text-indigo-300">
-              Konten Tabungan
+              Bank Konten
             </h2>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Modul ini digunakan untuk menampung konten yang sudah direncanakan atau disetujui, belum sempat dipublikasikan, ditunda, atau dibatalkan dari antrean namun tetap relevan untuk digunakan pada waktu berikutnya.
+              Modul ini digunakan untuk menampung konten yang sudah direncanakan atau disetujui, belum sempat dipublikasikan, ditunda, atau dibatalkan dari antrean namun tetap relevan untuk digunakan pada waktu berikutnya dalam Bank Konten.
             </p>
           </div>
         </div>
@@ -222,34 +242,34 @@ export default function ContentTabunganPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
-                placeholder="Cari konten tabungan..."
+                placeholder="Cari konten di Bank Konten..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Input
-                type="month"
-                value={monthFilter}
-                onChange={(e) => setMonthFilter(e.target.value)}
-                className="w-full sm:w-44"
-                title="Filter Bulan Disimpan"
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full sm:w-44 font-normal text-slate-700 dark:text-slate-200"
+                placeholder="dd/mm/yyyy"
               />
               <Select
-                value={pillarFilter}
-                onChange={(e) => setPillarFilter(e.target.value)}
-                className="w-full sm:w-44"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="w-full sm:w-48 font-normal text-slate-700 dark:text-slate-200"
               >
-                <option value="">Semua Pilar Konten</option>
-                {pillars.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                <option value="">Semua Topik Konten</option>
+                {PLN_TOPIC_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </Select>
               <Select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full sm:w-40"
+                className="w-full sm:w-40 font-normal text-slate-700 dark:text-slate-200"
               >
                 <option value="">Semua Kategori</option>
                 {categories.map((c) => (
@@ -266,19 +286,19 @@ export default function ContentTabunganPage() {
         <Card>
           <div className="flex items-center justify-center border-b border-border py-4">
             <Loader2 className="h-5 w-5 animate-spin text-ink-muted" />
-            <span className="ml-2 text-sm text-ink-secondary">Memuat daftar konten tabungan...</span>
+            <span className="ml-2 text-sm text-ink-secondary">Memuat daftar Bank Konten...</span>
           </div>
           <div className="p-4">
             <SkeletonTable rows={5} cols={5} />
           </div>
         </Card>
-      ) : contents.length === 0 ? (
+      ) : displayedContents.length === 0 ? (
         <EmptyState
           icon={BookmarkCheck}
-          title="Tidak ada konten dalam tabungan"
+          title="Tidak ada konten dalam Bank Konten"
           description={
             hasFilters
-              ? 'Tidak ditemukan konten tabungan yang sesuai dengan filter.'
+              ? 'Tidak ditemukan konten Bank Konten yang sesuai dengan filter.'
               : 'Konten yang ditunda atau disimpan dari Antrean Publikasi akan muncul di sini.'
           }
         />
@@ -288,16 +308,16 @@ export default function ContentTabunganPage() {
             <table className="w-full">
               <thead className="border-b border-border bg-surface-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Pilar &amp; Kategori</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Topik &amp; Judul Konten</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Tanggal Rencana</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Target Platform</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Alasan Tabungan</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Alasan Bank Konten</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">PIC</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {contents.map((content) => {
+                {displayedContents.map((content) => {
                   const displayPlatforms: string[] = []
                   if (content.platform?.name) displayPlatforms.push(content.platform.name)
                   if (content.platform_ids && content.platform_ids.length > 0) {
@@ -311,15 +331,26 @@ export default function ContentTabunganPage() {
 
                   return (
                     <tr key={content.id} className="transition-colors hover:bg-surface-muted/60">
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        <div className="font-semibold text-primary">{content.pillar?.name || '-'}</div>
-                        <div className="text-xs text-ink-muted">{content.category?.name || '-'}</div>
-                      </td>
                       <td className="px-4 py-3 text-sm max-w-sm">
+                        <div className="text-xs font-semibold text-primary mb-0.5">
+                          {content.topic || content.pillar?.name || 'Topik Umum'}
+                        </div>
                         <Link href={`/content/${content.id}`} className="font-medium text-ink hover:text-primary line-clamp-2">
                           {content.title}
                         </Link>
-                        <div className="text-xs text-ink-secondary mt-0.5">Topik: {content.topic}</div>
+                        {content.category?.name && (
+                          <div className="text-[11px] text-ink-muted mt-0.5">{content.category.name}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap text-slate-700 dark:text-slate-300">
+                        <div className="font-medium text-ink">
+                          {content.planned_date ? formatDate(content.planned_date) : 'dd/mm/yyyy'}
+                        </div>
+                        {content.saved_at && (
+                          <div className="text-[11px] text-ink-muted mt-0.5">
+                            Disimpan: {formatDate(content.saved_at)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {displayPlatforms.length > 0 ? (
@@ -336,11 +367,6 @@ export default function ContentTabunganPage() {
                         <span className="italic text-slate-600 dark:text-slate-400">
                           {content.savings_reason || 'Disimpan tanpa catatan khusus'}
                         </span>
-                        {content.saved_at && (
-                          <div className="text-[11px] text-ink-muted mt-0.5">
-                            Disimpan: {formatDate(content.saved_at)}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-sm whitespace-nowrap text-ink-secondary">
                         {content.pic || '-'}
@@ -383,7 +409,7 @@ export default function ContentTabunganPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openDeleteModal(content)}
-                            title="Hapus dari Tabungan"
+                            title="Hapus dari Bank Konten"
                             className="text-danger hover:bg-danger-soft hover:text-danger"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -405,7 +431,7 @@ export default function ContentTabunganPage() {
           <DialogHeader>
             <DialogTitle>Masukkan Kembali ke Rencana Konten</DialogTitle>
             <DialogDescription>
-              Konten &quot;{moveModal.content?.title}&quot; akan dipindahkan kembali ke modul Rencana Konten aktif dengan status Dalam Proses.
+              Konten &quot;{moveModal.content?.title}&quot; akan dipindahkan dari Bank Konten kembali ke modul Rencana Konten aktif dengan status Dalam Proses.
             </DialogDescription>
           </DialogHeader>
 
@@ -417,6 +443,8 @@ export default function ContentTabunganPage() {
                 type="date"
                 value={moveDate}
                 onChange={(e) => setMoveDate(e.target.value)}
+                placeholder="dd/mm/yyyy"
+                className="font-normal text-slate-700 dark:text-slate-200"
               />
             </div>
             <div className="space-y-2">
@@ -427,6 +455,7 @@ export default function ContentTabunganPage() {
                 onChange={(e) => setMoveReason(e.target.value)}
                 placeholder="Contoh: Relevan untuk kampanye bulan ini..."
                 rows={3}
+                className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
               />
             </div>
             {error && <p className="text-sm font-medium text-danger">{error}</p>}
@@ -462,6 +491,8 @@ export default function ContentTabunganPage() {
                 type="date"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
+                placeholder="dd/mm/yyyy"
+                className="font-normal text-slate-700 dark:text-slate-200"
                 required
               />
             </div>
@@ -475,7 +506,7 @@ export default function ContentTabunganPage() {
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <Label htmlFor="toPlan" className="text-sm font-normal cursor-pointer">
-                Langsung masukkan ke Rencana Konten aktif (bukan tetap di tabungan)
+                Langsung masukkan ke Rencana Konten aktif (bukan tetap di Bank Konten)
               </Label>
             </div>
 
@@ -510,7 +541,7 @@ export default function ContentTabunganPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
               <Trash2 className="h-5 w-5" />
-              Hapus Konten dari Tabungan?
+              Hapus Konten dari Bank Konten?
             </DialogTitle>
             <DialogDescription>
               Konten ini akan dihapus secara permanen dari sistem dan tidak dapat dipulihkan.

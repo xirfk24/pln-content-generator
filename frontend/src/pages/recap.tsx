@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Loader2, Download, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart, FileSpreadsheet } from 'lucide-react'
 import { formatDate, getPeriodDateRange, type PeriodMode } from '@/lib/utils'
 import { exportContentReportToExcel } from '@/lib/excel-export'
+import { PLN_TOPIC_OPTIONS, CONTENT_PILLAR_OPTIONS, isPlatformActive } from '@/constants'
 
 // --- Types ---
 
@@ -34,6 +35,15 @@ interface RecapSummary {
 interface PillarBreakdownRow {
   pillar: string
   pillar_code: string
+  planned: number
+  published: number
+  unverified: number
+  realization_rate: number
+}
+
+interface TopicBreakdownRow {
+  topic_code: string
+  topic: string
   planned: number
   published: number
   unverified: number
@@ -66,6 +76,7 @@ interface RecapData {
   period: RecapPeriod
   summary: RecapSummary
   pillar_breakdown: PillarBreakdownRow[]
+  topic_breakdown?: TopicBreakdownRow[]
   platform_breakdown: PlatformBreakdownRow[]
   detail: DetailRow[]
   total: number
@@ -110,6 +121,7 @@ export default function RecapPage() {
 
   const [platformID, setPlatformID] = useState('')
   const [pillarID, setPillarID] = useState('')
+  const [topicFilter, setTopicFilter] = useState('')
 
   const [masterData, setMasterData] = useState<{
     pillars: Array<{ id: string; name: string }>
@@ -154,6 +166,7 @@ export default function RecapPage() {
       params.set('period', String(period))
       if (platformID) params.set('platform_id', platformID)
       if (pillarID) params.set('pillar_id', pillarID)
+      if (topicFilter) params.set('topic', topicFilter)
 
       const res = await apiFetch(`/api/recap?${params.toString()}`)
       if (res.ok) {
@@ -169,7 +182,7 @@ export default function RecapPage() {
     } finally {
       setLoading(false)
     }
-  }, [year, mode, period, platformID, pillarID])
+  }, [year, mode, period, platformID, pillarID, topicFilter])
 
   useEffect(() => {
     load()
@@ -221,6 +234,7 @@ export default function RecapPage() {
       params.set('period', String(period))
       if (platformID) params.set('platform_id', platformID)
       if (pillarID) params.set('pillar_id', pillarID)
+      if (topicFilter) params.set('topic', topicFilter)
       params.set('format', 'csv')
 
       const res = await apiFetch(`/api/recap?${params.toString()}`)
@@ -331,26 +345,53 @@ export default function RecapPage() {
                 className="w-full sm:w-40"
               >
                 <option value="">Semua Platform</option>
-                {masterData.platforms.map((p) => (
+                {masterData.platforms.filter((p) => isPlatformActive(p.name)).map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </Select>
             </div>
 
             <div>
+              <label htmlFor="recap-topic" className="mb-1 block text-xs text-ink-muted">
+                Topik Konten
+              </label>
+              <Select
+                id="recap-topic"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="">Semua Topik</option>
+                {PLN_TOPIC_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
               <label htmlFor="recap-pillar" className="mb-1 block text-xs text-ink-muted">
-                Pilar Konten
+                Content Pillar
               </label>
               <Select
                 id="recap-pillar"
                 value={pillarID}
                 onChange={(e) => setPillarID(e.target.value)}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               >
-                <option value="">Semua Pilar</option>
-                {masterData.pillars.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
+                <option value="">Semua Content Pillar</option>
+                {CONTENT_PILLAR_OPTIONS.map((p) => {
+                  const match = masterData.pillars.find(
+                    (mp) =>
+                      mp.name.toLowerCase() === p.toLowerCase() ||
+                      mp.name.toLowerCase().startsWith(p.split(' ')[0].toLowerCase())
+                  )
+                  const val = match ? match.id : p.split(' ')[0]
+                  return (
+                    <option key={p} value={val}>
+                      {p}
+                    </option>
+                  )
+                })}
               </Select>
             </div>
 
@@ -479,11 +520,11 @@ export default function RecapPage() {
             />
           </div>
 
-          {/* --- Pillar Breakdown --- */}
-          {data.pillar_breakdown.length > 0 && (
+          {/* --- Topic Breakdown (Tabel Utama) --- */}
+          {(data.topic_breakdown || []).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Rekapitulasi per Pilar Konten</CardTitle>
+                <CardTitle className="text-base">Rekapitulasi per Topik Konten</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -491,7 +532,60 @@ export default function RecapPage() {
                     <thead className="border-b bg-surface-muted">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Kode</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Pilar Konten</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Topik Konten</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Belum Verifikasi</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Realisasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {data.topic_breakdown!.map((row) => (
+                        <tr key={row.topic_code + '-' + row.topic} className="hover:bg-surface-muted">
+                          <td className="px-4 py-3">
+                            <span className="flex h-6 w-6 items-center justify-center rounded bg-primary-soft text-xs font-bold text-primary">
+                              {row.topic_code}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-ink">{row.topic}</td>
+                          <td className="px-4 py-3 text-right text-sm">{row.planned}</td>
+                          <td className="px-4 py-3 text-right text-sm">{row.published}</td>
+                          <td className="px-4 py-3 text-right text-sm">{row.unverified}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium">
+                            <span
+                              className={
+                                row.realization_rate >= 80
+                                  ? 'text-success'
+                                  : row.realization_rate >= 50
+                                    ? 'text-warning'
+                                    : 'text-danger'
+                              }
+                            >
+                              {row.realization_rate.toFixed(0)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* --- Pillar Breakdown --- */}
+          {data.pillar_breakdown.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Rekapitulasi per Content Pillar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="border-b bg-surface-muted">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Kode</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-ink-secondary">Content Pillar</th>
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Rencana</th>
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Terbit</th>
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-ink-secondary">Belum Verifikasi</th>

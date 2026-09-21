@@ -95,6 +95,15 @@ func (h *Handler) ListContents(c *gin.Context) {
 		idx := itoa(len(args))
 		where = append(where, "(LOWER(c.title) LIKE $"+idx+" OR LOWER(c.topic) LIKE $"+idx+" OR LOWER(COALESCE(c.pic, '')) LIKE $"+idx+")")
 	}
+	if v := strings.TrimSpace(c.Query("topic")); v != "" {
+		cleanTopic := v
+		if idx := strings.Index(cleanTopic, " - "); idx != -1 {
+			cleanTopic = cleanTopic[idx+3:]
+		}
+		args = append(args, "%"+strings.ToLower(cleanTopic)+"%")
+		idx := itoa(len(args))
+		where = append(where, "LOWER(c.topic) LIKE $"+idx)
+	}
 	if v := c.Query("pillar_id"); v != "" {
 		args = append(args, v)
 		idx := itoa(len(args))

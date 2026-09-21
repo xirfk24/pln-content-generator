@@ -1,13 +1,13 @@
 import { apiFetch } from '@/lib/api'
 import { useState, useEffect, Suspense, useMemo } from 'react'
-import { useRouter } from '@/compat/next'
+import { useRouter, useSearchParams } from '@/compat/next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Loader2, Sparkles, ArrowLeft, Lightbulb } from 'lucide-react'
+import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from '@/compat/next'
 import {
   CONTENT_FORMATS,
@@ -37,6 +37,7 @@ export default function NewContentPage() {
 
 function NewContentForm() {
   const router = useRouter()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [pillars, setPillars] = useState<Pillar[]>([])
@@ -49,15 +50,35 @@ function NewContentForm() {
     pillar_id: '',
     category_id: '',
     platform_ids: [] as string[],
-    format: 'Carousel',
+    format: '',
     brief: '',
     target_audience: '',
     planned_date: '',
     brief_link: '',
     pic: '',
-    priority: 'MEDIUM',
+    priority: '',
     posting_category: '',
   })
+
+  useEffect(() => {
+    const titleParam = searchParams.get('title')
+    const plannedDateParam = searchParams.get('planned_date')
+    const briefParam = searchParams.get('brief')
+    const topicParam = searchParams.get('topic')
+    const postingCategoryParam = searchParams.get('posting_category')
+
+    if (titleParam || plannedDateParam || briefParam || topicParam || postingCategoryParam) {
+      setForm((prev) => ({
+        ...prev,
+        title: titleParam || prev.title,
+        planned_date: plannedDateParam || prev.planned_date,
+        brief: briefParam || prev.brief,
+        topic: topicParam || (titleParam ? 'Z - Lain-Lain' : prev.topic),
+        posting_category: postingCategoryParam || (titleParam ? 'CAMPAIGN' : prev.posting_category),
+        priority: prev.priority || 'MEDIUM',
+      }))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     apiFetch('/api/master-data')
@@ -68,12 +89,7 @@ function NewContentForm() {
         setPillars(fetchedPillars)
         setCategories(data.categories || [])
         setPlatforms(fetchedPlatforms)
-
-        // Set default primary platform if empty
-        if (fetchedPlatforms.length > 0 && form.platform_ids.length === 0) {
-          const defaultPlat = fetchedPlatforms.find((p) => p.name.toLowerCase().includes('instagram')) || fetchedPlatforms[0]
-          setForm((prev) => ({ ...prev, platform_ids: [defaultPlat.id] }))
-        }
+        // Platform dibiarkan kosong default, tidak auto-select agar user memilih secara sadar
       })
       .catch(console.error)
   }, [])
@@ -96,6 +112,11 @@ function NewContentForm() {
 
     if (!form.topic.trim()) {
       alert('Silakan pilih atau masukkan Topik Konten.')
+      return
+    }
+
+    if (!form.format) {
+      alert('Silakan pilih Format Konten.')
       return
     }
 
@@ -138,34 +159,36 @@ function NewContentForm() {
       }
     } catch (error: any) {
       console.error('Failed to create content:', error)
-      alert('Terjadi kesalahan jaringan atau server: ' + (error?.message || error))
+      alert('Terjadi kesalahan jaringan.')
     } finally {
       setLoading(false)
     }
   }
 
   async function handleGenerateWithAI() {
-    if (!form.topic) {
-      alert('Silakan isi atau pilih Topik terlebih dahulu untuk generate AI')
-      return
-    }
-
-    const firstPlat = platforms.find((p) => form.platform_ids.includes(p.id))
-    const platformName = firstPlat ? firstPlat.name : 'Instagram'
-
+    if (!form.topic) return
     setAiLoading(true)
     try {
-      const res = await apiFetch('/api/ai/generate-content', {
+      const firstPlat = platforms.find((p) => form.platform_ids.includes(p.id))
+      const platformName = firstPlat ? firstPlat.name : 'Instagram'
+
+      const res = await apiFetch('/api/ai/generate-content-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: form.topic,
-          pillar: selectedPillarName,
+          pillar_name: selectedPillarName,
           platform: platformName,
-          format: form.format,
-          targetAudience: form.target_audience,
+          format: form.format || 'Carousel',
+          target_audience: form.target_audience || 'Masyarakat Umum Jawa Barat',
         }),
       })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        console.error('AI generate error:', errData)
+        return
+      }
 
       const data = await res.json()
       if (data.result) {
@@ -181,6 +204,18 @@ function NewContentForm() {
       setAiLoading(false)
     }
   }
+
+  // Normalizer topik untuk pencocokan dropdown
+  const normalizedTopicValue = useMemo(() => {
+    if (!form.topic) return ''
+    const match = PLN_TOPIC_OPTIONS.find(
+      (t) =>
+        t.toLowerCase() === form.topic.toLowerCase() ||
+        t.replace(/^[A-Z]\s*-\s*/, '').toLowerCase() === form.topic.toLowerCase()
+    )
+    if (match) return match
+    return 'Z - Lain-Lain'
+  }, [form.topic])
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -222,9 +257,8 @@ function NewContentForm() {
                   type="button"
                   onClick={handleGenerateWithAI}
                   disabled={aiLoading || !form.topic}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-xs font-normal text-primary hover:underline disabled:opacity-50"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                   {aiLoading ? 'Menyusun Ide...' : 'Bantu Buat Judul & Brief via AI'}
                 </button>
               </div>
@@ -233,7 +267,7 @@ function NewContentForm() {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Contoh: Nyalakan Harapan di Hari Raya: 5 Langkah Efisiensi Energi..."
-                className="bg-white dark:bg-slate-900 font-medium"
+                className="bg-white dark:bg-slate-900 font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
                 required
               />
             </div>
@@ -241,7 +275,7 @@ function NewContentForm() {
             {/* SEKSI 2: TOPIK KONTEN & CONTENT PILLAR */}
             <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-4 space-y-4 dark:border-blue-900/30 dark:bg-blue-950/10">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
-                <span>📌 Topik Konten &amp; Content Pillar</span>
+                <span>Topik Konten &amp; Content Pillar</span>
               </div>
 
               {/* TOPIK KONTEN (Dropdown Pilihan Resmi PLN UID Jabar A - Z) */}
@@ -257,29 +291,23 @@ function NewContentForm() {
 
                 <Select
                   id="topic_select"
-                  value={
-                    PLN_TOPIC_OPTIONS.includes(form.topic as any)
-                      ? form.topic
-                      : form.topic
-                      ? 'Lain-lain'
-                      : ''
-                  }
+                  value={normalizedTopicValue}
                   onChange={(e) => {
                     const val = e.target.value
-                    if (val === 'Lain-lain') {
-                      if (PLN_TOPIC_OPTIONS.includes(form.topic as any) && form.topic !== 'Lain-lain') {
+                    if (val === 'Z - Lain-Lain') {
+                      if (PLN_TOPIC_OPTIONS.includes(form.topic as any) && form.topic !== 'Z - Lain-Lain') {
                         setForm((prev) => ({ ...prev, topic: '' }))
                       } else {
-                        setForm((prev) => ({ ...prev, topic: 'Lain-lain' }))
+                        setForm((prev) => ({ ...prev, topic: 'Z - Lain-Lain' }))
                       }
                     } else {
                       setForm((prev) => ({ ...prev, topic: val }))
                     }
                   }}
-                  className="w-full bg-white dark:bg-slate-900"
+                  className="w-full bg-white dark:bg-slate-900 font-normal text-slate-700 dark:text-slate-200"
                   required
                 >
-                  <option value="">-- Pilih Topik Konten (A - Z) --</option>
+                  <option value="">Pilih Topik Konten</option>
                   {PLN_TOPIC_OPTIONS.map((t) => (
                     <option key={t} value={t}>
                       {t}
@@ -287,15 +315,15 @@ function NewContentForm() {
                   ))}
                 </Select>
 
-                {/* Input tambahan jika topik tidak ada di daftar atau memilih Lain-lain */}
-                {(!PLN_TOPIC_OPTIONS.includes(form.topic as any) || form.topic === 'Lain-lain') && (
+                {/* Input tambahan jika topik tidak ada di daftar atau memilih Z - Lain-Lain */}
+                {((normalizedTopicValue === 'Z - Lain-Lain' && (!PLN_TOPIC_OPTIONS.includes(form.topic as any) || form.topic === 'Z - Lain-Lain' || form.topic === 'Lain-lain'))) && (
                   <div className="pt-1">
                     <Input
                       id="custom_topic"
-                      value={form.topic === 'Lain-lain' ? '' : form.topic}
+                      value={form.topic === 'Z - Lain-Lain' || form.topic === 'Lain-lain' ? '' : form.topic}
                       onChange={(e) => setForm({ ...form, topic: e.target.value })}
                       placeholder="Ketik nama topik khusus / lainnya..."
-                      className="bg-white dark:bg-slate-900"
+                      className="bg-white dark:bg-slate-900 font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
                       required
                     />
                   </div>
@@ -315,10 +343,10 @@ function NewContentForm() {
                       const newPillarId = e.target.value
                       setForm((prev) => ({ ...prev, pillar_id: newPillarId }))
                     }}
-                    className="w-full bg-white dark:bg-slate-900"
+                    className="w-full bg-white dark:bg-slate-900 font-normal text-slate-700 dark:text-slate-200"
                     required
                   >
-                    <option value="">-- Pilih Content Pillar --</option>
+                    <option value="">Pilih Content Pillar</option>
                     {CONTENT_PILLAR_OPTIONS.map((pillarLabel) => {
                       const match = pillars.find(
                         (p) =>
@@ -345,9 +373,9 @@ function NewContentForm() {
                     id="posting_category"
                     value={form.posting_category}
                     onChange={(e) => setForm({ ...form, posting_category: e.target.value })}
-                    className="w-full bg-white dark:bg-slate-900"
+                    className="w-full bg-white dark:bg-slate-900 font-normal text-slate-700 dark:text-slate-200"
                   >
-                    <option value="">Pilih Kategori</option>
+                    <option value="">Pilih Kategori Posting</option>
                     {POSTING_CATEGORIES.map((c) => (
                       <option key={c} value={c}>
                         {POSTING_CATEGORY_LABELS[c]}
@@ -374,7 +402,7 @@ function NewContentForm() {
 
               <PlatformSelector
                 platforms={platforms.filter(
-                  (p) => !['website', 'linkedin'].includes(p.name.toLowerCase())
+                  (p) => !['website', 'linkedin', 'twitter/x', 'twitter', 'x'].includes(p.name.toLowerCase())
                 )}
                 selectedIds={form.platform_ids}
                 onChange={(newIds) => setForm({ ...form, platform_ids: newIds })}
@@ -389,8 +417,10 @@ function NewContentForm() {
                   id="format"
                   value={form.format}
                   onChange={(e) => setForm({ ...form, format: e.target.value })}
-                  className="w-full"
+                  className="w-full font-normal text-slate-700 dark:text-slate-200"
+                  required
                 >
+                  <option value="">Pilih Format Konten</option>
                   {CONTENT_FORMATS.map((f) => (
                     <option key={f} value={f}>
                       {f}
@@ -406,6 +436,8 @@ function NewContentForm() {
                   type="date"
                   value={form.planned_date}
                   onChange={(e) => setForm({ ...form, planned_date: e.target.value })}
+                  placeholder="dd/mm/yyyy"
+                  className="font-normal text-slate-700 dark:text-slate-200"
                 />
               </div>
 
@@ -415,8 +447,9 @@ function NewContentForm() {
                   id="priority"
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                  className="w-full"
+                  className="w-full font-normal text-slate-700 dark:text-slate-200"
                 >
+                  <option value="">Pilih Prioritas Konten</option>
                   {CONTENT_PRIORITIES.map((p) => (
                     <option key={p} value={p}>
                       {CONTENT_PRIORITY_LABELS[p]}
@@ -435,6 +468,7 @@ function NewContentForm() {
                   value={form.target_audience}
                   onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
                   placeholder="Contoh: Pelanggan Rumah Tangga, Generasi Muda, Pengguna EV..."
+                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
                 />
               </div>
 
@@ -445,6 +479,7 @@ function NewContentForm() {
                   value={form.pic}
                   onChange={(e) => setForm({ ...form, pic: e.target.value })}
                   placeholder="Nama staf humas penanggung jawab..."
+                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -458,6 +493,7 @@ function NewContentForm() {
                 onChange={(e) => setForm({ ...form, brief: e.target.value })}
                 rows={4}
                 placeholder="Tuliskan poin pesan utama, visual guide, atau narasi penting yang harus dimuat..."
+                className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
               />
             </div>
 
@@ -470,6 +506,7 @@ function NewContentForm() {
                 value={form.brief_link}
                 onChange={(e) => setForm({ ...form, brief_link: e.target.value })}
                 placeholder="https://drive.google.com/... atau https://canva.com/..."
+                className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
               />
               <p className="text-[11px] text-ink-muted">
                 Tautan materi, brief, atau file desain konten (opsional, dapat diisi saat pengajuan maupun setelah selesai produksi)

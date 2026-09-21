@@ -1,14 +1,14 @@
-'use client'
-
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Filter, X } from 'lucide-react'
+import { PLN_TOPIC_OPTIONS, CONTENT_PILLAR_OPTIONS } from '@/constants'
 
 export interface FilterValues {
   date_from: string
   date_to: string
   platform_id: string
+  topic: string
   pillar_id: string
   status: string
 }
@@ -17,6 +17,7 @@ export const EMPTY_FILTERS: FilterValues = {
   date_from: '',
   date_to: '',
   platform_id: '',
+  topic: '',
   pillar_id: '',
   status: '',
 }
@@ -54,7 +55,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           type="date"
           value={filters.date_from}
           onChange={(e) => set('date_from', e.target.value)}
-          className="w-full sm:w-40"
+          className="w-full sm:w-40 font-normal"
         />
       </div>
 
@@ -67,7 +68,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           type="date"
           value={filters.date_to}
           onChange={(e) => set('date_to', e.target.value)}
-          className="w-full sm:w-40"
+          className="w-full sm:w-40 font-normal"
         />
       </div>
 
@@ -79,12 +80,38 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           id="filter-platform"
           value={filters.platform_id}
           onChange={(e) => set('platform_id', e.target.value)}
-          className="w-full sm:w-40"
+          className="w-full sm:w-40 font-normal"
         >
           <option value="">Semua Platform</option>
-          {masterData.platforms.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
+          {masterData.platforms
+            .filter(
+              (p) =>
+                !['linkedin', 'website', 'twitter/x', 'twitter', 'x'].includes(
+                  p.name.toLowerCase().trim()
+                )
+            )
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+        </Select>
+      </div>
+
+      <div>
+        <label htmlFor="filter-topic" className="mb-1 block text-xs text-ink-muted">
+          Topik Konten
+        </label>
+        <Select
+          id="filter-topic"
+          value={filters.topic}
+          onChange={(e) => set('topic', e.target.value)}
+          className="w-full sm:w-48 font-normal"
+        >
+          <option value="">Semua Topik Konten</option>
+          {PLN_TOPIC_OPTIONS.map((t) => (
+            <option key={t} value={t}>
+              {t}
             </option>
           ))}
         </Select>
@@ -98,14 +125,22 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           id="filter-pillar"
           value={filters.pillar_id}
           onChange={(e) => set('pillar_id', e.target.value)}
-          className="w-full sm:w-44"
+          className="w-full sm:w-44 font-normal"
         >
-          <option value="">Semua Pillar</option>
-          {masterData.pillars.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
+          <option value="">Semua Content Pillar</option>
+          {CONTENT_PILLAR_OPTIONS.map((cp) => {
+            const match = masterData.pillars.find(
+              (p) =>
+                p.name.toLowerCase() === cp.toLowerCase() ||
+                p.name.toLowerCase().startsWith(cp.split(' ')[0].toLowerCase())
+            )
+            const val = match ? match.id : cp
+            return (
+              <option key={cp} value={val}>
+                {cp}
+              </option>
+            )
+          })}
         </Select>
       </div>
 

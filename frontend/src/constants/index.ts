@@ -31,7 +31,7 @@ export const CONTENT_STATUS_LABELS: Record<string, string> = {
   REJECTED: 'Ditolak',
   RESCHEDULED: 'Dijadwalkan Ulang',
   NOT_REALIZED: 'Tidak Direalisasikan',
-  TABUNGAN: 'Konten Tabungan',
+  TABUNGAN: 'Bank Konten',
 }
 
 export const CONTENT_STATUS_COLORS: Record<string, string> = {
@@ -125,25 +125,33 @@ export const POSTING_CATEGORY_LABELS: Record<string, string> = {
 export const ENGAGEMENT_FORMULA =
   'Rumus Engagement Rate = (Likes + Comments + Shares + Saves) / Reach × 100%'
 
-/** Daftar Pilihan Resmi Topik Konten PLN UID Jawa Barat (Diurutkan A - Z) */
+/** Daftar Pilihan Resmi Topik Konten PLN UID Jawa Barat (Sesuai Kode & Nama Resmi A - Z) */
 export const PLN_TOPIC_OPTIONS = [
-  'Bencana & Pemulihan',
-  'Electrifying Lifestyle',
-  'Energi Baru Terbarukan',
-  'EV/SPKLU',
-  'Instalasi Listrik',
-  'Jabar Smile',
-  'K3L',
-  'Penghargaan',
-  'PLN Mobile',
-  'Promo PLN',
-  'Rekening/Tagihan Listrik',
-  'Subsidi Listrik',
-  'Surat Pembaca',
-  'Tarif Tenaga Listrik',
-  'Tingkat Mutu Pelayanan',
-  'TJSL',
-  'Lain-lain',
+  'A - Bencana & Pemulihan',
+  'B - TJSL',
+  'C - EV/SPKLU',
+  'D - Energi Baru terbarukan/REC',
+  'E - Jabar Smile',
+  'F - Instalasi Listrik',
+  'G - K3L',
+  'H - Kerja Sama',
+  'I - Electrifying Lifestyle',
+  'J - Lisdes/Elektrifikasi',
+  'K - Pasang Baru/Tambah Daya',
+  'L - Pembangkit',
+  'N - Penghargaan',
+  'O - Pengumuman/Transformasi/HSH',
+  'P - Penjualan/Konsumsi Listrik',
+  'Q - Penokohan',
+  'R - PLN Mobile',
+  'S - Promo PLN',
+  'T - Rekening/Tagihan Listrik',
+  'U - Subsidi Listrik',
+  'V - Surat Pembaca',
+  'W - Tarif Tenaga Listrik',
+  'X - Tingkat Mutu Pelayanan',
+  'Y - YBM',
+  'Z - Lain-Lain',
 ] as const
 
 /** Daftar Standar Content Pillar */
@@ -159,3 +167,13 @@ export const CONTENT_PILLAR_OPTIONS = [
   'Berita & Wawasan Industri (Industry News & Insights)',
   'Solusi Masalah & FAQ (Problem Solving / Help)',
 ] as const
+
+/** Platform yang tidak diaktifkan pada modul antrean, analisis, performa, dan rekap */
+export const EXCLUDED_PLATFORM_NAMES = ['linkedin', 'website', 'twitter/x', 'twitter', 'x']
+
+export function isPlatformActive(name?: string | null): boolean {
+  if (!name) return false
+  const lower = name.trim().toLowerCase()
+  return !EXCLUDED_PLATFORM_NAMES.includes(lower)
+}
+

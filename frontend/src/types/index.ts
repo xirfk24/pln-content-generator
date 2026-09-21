@@ -212,3 +212,26 @@ export interface MonthBreakdown {
   total_count: number
 }
 
+export type ImportantEventCategory =
+  | 'HUT_INSTANSI'
+  | 'NASIONAL'
+  | 'INTERNASIONAL'
+  | 'LINGKUNGAN'
+  | 'KESEHATAN'
+  | 'PROFESI'
+  | 'KEAGAMAAN'
+
+export interface ImportantEvent {
+  id: string
+  name: string
+  day: number
+  month: number
+  year?: number | null
+  category: ImportantEventCategory | string
+  status: 'RESMI' | 'HUT' | 'INTERNASIONAL' | 'LIBUR_NASIONAL' | string
+  description?: string | null
+  is_active: boolean
+  created_at: string
+}
+
+
