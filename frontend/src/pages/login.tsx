@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles } from 'lucide-react'
 
+import { PLNLogo } from '@/components/ui/pln-logo'
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,17 +75,16 @@ export default function LoginPage() {
         
         {/* LEFT COLUMN: Hero & Branding Section */}
         <div className="relative hidden w-1/2 flex-col justify-between bg-gradient-to-b from-sky-50/70 via-white to-blue-50/50 p-8 lg:flex lg:p-10 border-r border-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/20 dark:border-slate-800">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0072B2] shadow-sm shadow-[#0072B2]/30">
-              <span className="text-xs font-black tracking-wider text-white">PLN</span>
-            </div>
+          {/* Official Brand Logo */}
+          <div className="flex items-center gap-3">
+            <PLNLogo showText={true} className="h-9 w-auto" />
+            <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
             <div className="flex flex-col">
-              <span className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+              <span className="text-xs font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
                 Content Manager
               </span>
-              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                UID JAWA BARAT
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                UID Jawa Barat
               </span>
             </div>
           </div>
@@ -117,12 +118,11 @@ export default function LoginPage() {
         {/* RIGHT COLUMN: Login Form Section */}
         <div className="flex w-full flex-col justify-between p-6 sm:p-10 lg:w-1/2 lg:p-12">
           {/* Mobile Top Brand (Hanya tampil di layar HP) */}
-          <div className="flex items-center gap-2 lg:hidden mb-6">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0072B2] text-white font-bold text-xs">
-              PLN
-            </div>
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              Content Management System
+          <div className="flex items-center gap-3 lg:hidden mb-6">
+            <PLNLogo showText={true} className="h-8 w-auto" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              UID Jawa Barat
             </span>
           </div>
 

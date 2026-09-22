@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { PLNLogo } from '@/components/ui/pln-logo'
 import type { UserRole } from '@/types'
 
 type NavItem = {
@@ -131,9 +132,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             onClick={onMobileClose}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm">
-              <span className="text-xs font-bold text-[#1A3A6B]">PLN</span>
-            </div>
+            <PLNLogo showText={false} className="h-8 w-8 shrink-0 rounded-md shadow-sm" />
             <div className="flex flex-col">
               <span className="font-semibold text-white leading-tight">Content Manager</span>
               <span className="text-[10px] text-white/60">UID Jawa Barat</span>
@@ -141,9 +140,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           </Link>
         )}
         {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm">
-            <span className="text-xs font-bold text-[#1A3A6B]">PLN</span>
-          </div>
+          <PLNLogo showText={false} className="h-8 w-8 shrink-0 rounded-md shadow-sm mx-auto" />
         )}
         <Button
           variant="ghost"
