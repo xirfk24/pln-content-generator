@@ -37,11 +37,15 @@ import {
   ChevronRight,
   ChevronsRight,
   Layers,
+  Wrench,
+  FileText,
+  ExternalLink,
+  Send,
 } from 'lucide-react'
 import { formatDateWithDay } from '@/lib/utils'
 import type { Content, Pillar, Platform, UserRole, ApprovalAction } from '@/types'
 
-type ActiveTab = 'ALL' | 'PENDING' | 'REVISION' | 'APPROVED'
+type ActiveTab = 'CONCEPT' | 'PRODUCTION' | 'ALL' | 'REVISION' | 'APPROVED'
 
 export default function ApprovalPage() {
   const [contents, setContents] = useState<Content[]>([])
@@ -53,7 +57,7 @@ export default function ApprovalPage() {
   const [pillars, setPillars] = useState<Pillar[]>([])
   const [platforms, setPlatforms] = useState<Platform[]>([])
 
-  // Filters & Tabs
+  // Filters & Tabs (default: ALL / Semua Antrean di paling depan)
   const [activeTab, setActiveTab] = useState<ActiveTab>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [pillarFilter, setPillarFilter] = useState('')
@@ -108,14 +112,14 @@ export default function ApprovalPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Load Data
+  // Load Data with created_at DESC as default
   const loadData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true)
     else setLoading(true)
 
     try {
-      // 1. Fetch contents
-      const res = await apiFetch('/api/contents?include_savings=false')
+      // 1. Fetch contents ordered by created_at DESC
+      const res = await apiFetch('/api/contents?include_savings=false&sort_by=created_at&order=DESC')
       if (res.ok) {
         const data = await res.json()
         setContents(data.contents || [])
@@ -158,47 +162,33 @@ export default function ApprovalPage() {
 
   // Metrics Calculation
   const metrics = useMemo(() => {
-    const pending = contents.filter(
-      (c) => c.status === 'PENDING_REVIEW' || c.status === 'PENDING_PRODUCTION_REVIEW'
+    const conceptPending = contents.filter((c) => c.status === 'PENDING_REVIEW').length
+    const productionPending = contents.filter((c) => c.status === 'PENDING_PRODUCTION_REVIEW').length
+    const revision = contents.filter((c) => c.status === 'REVISION_REQUIRED').length
+    const approved = contents.filter((c) =>
+      ['APPROVED', 'PRODUCTION', 'READY_TO_PUBLISH', 'PUBLISHED'].includes(c.status)
     ).length
-    const revision = contents.filter((c) => (c.status as string) === 'REVISION_REQUIRED').length
-    const approved = contents.filter(
-      (c) =>
-        c.status === 'APPROVED' ||
-        c.status === 'PRODUCTION' ||
-        c.status === 'READY_TO_PUBLISH' ||
-        c.status === 'PUBLISHED'
-    ).length
-    const total = contents.filter(
-      (c) =>
-        c.status === 'PENDING_REVIEW' ||
-        c.status === 'PENDING_PRODUCTION_REVIEW' ||
-        (c.status as string) === 'REVISION_REQUIRED' ||
-        c.status === 'APPROVED'
-    ).length
+    const total = conceptPending + productionPending + revision
 
-    return { pending, revision, approved, total }
+    return { conceptPending, productionPending, revision, approved, total }
   }, [contents])
 
-  // Filtered List
+  // Filtered List with created_at DESC sorting
   const filteredContents = useMemo(() => {
-    return contents.filter((c) => {
+    const list = contents.filter((c) => {
       // Tab filter
-      if (activeTab === 'PENDING') {
-        if (c.status !== 'PENDING_REVIEW' && c.status !== 'PENDING_PRODUCTION_REVIEW') return false
+      if (activeTab === 'CONCEPT') {
+        if (c.status !== 'PENDING_REVIEW') return false
+      } else if (activeTab === 'PRODUCTION') {
+        if (c.status !== 'PENDING_PRODUCTION_REVIEW') return false
       } else if (activeTab === 'REVISION') {
-        if ((c.status as string) !== 'REVISION_REQUIRED') return false
+        if (c.status !== 'REVISION_REQUIRED') return false
       } else if (activeTab === 'APPROVED') {
-        if (
-          c.status !== 'APPROVED' &&
-          c.status !== 'PRODUCTION' &&
-          c.status !== 'READY_TO_PUBLISH' &&
-          c.status !== 'PUBLISHED'
-        )
+        if (!['APPROVED', 'PRODUCTION', 'READY_TO_PUBLISH', 'PUBLISHED'].includes(c.status)) {
           return false
+        }
       } else {
-        // ALL tab: show actionable queue items (pending, revision, approved)
-        // If there are pending reviews, prioritize pending + revision + approved
+        // ALL tab: show actionable queue items
         const relevantStatuses = [
           'PENDING_REVIEW',
           'PENDING_PRODUCTION_REVIEW',
@@ -239,6 +229,13 @@ export default function ApprovalPage() {
 
       return true
     })
+
+    // Urutkan konten yang baru diajukan di paling atas (created_at DESC)
+    return list.sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime()
+      const timeB = new Date(b.created_at || 0).getTime()
+      return timeB - timeA
+    })
   }, [contents, activeTab, searchQuery, pillarFilter, platformFilter, picFilter])
 
   // Pagination
@@ -266,23 +263,47 @@ export default function ApprovalPage() {
   }
 
   // Handle Workflow Action Click
-  const openActionDialog = (content: Content, actionType: 'APPROVE' | 'REVISION' | 'REJECT') => {
+  const openActionDialog = (
+    content: Content,
+    actionType: 'APPROVE_CONCEPT' | 'READY_TO_PUBLISH' | 'APPROVE_PRODUCTION' | 'REVISION' | 'REJECT'
+  ) => {
     setActiveMenuId(null)
     setActionError(null)
     setActionComment('')
 
     const isConceptReview = content.status === 'PENDING_REVIEW'
 
-    if (actionType === 'APPROVE') {
-      const action: ApprovalAction = isConceptReview ? 'APPROVED' : 'PRODUCTION_APPROVED'
+    if (actionType === 'APPROVE_CONCEPT') {
       setActionModal({
         open: true,
         content,
-        action,
-        title: isConceptReview ? 'Setujui Konsep Konten' : 'Setujui Hasil Produksi',
-        description: `Apakah Anda yakin ingin menyetujui konten "${content.title}"?`,
+        action: 'APPROVED',
+        title: 'Setujui Konsep (Lanjut ke Produksi)',
+        description: `Konsep konten "${content.title}" akan disetujui dan dialirkan ke tahap produksi aset visual/media. Lanjutkan?`,
         requiresComment: false,
-        submitLabel: 'Setujui Konten',
+        submitLabel: 'Setujui Konsep',
+        variant: 'default',
+      })
+    } else if (actionType === 'READY_TO_PUBLISH') {
+      setActionModal({
+        open: true,
+        content,
+        action: 'SHORTCUT_READY',
+        title: 'Tandai Siap Publikasi',
+        description: `Konten "${content.title}" akan langsung disetujui final dan dialihkan ke status Siap Publikasi untuk masuk ke antrean tayang. Lanjutkan?`,
+        requiresComment: false,
+        submitLabel: 'Siap Publikasi',
+        variant: 'default',
+      })
+    } else if (actionType === 'APPROVE_PRODUCTION') {
+      setActionModal({
+        open: true,
+        content,
+        action: 'PRODUCTION_APPROVED',
+        title: 'Setujui Hasil Produksi (Siap Publikasi)',
+        description: `Hasil produksi konten "${content.title}" telah diverifikasi. Konten akan dialihkan ke status Siap Publikasi. Lanjutkan?`,
+        requiresComment: false,
+        submitLabel: 'Setujui & Siap Publikasi',
         variant: 'default',
       })
     } else if (actionType === 'REVISION') {
@@ -293,8 +314,8 @@ export default function ApprovalPage() {
         open: true,
         content,
         action,
-        title: 'Minta Revisi Konten',
-        description: `Tuliskan catatan revisi yang jelas untuk pembuat konten/tim produksi:`,
+        title: isConceptReview ? 'Minta Revisi Konsep' : 'Minta Revisi Hasil Produksi',
+        description: `Tuliskan catatan revisi yang jelas untuk pembuat konten agar langsung tampil di modul Tugas Saya:`,
         requiresComment: true,
         submitLabel: 'Kirim Catatan Revisi',
         variant: 'destructive',
@@ -410,7 +431,7 @@ export default function ApprovalPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Review dan kelola konten sebelum masuk ke antrean publikasi.
+            Review berjenjang dan persetujuan naskah konsep serta hasil produksi aset media.
           </p>
         </div>
 
@@ -441,36 +462,63 @@ export default function ApprovalPage() {
         </div>
       </div>
 
-      {/* Top 3 KPI Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Card 1: Menunggu Persetujuan */}
+      {/* Top Metric Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Card 1: Persetujuan Konsep */}
         <Card
           onClick={() => {
-            setActiveTab('PENDING')
+            setActiveTab('CONCEPT')
             setCurrentPage(1)
           }}
           className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === 'PENDING'
-              ? 'border-amber-400 ring-2 ring-amber-400/20'
+            activeTab === 'CONCEPT'
+              ? 'border-purple-400 ring-2 ring-purple-400/20'
               : 'border-slate-200 dark:border-slate-800'
           }`}
         >
           <CardContent className="flex items-center justify-between p-5">
             <div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Menunggu Persetujuan
+                Persetujuan Konsep
               </p>
-              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {metrics.pending}
+              <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {metrics.conceptPending}
               </p>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-              <Clock className="h-5 w-5" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+              <FileText className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Card 2: Perlu Revisi */}
+        {/* Card 2: Persetujuan Produksi */}
+        <Card
+          onClick={() => {
+            setActiveTab('PRODUCTION')
+            setCurrentPage(1)
+          }}
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            activeTab === 'PRODUCTION'
+              ? 'border-indigo-400 ring-2 ring-indigo-400/20'
+              : 'border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <CardContent className="flex items-center justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Persetujuan Produksi
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {metrics.productionPending}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+              <Wrench className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Perlu Revisi */}
         <Card
           onClick={() => {
             setActiveTab('REVISION')
@@ -487,7 +535,7 @@ export default function ApprovalPage() {
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Perlu Revisi
               </p>
-              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {metrics.revision}
               </p>
             </div>
@@ -497,7 +545,7 @@ export default function ApprovalPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Disetujui */}
+        {/* Card 4: Disetujui */}
         <Card
           onClick={() => {
             setActiveTab('APPROVED')
@@ -514,7 +562,7 @@ export default function ApprovalPage() {
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Disetujui
               </p>
-              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {metrics.approved}
               </p>
             </div>
@@ -525,8 +573,8 @@ export default function ApprovalPage() {
         </Card>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      {/* Tabs Sub-modul Navigasi */}
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onClick={() => {
@@ -535,10 +583,11 @@ export default function ApprovalPage() {
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'ALL'
-              ? 'border-primary text-primary'
+              ? 'border-primary text-primary font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
+          <Layers className="h-4 w-4" />
           <span>Semua Antrean</span>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -554,24 +603,50 @@ export default function ApprovalPage() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab('PENDING')
+            setActiveTab('CONCEPT')
             setCurrentPage(1)
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'PENDING'
-              ? 'border-primary text-primary'
+            activeTab === 'CONCEPT'
+              ? 'border-purple-600 text-purple-700 font-semibold dark:border-purple-400 dark:text-purple-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
-          <span>Menunggu Persetujuan</span>
+          <FileText className="h-4 w-4" />
+          <span>Persetujuan Konsep</span>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-              activeTab === 'PENDING'
-                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
+              activeTab === 'CONCEPT'
+                ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
-            {metrics.pending}
+            {metrics.conceptPending}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('PRODUCTION')
+            setCurrentPage(1)
+          }}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'PRODUCTION'
+              ? 'border-indigo-600 text-indigo-700 font-semibold dark:border-indigo-400 dark:text-indigo-300'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Wrench className="h-4 w-4" />
+          <span>Persetujuan Produksi</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              activeTab === 'PRODUCTION'
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            {metrics.productionPending}
           </span>
         </button>
 
@@ -583,15 +658,16 @@ export default function ApprovalPage() {
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'REVISION'
-              ? 'border-primary text-primary'
+              ? 'border-rose-600 text-rose-700 font-semibold dark:border-rose-400 dark:text-rose-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
+          <RotateCcw className="h-4 w-4" />
           <span>Perlu Revisi</span>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
               activeTab === 'REVISION'
-                ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300'
+                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
@@ -607,15 +683,16 @@ export default function ApprovalPage() {
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'APPROVED'
-              ? 'border-primary text-primary'
+              ? 'border-emerald-600 text-emerald-700 font-semibold dark:border-emerald-400 dark:text-emerald-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
-          <span>Disetujui</span>
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Riwayat Disetujui</span>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
               activeTab === 'APPROVED'
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
@@ -624,178 +701,159 @@ export default function ApprovalPage() {
         </button>
       </div>
 
-      {/* Filter Card Container */}
-      <Card className="border border-slate-200 shadow-xs dark:border-slate-800">
-        <CardContent className="space-y-3 p-4">
-          {/* Top Line: Search */}
-          <div className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Cari konten berdasarkan judul, topik, brief narasi, atau PIC..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
+      {/* Filters Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Cari judul, topik, brief, PIC..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="pl-9 text-xs"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Pillar Filter */}
+          <Select
+            value={pillarFilter}
+            onChange={(e) => {
+              setPillarFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-40 text-xs"
+          >
+            <option value="">Semua Pilar</option>
+            {pillars.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+
+          {/* Platform Filter */}
+          <Select
+            value={platformFilter}
+            onChange={(e) => {
+              setPlatformFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-36 text-xs"
+          >
+            <option value="">Semua Platform</option>
+            {platforms.map((pl) => (
+              <option key={pl.id} value={pl.id}>
+                {pl.name}
+              </option>
+            ))}
+          </Select>
+
+          {/* PIC Filter */}
+          <Select
+            value={picFilter}
+            onChange={(e) => {
+              setPicFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-32 text-xs"
+          >
+            <option value="">Semua PIC</option>
+            {picOptions.map((pic) => (
+              <option key={pic} value={pic}>
+                {pic}
+              </option>
+            ))}
+          </Select>
+
+          {(searchQuery || pillarFilter || platformFilter || picFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchQuery('')
+                setPillarFilter('')
+                setPlatformFilter('')
+                setPicFilter('')
                 setCurrentPage(1)
               }}
-              className="h-10 w-full pl-10 text-sm bg-white dark:bg-slate-900"
-            />
-          </div>
+              className="text-xs text-slate-500 hover:text-slate-800"
+            >
+              Reset Filter
+            </Button>
+          )}
+        </div>
+      </div>
 
-          {/* Bottom Line: 3 Dropdowns + Total count */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
-              {/* Pillar Dropdown */}
-              <Select
-                value={pillarFilter}
-                onChange={(e) => {
-                  setPillarFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="h-9 w-full text-xs"
-              >
-                <option value="">Semua Content Pillar</option>
-                {pillars.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-
-              {/* Platform Dropdown */}
-              <Select
-                value={platformFilter}
-                onChange={(e) => {
-                  setPlatformFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="h-9 w-full text-xs"
-              >
-                <option value="">Semua Platform</option>
-                {platforms.map((pl) => (
-                  <option key={pl.id} value={pl.id}>
-                    {pl.name}
-                  </option>
-                ))}
-              </Select>
-
-              {/* PIC Dropdown */}
-              <Select
-                value={picFilter}
-                onChange={(e) => {
-                  setPicFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="h-9 w-full text-xs"
-              >
-                <option value="">Semua PIC</option>
-                {picOptions.map((pic) => (
-                  <option key={pic} value={pic}>
-                    {pic}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="text-right text-xs font-medium text-slate-500 whitespace-nowrap">
-              Menampilkan {filteredContents.length} konten
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table Section */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      {/* Main Table Container */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
               <tr>
-                <th scope="col" className="w-12 px-4 py-3.5 text-center">
-                  NO.
-                </th>
-                <th scope="col" className="w-10 px-2 py-3.5 text-center">
+                <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-700"
-                    aria-label="Select all"
+                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600"
+                    aria-label="Select All"
                   />
                 </th>
-                <th scope="col" className="min-w-[280px] px-4 py-3.5">
-                  KONTEN & TOPIK
-                </th>
-                <th scope="col" className="min-w-[160px] px-4 py-3.5">
-                  PILAR & PLATFORM
-                </th>
-                <th scope="col" className="min-w-[160px] px-4 py-3.5">
-                  TGL RENCANA & PIC
-                </th>
-                <th scope="col" className="min-w-[140px] px-4 py-3.5">
-                  STATUS
-                </th>
-                <th scope="col" className="w-16 px-4 py-3.5 text-right">
-                  AKSI
-                </th>
+                <th className="min-w-[240px] px-4 py-3">Judul & Detail Konten</th>
+                <th className="min-w-[160px] px-4 py-3">Pilar & Platform</th>
+                <th className="min-w-[140px] px-4 py-3">Target & PIC</th>
+                <th className="min-w-[150px] px-4 py-3">Status</th>
+                <th className="min-w-[200px] px-4 py-3 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {paginatedContents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
-                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <p className="mt-3 font-semibold text-slate-700 dark:text-slate-300">
-                        Tidak ada antrean konten yang sesuai
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Coba ubah filter pencarian atau tab status di atas.
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Inbox className="h-8 w-8 text-slate-300" />
+                      <p className="text-sm font-medium">Tidak ada konten di antrean ini.</p>
+                      <p className="text-xs text-slate-400">
+                        Konten yang baru diajukan oleh staff akan otomatis muncul di sini.
                       </p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                paginatedContents.map((content, idx) => {
-                  const rowNumber = (currentPage - 1) * pageSize + idx + 1
-                  const isChecked = selectedIds.includes(content.id)
-                  const platformsList =
-                    content.platforms && content.platforms.length > 0
-                      ? content.platforms.map((p) => p.name).join(' • ')
-                      : content.platform?.name || '-'
+                paginatedContents.map((content) => {
+                  const isSelected = selectedIds.includes(content.id)
+                  const isPendingConcept = content.status === 'PENDING_REVIEW'
+                  const isPendingProd = content.status === 'PENDING_PRODUCTION_REVIEW'
 
-                  const isPending =
-                    content.status === 'PENDING_REVIEW' ||
-                    content.status === 'PENDING_PRODUCTION_REVIEW'
+                  const platformsList = content.platforms?.length
+                    ? content.platforms.map((p) => p.name).join(', ')
+                    : content.platform?.name || '-'
 
                   return (
                     <tr
                       key={content.id}
-                      className={`group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 ${
-                        isChecked ? 'bg-primary/5' : ''
+                      className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
+                        isSelected ? 'bg-primary/[0.02] dark:bg-primary/[0.04]' : ''
                       }`}
                     >
-                      {/* NO. */}
-                      <td className="px-4 py-4 text-center text-xs font-medium text-slate-400">
-                        {rowNumber}
-                      </td>
-
-                      {/* Checkbox */}
-                      <td className="px-2 py-4 text-center">
+                      {/* CHECKBOX */}
+                      <td className="px-4 py-4">
                         <input
                           type="checkbox"
-                          checked={isChecked}
+                          checked={isSelected}
                           onChange={(e) => handleSelectRow(content.id, e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-700"
+                          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600"
                           aria-label={`Select ${content.title}`}
                         />
                       </td>
 
-                      {/* KONTEN & TOPIK */}
+                      {/* JUDUL & BRIEF */}
                       <td className="px-4 py-4">
                         <div className="space-y-1">
-                          <div className="flex flex-wrap items-baseline gap-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={`/content/${content.id}`}
                               className="font-semibold text-slate-900 hover:text-primary dark:text-white"
@@ -809,8 +867,30 @@ export default function ApprovalPage() {
                             )}
                           </div>
                           {content.brief && (
-                            <p className="line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+                            <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
                               {content.brief}
+                            </p>
+                          )}
+
+                          {/* Link Produksi jika ada */}
+                          {content.production_link && (
+                            <div className="pt-1">
+                              <a
+                                href={content.production_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 hover:underline dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Buka Tautan Hasil Produksi
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Catatan revisi jika ada */}
+                          {content.status === 'REVISION_REQUIRED' && content.latest_comment && (
+                            <p className="rounded bg-rose-50 p-1.5 text-[11px] font-medium text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+                              <strong>Catatan Revisi:</strong> {content.latest_comment}
                             </p>
                           )}
                         </div>
@@ -844,19 +924,27 @@ export default function ApprovalPage() {
 
                       {/* STATUS */}
                       <td className="px-4 py-4">
-                        {isPending ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                            <Clock className="h-3.5 w-3.5 text-amber-500" />
-                            Menunggu Persetujuan
+                        {isPendingConcept ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+                            <Clock className="h-3.5 w-3.5 text-purple-500" />
+                            Review Konsep
                           </span>
-                        ) : (content.status as string) === 'REVISION_REQUIRED' ? (
+                        ) : isPendingProd ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+                            <Wrench className="h-3.5 w-3.5 text-indigo-500" />
+                            Review Produksi
+                          </span>
+                        ) : content.status === 'REVISION_REQUIRED' ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
                             <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
                             Perlu Revisi
                           </span>
-                        ) : content.status === 'APPROVED' ||
-                          content.status === 'READY_TO_PUBLISH' ||
-                          content.status === 'PUBLISHED' ? (
+                        ) : content.status === 'READY_TO_PUBLISH' ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300">
+                            <Send className="h-3.5 w-3.5 text-cyan-500" />
+                            Siap Publikasi
+                          </span>
+                        ) : content.status === 'APPROVED' || content.status === 'PUBLISHED' ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                             Disetujui
@@ -868,65 +956,165 @@ export default function ApprovalPage() {
                         )}
                       </td>
 
-                      {/* AKSI */}
-                      <td className="relative px-4 py-4 text-right">
-                        <div className="relative inline-block text-left">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActiveMenuId(activeMenuId === content.id ? null : content.id)
-                            }
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none dark:hover:bg-slate-800"
-                            aria-label="Actions"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-
-                          {activeMenuId === content.id && (
-                            <div
-                              ref={menuRef}
-                              className="absolute right-0 z-30 mt-1 w-48 origin-top-right rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                            >
-                              <Link
-                                href={`/content/${content.id}`}
-                                className="flex w-full items-center px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60"
-                                onClick={() => setActiveMenuId(null)}
+                      {/* AKSI CEPAT & MENU */}
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Aksi Cepat Konsep */}
+                          {role === 'ADMIN' && isPendingConcept && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
+                                className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                                title="Setujui Konsep & Lanjut ke Produksi"
                               >
-                                <Eye className="mr-2 h-3.5 w-3.5 text-slate-400" />
-                                Lihat Detail
-                              </Link>
-
-                              {role === 'ADMIN' && isPending && (
-                                <>
-                                  <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-                                  <button
-                                    type="button"
-                                    onClick={() => openActionDialog(content, 'APPROVE')}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                                  >
-                                    <Check className="mr-2 h-3.5 w-3.5 text-emerald-500" />
-                                    Setujui Pengajuan
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openActionDialog(content, 'REVISION')}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                                  >
-                                    <RotateCcw className="mr-2 h-3.5 w-3.5 text-amber-500" />
-                                    Minta Revisi
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openActionDialog(content, 'REJECT')}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                                  >
-                                    <XCircle className="mr-2 h-3.5 w-3.5 text-rose-500" />
-                                    Tolak Pengajuan
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                Setujui Konsep
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
+                                className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
+                                title="Langsung Siap Publikasi (Bypass)"
+                              >
+                                Siap Publikasi
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openActionDialog(content, 'REVISION')}
+                                className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                                title="Minta Revisi Konsep"
+                              >
+                                Revisi
+                              </Button>
+                            </>
                           )}
+
+                          {/* Aksi Cepat Produksi */}
+                          {role === 'ADMIN' && isPendingProd && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
+                                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                title="Setujui Produksi & Jadikan Siap Publikasi"
+                              >
+                                <Check className="mr-1 h-3.5 w-3.5" />
+                                Siap Publikasi
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openActionDialog(content, 'REVISION')}
+                                className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                                title="Minta Revisi Produksi"
+                              >
+                                Revisi
+                              </Button>
+                            </>
+                          )}
+
+                          {/* 3-Dots Dropdown */}
+                          <div className="relative inline-block text-left">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveMenuId(activeMenuId === content.id ? null : content.id)
+                              }
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none dark:hover:bg-slate-800"
+                              aria-label="Actions"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+
+                            {activeMenuId === content.id && (
+                              <div
+                                ref={menuRef}
+                                className="absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800 text-left"
+                              >
+                                <Link
+                                  href={`/content/${content.id}`}
+                                  className="flex w-full items-center px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60"
+                                  onClick={() => setActiveMenuId(null)}
+                                >
+                                  <Eye className="mr-2 h-3.5 w-3.5 text-slate-400" />
+                                  Lihat Detail Lengkap
+                                </Link>
+
+                                {content.production_link && (
+                                  <a
+                                    href={content.production_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
+                                    onClick={() => setActiveMenuId(null)}
+                                  >
+                                    <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                                    Buka Link Produksi
+                                  </a>
+                                )}
+
+                                {role === 'ADMIN' && (
+                                  <>
+                                    <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+                                    {isPendingConcept && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
+                                          className="flex w-full items-center px-4 py-2 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/30"
+                                        >
+                                          <Check className="mr-2 h-3.5 w-3.5" />
+                                          Setujui Konsep (Lanjut Produksi)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
+                                          className="flex w-full items-center px-4 py-2 text-xs font-medium text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-950/30"
+                                        >
+                                          <Send className="mr-2 h-3.5 w-3.5" />
+                                          Langsung Siap Publikasi
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {isPendingProd && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
+                                        className="flex w-full items-center px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                                      >
+                                        <Check className="mr-2 h-3.5 w-3.5" />
+                                        Setujui & Siap Publikasi
+                                      </button>
+                                    )}
+
+                                    {(isPendingConcept || isPendingProd) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => openActionDialog(content, 'REVISION')}
+                                          className="flex w-full items-center px-4 py-2 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                                        >
+                                          <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                                          Minta Revisi
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => openActionDialog(content, 'REJECT')}
+                                          className="flex w-full items-center px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                                        >
+                                          <XCircle className="mr-2 h-3.5 w-3.5" />
+                                          Tolak Pengajuan
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -952,192 +1140,131 @@ export default function ApprovalPage() {
             <span className="font-semibold text-slate-700 dark:text-slate-200">
               {filteredContents.length}
             </span>{' '}
-            pengajuan
+            konten (Urut Terbaru)
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span>Baris:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
-                  setCurrentPage(1)
-                }}
-                className="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-primary focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage(1)}
-                className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-400"
-                title="Halaman Pertama"
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-400"
-                title="Halaman Sebelumnya"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <span className="px-2 text-xs font-medium text-slate-700 dark:text-slate-300">
-                {currentPage} / {totalPages}
-              </span>
-
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-400"
-                title="Halaman Berikutnya"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage(totalPages)}
-                className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-400"
-                title="Halaman Terakhir"
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Halaman {currentPage} dari {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Action Dialog (Approve / Revision / Reject) */}
+      {/* Action Dialog (Single Approve, Revision, Reject) */}
       <Dialog
         open={actionModal.open}
-        onOpenChange={(open) => setActionModal((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => !open && setActionModal((prev) => ({ ...prev, open: false }))}
       >
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              {actionModal.title}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              {actionModal.description}
-            </DialogDescription>
+            <DialogTitle>{actionModal.title}</DialogTitle>
+            <DialogDescription>{actionModal.description}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {actionModal.content && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-800 dark:bg-slate-900">
-                <p className="font-semibold text-slate-800 dark:text-slate-200">
-                  {actionModal.content.title}
-                </p>
-                <p className="mt-0.5 text-slate-500">
-                  Topik: {actionModal.content.topic} • PIC: {actionModal.content.pic || '-'}
-                </p>
-              </div>
-            )}
+          {actionModal.requiresComment && (
+            <div className="space-y-2 py-2">
+              <Label htmlFor="action-comment">
+                Catatan Revisi / Alasan Evaluasi <span className="text-rose-500">*</span>
+              </Label>
+              <Textarea
+                id="action-comment"
+                placeholder="Tuliskan catatan arahan detail untuk perbaikan tim..."
+                value={actionComment}
+                onChange={(e) => setActionComment(e.target.value)}
+                rows={4}
+                className="text-xs"
+              />
+            </div>
+          )}
 
-            {actionModal.requiresComment && (
-              <div className="space-y-1.5">
-                <Label htmlFor="actionComment" className="text-xs font-semibold">
-                  Catatan / Ulasan <span className="text-rose-500">*</span>
-                </Label>
-                <Textarea
-                  id="actionComment"
-                  rows={3}
-                  placeholder="Berikan catatan perbaikan atau alasan secara rinci..."
-                  value={actionComment}
-                  onChange={(e) => setActionComment(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-            )}
+          {actionError && (
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {actionError}
+            </p>
+          )}
 
-            {actionError && (
-              <div className="flex items-center gap-2 rounded-md bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{actionError}</span>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setActionModal((prev) => ({ ...prev, open: false }))}
               disabled={actionSubmitting}
             >
               Batal
             </Button>
             <Button
-              size="sm"
               variant={actionModal.variant}
               onClick={handleActionSubmit}
               disabled={actionSubmitting}
-              className={
-                actionModal.variant === 'default'
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : ''
-              }
             >
-              {actionSubmitting ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                actionModal.submitLabel
-              )}
+              {actionSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {actionModal.submitLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Approve Confirmation Dialog */}
+      {/* Bulk Approve Confirmation Modal */}
       <Dialog open={bulkApproveModalOpen} onOpenChange={setBulkApproveModalOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              Setujui {selectedIds.length} Konten Sekaligus?
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Semua konten yang dipilih akan disetujui dan dilanjutkan ke tahapan alur kerja berikutnya.
+            <DialogTitle>Setujui Massal ({selectedIds.length}) Konten</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menyetujui seluruh konten yang dipilih?
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setBulkApproveModalOpen(false)}
               disabled={bulkSubmitting}
             >
               Batal
             </Button>
             <Button
-              size="sm"
               onClick={handleBulkApproveSubmit}
               disabled={bulkSubmitting}
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              {bulkSubmitting ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Menyetujui...
-                </>
-              ) : (
-                'Ya, Setujui Semua'
-              )}
+              {bulkSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Ya, Setujui Semua
             </Button>
           </DialogFooter>
         </DialogContent>

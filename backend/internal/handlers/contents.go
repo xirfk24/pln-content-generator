@@ -138,14 +138,14 @@ func (h *Handler) ListContents(c *gin.Context) {
 		where = append(where, "c.planned_date <= $"+idx+"::DATE")
 	}
 
-	// Sorting
-	sortBy := c.DefaultQuery("sort_by", "planned_date")
-	order := strings.ToUpper(c.DefaultQuery("order", "ASC"))
+	// Sorting (default: created_at DESC agar konten baru selalu paling atas)
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	order := strings.ToUpper(c.DefaultQuery("order", "DESC"))
 	if order != "DESC" && order != "ASC" {
-		order = "ASC"
+		order = "DESC"
 	}
 
-	orderBy := "c.planned_date ASC NULLS LAST, c.created_at DESC"
+	orderBy := "c.created_at DESC"
 	switch sortBy {
 	case "created_at":
 		if order == "ASC" {
@@ -159,12 +159,14 @@ func (h *Handler) ListContents(c *gin.Context) {
 		} else {
 			orderBy = "c.updated_at DESC"
 		}
-	default: // "planned_date"
+	case "planned_date":
 		if order == "DESC" {
 			orderBy = "c.planned_date DESC NULLS LAST, c.created_at DESC"
 		} else {
 			orderBy = "c.planned_date ASC NULLS LAST, c.created_at DESC"
 		}
+	default:
+		orderBy = "c.created_at DESC"
 	}
 
 	query := contentSelect + " WHERE " + strings.Join(where, " AND ") + " ORDER BY " + orderBy
@@ -175,8 +177,9 @@ func (h *Handler) ListContents(c *gin.Context) {
 		return
 	}
 
-	// attach publications
+	// attach publications & latest comments
 	h.attachPublications(c.Request.Context(), contents)
+	h.attachLatestComments(c.Request.Context(), contents)
 	c.JSON(http.StatusOK, gin.H{"contents": contents})
 }
 
@@ -211,6 +214,7 @@ func (h *Handler) GetContent(c *gin.Context) {
 		return
 	}
 	h.attachPublications(c.Request.Context(), contents)
+	h.attachLatestComments(c.Request.Context(), contents)
 	c.JSON(http.StatusOK, gin.H{"content": contents[0]})
 }
 
@@ -814,6 +818,48 @@ func (h *Handler) attachMetrics(ctx context.Context, publications []models.Publi
 			publications[i].PerformanceMetrics = ms
 		} else {
 			publications[i].PerformanceMetrics = []models.PerformanceMetric{}
+		}
+	}
+}
+
+func (h *Handler) attachLatestComments(ctx context.Context, contents []models.Content) {
+	if len(contents) == 0 {
+		return
+	}
+	ids := make([]string, len(contents))
+	for i, ct := range contents {
+		ids[i] = ct.ID
+	}
+
+	rows, err := h.Pool.Query(ctx, `
+		SELECT DISTINCT ON (content_id) content_id, comment, action
+		FROM approval_histories
+		WHERE content_id = ANY($1) AND comment IS NOT NULL AND TRIM(comment) != ''
+		ORDER BY content_id, performed_at DESC
+	`, ids)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	type commentData struct {
+		comment string
+		action  string
+	}
+	commentMap := make(map[string]commentData)
+	for rows.Next() {
+		var cid, comment, action string
+		if err := rows.Scan(&cid, &comment, &action); err == nil {
+			commentMap[cid] = commentData{comment: comment, action: action}
+		}
+	}
+
+	for i := range contents {
+		if val, ok := commentMap[contents[i].ID]; ok {
+			cCopy := val.comment
+			aCopy := val.action
+			contents[i].LatestComment = &cCopy
+			contents[i].LatestAction = &aCopy
 		}
 	}
 }

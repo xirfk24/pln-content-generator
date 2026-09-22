@@ -640,6 +640,54 @@ export default function ContentDetailPage() {
                     Konten ini telah ditolak secara permanen oleh Admin.
                   </p>
                 )}
+
+                {/* 9. REVISION_REQUIRED */}
+                {content.status === 'REVISION_REQUIRED' && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+                      <p className="font-bold flex items-center gap-1.5 text-rose-800 dark:text-rose-300">
+                        <AlertCircle className="h-4 w-4" />
+                        Memerlukan Revisi
+                      </p>
+                      {content.latest_comment && (
+                        <p className="mt-1.5 font-medium leading-relaxed bg-white/70 dark:bg-black/20 p-2 rounded border border-rose-200/60">
+                          {content.latest_comment}
+                        </p>
+                      )}
+                    </div>
+
+                    <Link href={`/content/${content.id}/edit`}>
+                      <Button variant="outline" size="sm" className="w-full text-xs">
+                        <Edit className="mr-1.5 h-3.5 w-3.5" />
+                        Edit / Perbaiki Naskah Konten
+                      </Button>
+                    </Link>
+
+                    {content.production_link || content.latest_action === 'PRODUCTION_REVISION_REQUESTED' ? (
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="PRODUCTION_SUBMITTED"
+                        initialProductionLink={content.production_link || ''}
+                        onDone={load}
+                      />
+                    ) : (
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="RESUBMITTED"
+                        onDone={load}
+                      />
+                    )}
+
+                    {userRole === 'ADMIN' && (
+                      <WorkflowActionButton
+                        contentId={content.id}
+                        action="REJECTED"
+                        variant="destructive"
+                        onDone={load}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

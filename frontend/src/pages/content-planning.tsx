@@ -52,7 +52,7 @@ function ContentPlanningTabs() {
               Rencana Konten
             </h2>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Modul ini digunakan untuk menyusun, mengelola, mengajukan, dan memantau proses pengelolaan konten sebelum dipublikasikan oleh Divisi Humas PLN UID Jawa Barat.
+              Modul ini digunakan untuk menyusun, mengelola, mengajukan, dan memantau proses pengelolaan konten sebelum dipublikasikan oleh Bagian Komunikasi PLN UID Jawa Barat.
             </p>
           </div>
         </div>

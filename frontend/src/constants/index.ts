@@ -13,6 +13,7 @@ export const CONTENT_STATUSES: ContentStatus[] = [
   'APPROVED',
   'PRODUCTION',
   'PENDING_PRODUCTION_REVIEW',
+  'REVISION_REQUIRED',
   'READY_TO_PUBLISH',
   'PUBLISHED',
   'REJECTED',
@@ -26,6 +27,7 @@ export const CONTENT_STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Konsep Disetujui',
   PRODUCTION: 'Produksi Konten',
   PENDING_PRODUCTION_REVIEW: 'Menunggu Review Produksi',
+  REVISION_REQUIRED: 'Perlu Revisi',
   READY_TO_PUBLISH: 'Siap Publikasi',
   PUBLISHED: 'Dipublikasikan',
   REJECTED: 'Ditolak',
@@ -40,6 +42,7 @@ export const CONTENT_STATUS_COLORS: Record<string, string> = {
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   PRODUCTION: 'bg-amber-50 text-amber-700 border-amber-200',
   PENDING_PRODUCTION_REVIEW: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  REVISION_REQUIRED: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300',
   READY_TO_PUBLISH: 'bg-cyan-50 text-cyan-700 border-cyan-200',
   PUBLISHED: 'bg-teal-50 text-teal-700 border-teal-200',
   REJECTED: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -161,11 +164,6 @@ export const CONTENT_PILLAR_OPTIONS = [
   'Inspirasi (Inspirational)',
   'Interaksi & Komunitas (Engagement)',
   'Promosi / Penjualan (Promotional)',
-  'Di Balik Layar (Behind the Scenes)',
-  'Bukti Sosial & Ulasan (Social Proof / Testimonials)',
-  'Tren & Relevansi Terkini (Trending / Relatable)',
-  'Berita & Wawasan Industri (Industry News & Insights)',
-  'Solusi Masalah & FAQ (Problem Solving / Help)',
 ] as const
 
 /** Platform yang tidak diaktifkan pada modul antrean, analisis, performa, dan rekap */

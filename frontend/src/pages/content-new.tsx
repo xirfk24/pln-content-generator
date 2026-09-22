@@ -285,7 +285,7 @@ function NewContentForm() {
                     Topik Konten (A - Z) *
                   </Label>
                   <span className="text-[11px] text-ink-muted">
-                    Daftar topik resmi Divisi Humas PLN UID Jawa Barat
+                    Daftar topik resmi Bagian Komunikasi PLN UID Jawa Barat
                   </span>
                 </div>
 

@@ -70,8 +70,8 @@ export default function ContentPlanningList() {
   const [platformFilter, setPlatformFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [sortBy, setSortBy] = useState('planned_date')
-  const [sortOrder, setSortOrder] = useState('ASC')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('DESC')
   const [specialFilter, setSpecialFilter] = useState<string | null>(null)
   
   // Pagination state
@@ -169,8 +169,8 @@ export default function ContentPlanningList() {
     setPlatformFilter('')
     setDateFrom('')
     setDateTo('')
-    setSortBy('planned_date')
-    setSortOrder('ASC')
+    setSortBy('created_at')
+    setSortOrder('DESC')
     setSpecialFilter(null)
     setCurrentPage(1)
   }
@@ -582,10 +582,10 @@ export default function ContentPlanningList() {
                 className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
                 aria-label="Urutkan Konten"
               >
-                <option value="planned_date_asc">Sort: Planning Konten (Terdekat)</option>
-                <option value="planned_date_desc">Sort: Planning Konten (Terjauh)</option>
                 <option value="created_at_desc">Sort: Tanggal Dibuat (Terbaru)</option>
                 <option value="created_at_asc">Sort: Tanggal Dibuat (Terlama)</option>
+                <option value="planned_date_asc">Sort: Planning Konten (Terdekat)</option>
+                <option value="planned_date_desc">Sort: Planning Konten (Terjauh)</option>
               </Select>
             </div>
           </div>

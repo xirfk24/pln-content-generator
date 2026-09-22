@@ -71,11 +71,13 @@ type Content struct {
 	UpdatedAt       time.Time   `json:"updated_at"`
 	UpdatedBy       *string     `json:"updated_by"`
 
-	Pillar       *Pillar        `json:"pillar,omitempty"`
-	Category     *Category      `json:"category,omitempty"`
-	Platform     *Platform      `json:"platform,omitempty"`
-	Platforms    []Platform     `json:"platforms,omitempty"`
-	Publications []Publication  `json:"publications,omitempty"`
+	Pillar        *Pillar        `json:"pillar,omitempty"`
+	Category      *Category      `json:"category,omitempty"`
+	Platform      *Platform      `json:"platform,omitempty"`
+	Platforms     []Platform     `json:"platforms,omitempty"`
+	Publications  []Publication  `json:"publications,omitempty"`
+	LatestComment *string        `json:"latest_comment,omitempty"`
+	LatestAction  *string        `json:"latest_action,omitempty"`
 }
 
 type Publication struct {

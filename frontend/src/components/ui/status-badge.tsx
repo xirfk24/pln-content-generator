@@ -30,6 +30,7 @@ const CONTENT_MAP: Record<
   APPROVED: { variant: 'success', icon: CheckCircle2, label: CONTENT_STATUS_LABELS.APPROVED },
   PRODUCTION: { variant: 'warning', icon: Loader, label: CONTENT_STATUS_LABELS.PRODUCTION },
   PENDING_PRODUCTION_REVIEW: { variant: 'warning', icon: ClipboardList, label: CONTENT_STATUS_LABELS.PENDING_PRODUCTION_REVIEW },
+  REVISION_REQUIRED: { variant: 'error', icon: RotateCcw, label: CONTENT_STATUS_LABELS.REVISION_REQUIRED || 'Perlu Revisi' },
   READY_TO_PUBLISH: { variant: 'info', icon: Send, label: CONTENT_STATUS_LABELS.READY_TO_PUBLISH },
   PUBLISHED: { variant: 'success', icon: Globe, label: CONTENT_STATUS_LABELS.PUBLISHED },
   REJECTED: { variant: 'error', icon: XCircle, label: CONTENT_STATUS_LABELS.REJECTED },

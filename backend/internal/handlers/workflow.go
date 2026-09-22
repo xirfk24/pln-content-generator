@@ -25,7 +25,14 @@ var workflowActions = map[string]workflowActionDef{
 	"SUBMITTED": {
 		Label:               "Ajukan Konsep",
 		AllowedRoles:        []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses: []string{"DRAFT"},
+		AllowedFromStatuses: []string{"DRAFT", "REVISION_REQUIRED"},
+		ToStatus:            "PENDING_REVIEW",
+		RequiresComment:     false,
+	},
+	"RESUBMITTED": {
+		Label:               "Ajukan Ulang Konsep",
+		AllowedRoles:        []string{"ADMIN", "STAFF"},
+		AllowedFromStatuses: []string{"REVISION_REQUIRED", "DRAFT"},
 		ToStatus:            "PENDING_REVIEW",
 		RequiresComment:     false,
 	},
@@ -40,7 +47,7 @@ var workflowActions = map[string]workflowActionDef{
 		Label:               "Minta Revisi Konsep",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_REVIEW"},
-		ToStatus:            "DRAFT",
+		ToStatus:            "REVISION_REQUIRED",
 		RequiresComment:     true,
 	},
 	"START_PRODUCTION": {
@@ -53,7 +60,7 @@ var workflowActions = map[string]workflowActionDef{
 	"PRODUCTION_SUBMITTED": {
 		Label:                  "Setor Hasil Produksi",
 		AllowedRoles:           []string{"ADMIN", "STAFF"},
-		AllowedFromStatuses:    []string{"PRODUCTION"},
+		AllowedFromStatuses:    []string{"PRODUCTION", "REVISION_REQUIRED"},
 		ToStatus:               "PENDING_PRODUCTION_REVIEW",
 		RequiresComment:        false,
 		RequiresProductionLink: true,
@@ -69,7 +76,7 @@ var workflowActions = map[string]workflowActionDef{
 		Label:               "Minta Revisi Hasil Produksi",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"PENDING_PRODUCTION_REVIEW"},
-		ToStatus:            "PRODUCTION",
+		ToStatus:            "REVISION_REQUIRED",
 		RequiresComment:     true,
 	},
 	"SHORTCUT_READY": {
@@ -90,13 +97,13 @@ var workflowActions = map[string]workflowActionDef{
 		Label:               "Minta Revisi",
 		AllowedRoles:        []string{"ADMIN"},
 		AllowedFromStatuses: []string{"READY_TO_PUBLISH"},
-		ToStatus:            "PRODUCTION",
+		ToStatus:            "REVISION_REQUIRED",
 		RequiresComment:     true,
 	},
 	"REJECTED": {
 		Label:               "Tolak Konten",
 		AllowedRoles:        []string{"ADMIN"},
-		AllowedFromStatuses: []string{"PENDING_REVIEW", "APPROVED", "PRODUCTION", "PENDING_PRODUCTION_REVIEW", "READY_TO_PUBLISH"},
+		AllowedFromStatuses: []string{"PENDING_REVIEW", "APPROVED", "PRODUCTION", "PENDING_PRODUCTION_REVIEW", "READY_TO_PUBLISH", "REVISION_REQUIRED"},
 		ToStatus:            "REJECTED",
 		RequiresComment:     true,
 	},
@@ -255,12 +262,13 @@ func (h *Handler) ApprovalQueue(c *gin.Context) {
 	}
 
 	contents, err := h.queryContents(c.Request.Context(),
-		contentSelect+" WHERE c.status = ANY($1) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.updated_at ASC", statuses)
+		contentSelect+" WHERE c.status = ANY($1) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.created_at DESC", statuses)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil antrean persetujuan"})
 		return
 	}
 	h.attachPublications(c.Request.Context(), contents)
+	h.attachLatestComments(c.Request.Context(), contents)
 	c.JSON(http.StatusOK, gin.H{"queue": contents, "role": user.Role})
 }
 
@@ -271,8 +279,8 @@ func (h *Handler) MyTasks(c *gin.Context) {
 		return
 	}
 
-	// Ambil konten milik user yang tidak dalam tabungan
-	query := contentSelect + " WHERE (c.created_by = $1 OR c.pic ILIKE $2) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.updated_at DESC"
+	// Ambil konten milik user yang tidak dalam tabungan, urutkan dari yang terbaru dibuat (created_at DESC)
+	query := contentSelect + " WHERE (c.created_by = $1 OR c.pic ILIKE $2) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.created_at DESC"
 	userSearch := "%" + user.Email + "%"
 	contents, err := h.queryContents(c.Request.Context(), query, user.ID, userSearch)
 	if err != nil {
@@ -280,7 +288,9 @@ func (h *Handler) MyTasks(c *gin.Context) {
 		return
 	}
 	h.attachPublications(c.Request.Context(), contents)
+	h.attachLatestComments(c.Request.Context(), contents)
 
+	revisions := []models.Content{}
 	drafts := []models.Content{}
 	pendingApproval := []models.Content{}
 	production := []models.Content{}
@@ -290,6 +300,8 @@ func (h *Handler) MyTasks(c *gin.Context) {
 
 	for _, ct := range contents {
 		switch ct.Status {
+		case "REVISION_REQUIRED":
+			revisions = append(revisions, ct)
 		case "DRAFT":
 			drafts = append(drafts, ct)
 		case "PENDING_REVIEW", "PENDING_PRODUCTION_REVIEW":
@@ -306,6 +318,7 @@ func (h *Handler) MyTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"revisions":       revisions,
 		"drafts":          drafts,
 		"pendingApproval": pendingApproval,
 		"production":      production,

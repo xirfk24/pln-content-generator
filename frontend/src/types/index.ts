@@ -6,6 +6,7 @@ export type ContentStatus =
   | 'APPROVED'
   | 'PRODUCTION'
   | 'PENDING_PRODUCTION_REVIEW'
+  | 'REVISION_REQUIRED'
   | 'READY_TO_PUBLISH'
   | 'PUBLISHED'
   | 'REJECTED'
@@ -121,6 +122,8 @@ export interface Content {
   platform?: Platform
   platforms?: Platform[]
   publications?: Publication[]
+  latest_comment?: string | null
+  latest_action?: string | null
 }
 
 export interface Publication {

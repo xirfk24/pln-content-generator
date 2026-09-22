@@ -437,7 +437,7 @@ export default function DashboardPage() {
           📊 Modul Dasbor Utama & Performa Konten
         </p>
         <p className="mt-1 text-xs text-blue-700">
-          Menyajikan ringkasan metrik konten, pemantauan efektivitas publikasi, serta status alur persetujuan Divisi Humas PLN UID Jawa Barat secara real-time.
+          Menyajikan ringkasan metrik konten, pemantauan efektivitas publikasi, serta status alur persetujuan Bagian Komunikasi PLN UID Jawa Barat secara real-time.
         </p>
       </div>
 

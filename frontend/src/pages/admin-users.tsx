@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
           👥 Modul Manajemen Pengguna & Hak Akses
         </p>
         <p className="mt-1 text-xs text-slate-600">
-          Kelola hak akses (Admin / Staff) serta status keaktifan pengguna dalam sistem PLN Content Management System Divisi Humas PLN UID Jawa Barat.
+          Kelola hak akses (Admin / Staff) serta status keaktifan pengguna dalam sistem PLN Content Management System Bagian Komunikasi PLN UID Jawa Barat.
         </p>
       </div>
 
