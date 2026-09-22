@@ -98,6 +98,9 @@ func main() {
 
 		authed.GET("/workflow/approval-queue", h.ApprovalQueue)
 		authed.GET("/workflow/tasks", h.MyTasks)
+		authed.GET("/notifications", h.ListNotifications)
+		authed.GET("/notifications/read", h.ListNotificationReads)
+		authed.POST("/notifications/read", h.MarkNotificationsRead)
 
 		authed.GET("/planning-periods", h.ListPlanningPeriods)
 		authed.GET("/planning-periods/:id", h.GetPlanningPeriod)
