@@ -115,14 +115,14 @@ export default function NotificationsPage() {
   // Mark all as read
   const handleMarkAllRead = () => {
     const allIds = notifications.map((n) => n.id)
-    markAllNotificationsAsRead(allIds, userId)
+    markAllNotificationsAsRead(allIds)
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }
 
   // Handle single notification click
   const handleNotificationClick = (n: AppNotification) => {
     if (!n.read) {
-      markNotificationAsRead(n.id, userId)
+      markNotificationAsRead(n.id)
       setNotifications((prev) =>
         prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
       )
@@ -136,6 +136,8 @@ export default function NotificationsPage() {
         return <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
       case 'REVISION':
         return <RotateCcw className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+      case 'REJECTED':
+        return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
       case 'SCHEDULE':
         return <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       case 'OVERDUE':
@@ -155,6 +157,8 @@ export default function NotificationsPage() {
         return 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
       case 'REVISION':
         return 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800'
+      case 'REJECTED':
+        return 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
       case 'SCHEDULE':
         return 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
       case 'OVERDUE':
