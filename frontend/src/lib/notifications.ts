@@ -5,6 +5,7 @@ import type { UserRole } from '@/types'
 export type NotificationType =
   | 'APPROVAL'
   | 'REVISION'
+  | 'REJECTED'
   | 'SCHEDULE'
   | 'OVERDUE'
   | 'PUBLISHED'
@@ -27,45 +28,27 @@ export interface AppNotification {
   read: boolean
 }
 
-// Storage key helper for read notification IDs
-function getStorageKey(userId?: string | null): string {
-  return `pln_read_notif_ids_${userId || 'guest'}`
+// Read state notifikasi persist di DB lewat /api/notifications/read,
+// jadi status "dibaca" ikut user antar device/browser.
+
+/** Tandai satu notifikasi dibaca (fire-and-forget; UI sudah optimistic). */
+export function markNotificationAsRead(notifId: string): void {
+  postMarkRead([notifId])
 }
 
-export function getReadNotificationIds(userId?: string | null): Set<string> {
-  if (typeof window === 'undefined') return new Set()
-  try {
-    const raw = localStorage.getItem(getStorageKey(userId))
-    if (!raw) return new Set()
-    const parsed = JSON.parse(raw)
-    return new Set(Array.isArray(parsed) ? parsed : [])
-  } catch {
-    return new Set()
-  }
+/** Tandai banyak notifikasi dibaca sekaligus (fire-and-forget). */
+export function markAllNotificationsAsRead(notifIds: string[]): void {
+  postMarkRead(notifIds)
 }
 
-export function markNotificationAsRead(notifId: string, userId?: string | null): void {
-  if (typeof window === 'undefined') return
-  try {
-    const set = getReadNotificationIds(userId)
-    set.add(notifId)
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(Array.from(set)))
-    window.dispatchEvent(new CustomEvent('pln-notification-update'))
-  } catch (err) {
-    console.error('Failed to mark notification as read:', err)
-  }
-}
-
-export function markAllNotificationsAsRead(notifIds: string[], userId?: string | null): void {
-  if (typeof window === 'undefined') return
-  try {
-    const set = getReadNotificationIds(userId)
-    notifIds.forEach((id) => set.add(id))
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(Array.from(set)))
-    window.dispatchEvent(new CustomEvent('pln-notification-update'))
-  } catch (err) {
-    console.error('Failed to mark all notifications as read:', err)
-  }
+function postMarkRead(ids: string[]): void {
+  apiFetch('/api/notifications/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+    .then(() => window.dispatchEvent(new CustomEvent('pln-notification-update')))
+    .catch((err) => console.error('Failed to mark notifications as read:', err))
 }
 
 export function formatRelativeTime(dateStr: string): string {
@@ -101,13 +84,14 @@ export function getTimeGroup(dateStr: string): 'Hari Ini' | 'Kemarin' | 'Minggu 
 }
 
 /**
- * Fetch and synthesize actionable event notifications based on the current user's role.
+ * Fetch notifications: event workflow (revisi/ditolak/disetujui) dari
+ * /api/notifications (berbasis approval_histories, jadi event lama tetap
+ * terlihat), plus jadwal publikasi dari /api/publications.
  */
 export async function fetchNotifications(
   userId?: string | null,
   role?: UserRole | null
 ): Promise<AppNotification[]> {
-  const readIds = getReadNotificationIds(userId)
   const notifications: AppNotification[] = []
   const seenIds = new Set<string>()
 
@@ -117,133 +101,41 @@ export async function fetchNotifications(
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
   try {
-    // Parallel fetch contents & publications
-    const [contentsRes, pubsRes] = await Promise.all([
-      apiFetch('/api/contents?include_savings=false'),
+    // Parallel fetch events, read-ids & publications
+    const [eventsRes, readRes, pubsRes] = await Promise.all([
+      apiFetch('/api/notifications'),
+      apiFetch('/api/notifications/read'),
       apiFetch('/api/publications'),
     ])
 
-    const contentsData = contentsRes.ok ? await contentsRes.json() : { contents: [] }
+    const eventsData = eventsRes.ok ? await eventsRes.json() : { notifications: [] }
+    const readData = readRes.ok ? await readRes.json() : { ids: [] }
     const pubsData = pubsRes.ok ? await pubsRes.json() : { publications: [] }
 
-    const contents: any[] = contentsData.contents || []
+    const events: any[] = eventsData.notifications || []
+    const readIds = new Set<string>(Array.isArray(readData.ids) ? readData.ids : [])
     const publications: any[] = pubsData.publications || []
 
     const isAdmin = role === 'ADMIN'
 
-    // 1. Process Content Status Events
-    contents.forEach((c) => {
-      const updatedAt = c.updated_at || c.created_at || new Date().toISOString()
-      const title = c.title || 'Konten Tanpa Judul'
-
-      if (isAdmin) {
-        // ADMIN NOTIFICATIONS:
-        // A. Waiting for concept review
-        if (c.status === 'PENDING_REVIEW') {
-          const id = `notif-admin-pending-${c.id}-${updatedAt.slice(0, 10)}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId: c.id,
-              type: 'APPROVAL',
-              priority: 'HIGH',
-              title: 'Konten menunggu persetujuan',
-              contentTitle: title,
-              description: 'Admin perlu melakukan review',
-              timestamp: updatedAt,
-              actionUrl: `/content/${c.id}`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        }
-
-        // B. Waiting for production review
-        if (c.status === 'PENDING_PRODUCTION_REVIEW') {
-          const id = `notif-admin-prod-${c.id}-${updatedAt.slice(0, 10)}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId: c.id,
-              type: 'APPROVAL',
-              priority: 'HIGH',
-              title: 'Konten hasil revisi siap ditinjau',
-              contentTitle: title,
-              description: 'Tinjau hasil produksi sebelum siap publikasi',
-              timestamp: updatedAt,
-              actionUrl: `/content/${c.id}`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        }
-      } else {
-        // STAFF NOTIFICATIONS:
-        // A. Revision requested
-        if (c.status === 'REVISION_REQUIRED') {
-          const id = `notif-staff-rev-${c.id}-${updatedAt.slice(0, 10)}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId: c.id,
-              type: 'REVISION',
-              priority: 'HIGH',
-              title: 'Konten perlu direvisi',
-              contentTitle: title,
-              description: 'Lihat catatan revisi dari admin reviewer',
-              timestamp: updatedAt,
-              actionUrl: `/content/${c.id}`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        }
-
-        // B. Concept approved
-        if (c.status === 'APPROVED') {
-          const id = `notif-staff-appr-${c.id}-${updatedAt.slice(0, 10)}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId: c.id,
-              type: 'APPROVAL',
-              priority: 'MEDIUM',
-              title: 'Konten disetujui',
-              contentTitle: title,
-              description: 'Konsep disetujui, siap untuk produksi konten',
-              timestamp: updatedAt,
-              actionUrl: `/content/${c.id}`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        }
-
-        // C. Ready to publish
-        if (c.status === 'READY_TO_PUBLISH') {
-          const id = `notif-staff-ready-${c.id}-${updatedAt.slice(0, 10)}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId: c.id,
-              type: 'APPROVAL',
-              priority: 'MEDIUM',
-              title: 'Konten siap publikasi',
-              contentTitle: title,
-              description: 'Konten telah disetujui dan siap ditayangkan',
-              timestamp: updatedAt,
-              actionUrl: `/content/${c.id}`,
-              needsAction: false,
-              read: readIds.has(id),
-            })
-          }
-        }
-      }
+    // 1. Workflow events (revisi, ditolak, disetujui, menunggu persetujuan)
+    events.forEach((e) => {
+      const id = `notif-event-${e.id}`
+      if (seenIds.has(id)) return
+      seenIds.add(id)
+      notifications.push({
+        id,
+        contentId: e.content_id,
+        type: e.type,
+        priority: e.priority,
+        title: e.title,
+        contentTitle: e.content_title || 'Konten Tanpa Judul',
+        description: e.comment ? `Catatan: ${e.comment}` : e.description,
+        timestamp: e.timestamp,
+        actionUrl: e.action_url || `/content/${e.content_id}`,
+        needsAction: e.needs_action,
+        read: readIds.has(id),
+      })
     })
 
     // 2. Process Publication Schedules & Deadlines
@@ -359,24 +251,12 @@ export async function fetchNotifications(
       }
     })
 
-    // Sort notifications:
-    // 1. Unread first, then by priority (HIGH > MEDIUM > LOW), then most recent date
-    const priorityWeight: Record<NotificationPriority, number> = {
-      HIGH: 3,
-      MEDIUM: 2,
-      LOW: 1,
-    }
-
+    // Sort: unread first, then most recent on top.
+    // (Priority tidak lagi ikut menyortir supaya notifikasi terbaru selalu
+    // tampak paling atas dalam grupnya — urutan = paling baru dulu.)
     notifications.sort((a, b) => {
-      // Prioritize unread
       if (!a.read && b.read) return -1
       if (a.read && !b.read) return 1
-
-      // Then priority
-      const pDiff = priorityWeight[b.priority] - priorityWeight[a.priority]
-      if (pDiff !== 0) return pDiff
-
-      // Then timestamp descending
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     })
 
@@ -386,3 +266,4 @@ export async function fetchNotifications(
     return []
   }
 }
+
