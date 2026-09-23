@@ -8,16 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import {
   Loader2,
   Edit,
   ArrowLeft,
@@ -78,10 +68,6 @@ export default function ContentDetailPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [tabunganLoading, setTabunganLoading] = useState(false)
-  const [tabunganModalOpen, setTabunganModalOpen] = useState(false)
-  const [tabunganReason, setTabunganReason] = useState('')
-  const [tabunganError, setTabunganError] = useState<string | null>(null)
 
   const load = async () => {
     try {
@@ -113,36 +99,6 @@ export default function ContentDetailPage() {
       .then((data) => data?.user?.profile?.role && setUserRole(data.user.profile.role))
       .catch(() => {})
   }, [])
-
-  function openMoveToTabunganModal() {
-    setTabunganReason('')
-    setTabunganError(null)
-    setTabunganModalOpen(true)
-  }
-
-  async function handleConfirmMoveToTabungan() {
-    setTabunganLoading(true)
-    setTabunganError(null)
-    try {
-      const res = await apiFetch(`/api/contents/${id}/move-to-tabungan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: tabunganReason.trim() }),
-      })
-      if (res.ok) {
-        setTabunganModalOpen(false)
-        load()
-      } else {
-        const d = await res.json()
-        setTabunganError(d.error || 'Gagal memindahkan ke Bank Konten')
-      }
-    } catch (err) {
-      console.error(err)
-      setTabunganError('Terjadi kesalahan jaringan/server')
-    } finally {
-      setTabunganLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -226,19 +182,6 @@ export default function ContentDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {!content.is_savings && content.status !== 'REJECTED' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openMoveToTabunganModal}
-              disabled={tabunganLoading}
-              title="Pindahkan ke Bank Konten"
-            >
-              <BookmarkCheck className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
-              Simpan ke Bank Konten
-            </Button>
-          )}
-
           {isLocked ? (
             <Button variant="outline" size="sm" disabled title="Form edit terkunci untuk status selain DRAFT">
               <Lock className="mr-1.5 h-3.5 w-3.5 text-ink-muted" />
@@ -282,10 +225,6 @@ export default function ContentDetailPage() {
                       <span className="text-sm text-ink">-</span>
                     )}
                   </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-ink-secondary">PIC</dt>
-                  <dd className="text-sm font-medium text-ink">{content.pic || '-'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-ink-secondary">Prioritas</dt>
@@ -727,69 +666,6 @@ export default function ContentDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* Dialog Pindah ke Bank Konten */}
-      <Dialog open={tabunganModalOpen} onOpenChange={setTabunganModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-ink">
-              <BookmarkCheck className="h-5 w-5 text-indigo-600" />
-              Simpan ke Bank Konten
-            </DialogTitle>
-            <DialogDescription>
-              Konten ini akan dipindahkan ke daftar Bank Konten dan dapat dijadwalkan ulang sewaktu-waktu.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="tabungan-reason" className="text-xs font-semibold text-ink">
-                Alasan Penyimpanan ke Bank Konten (Opsional)
-              </Label>
-              <Textarea
-                id="tabungan-reason"
-                placeholder="Contoh: Menunggu momen kampanye bulan depan, materi visual perlu disempurnakan..."
-                value={tabunganReason}
-                onChange={(e) => setTabunganReason(e.target.value)}
-                rows={3}
-                className="resize-none text-sm"
-              />
-            </div>
-            {tabunganError && (
-              <div className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{tabunganError}</span>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setTabunganModalOpen(false)}
-              disabled={tabunganLoading}
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              onClick={handleConfirmMoveToTabungan}
-              disabled={tabunganLoading}
-            >
-              {tabunganLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                'Simpan ke Bank Konten'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
