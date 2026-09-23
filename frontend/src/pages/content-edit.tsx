@@ -45,7 +45,6 @@ export default function EditContentPage() {
     target_audience: '',
     planned_date: '',
     brief_link: '',
-    pic: '',
     priority: 'MEDIUM',
     posting_category: '',
   })
@@ -88,7 +87,6 @@ export default function EditContentPage() {
             target_audience: c.target_audience || '',
             planned_date: c.planned_date ? c.planned_date.split('T')[0] : '',
             brief_link: c.brief_link || '',
-            pic: c.pic || '',
             priority: c.priority || 'MEDIUM',
             posting_category: c.posting_category || '',
           })
@@ -153,7 +151,6 @@ export default function EditContentPage() {
       target_audience: form.target_audience.trim() || null,
       planned_date: form.planned_date || null,
       brief_link: form.brief_link.trim() || null,
-      pic: form.pic.trim() || null,
       priority: form.priority || 'MEDIUM',
       posting_category: form.posting_category || null,
     }
@@ -357,15 +354,9 @@ export default function EditContentPage() {
                       </option>
                     ))}
                   </Select>
-                  {form.posting_category?.startsWith('REPOST') ? (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-md border border-emerald-200 dark:border-emerald-800/50">
-                      <span>✓ Konten Repost otomatis langsung berstatus <strong>APPROVED</strong> (Disetujui).</span>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-ink-muted">
-                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Lain-lain).
-                    </p>
-                  )}
+                  <p className="text-[11px] text-ink-muted">
+                    Klasifikasi penayangan konten (Original, Repost, Kampanye, dll.)
+                  </p>
                 </div>
               </div>
             </div>
@@ -383,7 +374,7 @@ export default function EditContentPage() {
 
               <PlatformSelector
                 platforms={platforms.filter(
-                  (p) => !['website', 'linkedin', 'twitter/x', 'twitter', 'x'].includes(p.name.toLowerCase())
+                  (p) => !['website', 'linkedin'].includes(p.name.toLowerCase())
                 )}
                 selectedIds={form.platform_ids}
                 onChange={(newIds) => setForm({ ...form, platform_ids: newIds })}
@@ -444,31 +435,17 @@ export default function EditContentPage() {
               </div>
             </div>
 
-            {/* Target Audience & PIC */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="target_audience">Target Audiens</Label>
-                <Input
-                  id="target_audience"
-                  value={form.target_audience}
-                  onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                  placeholder="Contoh: Pelanggan Rumah Tangga, Generasi Muda, Pengguna EV..."
-                  disabled={isLocked}
-                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pic">PIC / Pembuat Konten</Label>
-                <Input
-                  id="pic"
-                  value={form.pic}
-                  onChange={(e) => setForm({ ...form, pic: e.target.value })}
-                  disabled={isLocked}
-                  placeholder="Nama staf humas penanggung jawab..."
-                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
-                />
-              </div>
+            {/* Target Audience */}
+            <div className="space-y-2">
+              <Label htmlFor="target_audience">Target Audiens</Label>
+              <Input
+                id="target_audience"
+                value={form.target_audience}
+                onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                placeholder="Contoh: Pelanggan Rumah Tangga, Generasi Muda, Pengguna EV..."
+                disabled={isLocked}
+                className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
+              />
             </div>
 
             {/* Brief & Link */}
