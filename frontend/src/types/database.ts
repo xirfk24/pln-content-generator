@@ -89,7 +89,6 @@ export interface Database {
           target_audience: string | null
           planned_date: string | null
           planned_week: number | null
-          pic: string | null
           priority: string | null
           status: string
           source_idea_id: string | null
@@ -110,7 +109,6 @@ export interface Database {
           target_audience?: string | null
           planned_date?: string | null
           planned_week?: number | null
-          pic?: string | null
           priority?: string | null
           status?: string
           source_idea_id?: string | null
@@ -128,7 +126,6 @@ export interface Database {
           target_audience?: string | null
           planned_date?: string | null
           planned_week?: number | null
-          pic?: string | null
           priority?: string | null
           status?: string
           source_idea_id?: string | null
