@@ -28,6 +28,8 @@ import {
   Heart,
   MessageSquare,
   Share2,
+  Users,
+  Bookmark,
 } from 'lucide-react'
 import Link from '@/compat/next'
 import {
@@ -407,7 +409,7 @@ export default function ContentImportPage() {
                         Gunakan untuk mengimpor arsip konten historis yang pernah tayang. Konten langsung berstatus <strong>DIPUBLIKASIKAN (PUBLISHED)</strong> beserta tautan postingan &amp; insight.
                       </p>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium pt-1">
-                        ✓ Tanggal Terbit • Judul • Topik • Pilar • Format • Platform • Link Post • Views • Like • Komen • Share
+                        ✓ Tanggal Terbit • Judul • Topik • Pilar • Format • Platform • Link Post • Reach • Views • Likes • Komen • Saves • Shares
                       </p>
                     </div>
                   </div>
@@ -451,7 +453,7 @@ export default function ContentImportPage() {
                   </div>
                   <p className="text-blue-700/80 dark:text-blue-300/80 leading-relaxed text-[11px]">
                     {importMode === 'LEGACY_PUBLISHED'
-                      ? 'Kolom Tanggal Terbit, Judul, Topik, Pilar, Format, Platform, Link Post, dan Insight (Views, Likes, Komen, Share).'
+                      ? 'Kolom Tanggal Terbit (Flexible), Judul, Topik, Pilar, Format, Platform (Wajib/Pilihan), Link Post, dan Insight (Reach, Views, Likes, Komen, Saves, Shares).'
                       : 'Kolom Biru (Wajib), Hijau (Pilihan Sistem), dan Kuning (Opsional). Baris contoh otomatis dilewati sistem.'}
                   </p>
                 </div>
@@ -795,6 +797,9 @@ export default function ContentImportPage() {
                     <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary w-14">
                       Baris
                     </th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary whitespace-nowrap">
+                      {importMode === 'LEGACY_PUBLISHED' ? 'Tgl Terbit' : 'Tgl Rencana'}
+                    </th>
                     <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary min-w-[200px]">
                       Judul Konten
                     </th>
@@ -806,9 +811,6 @@ export default function ContentImportPage() {
                     </th>
                     <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary">
                       Platform
-                    </th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary whitespace-nowrap">
-                      {importMode === 'LEGACY_PUBLISHED' ? 'Tgl Terbit' : 'Tgl Rencana'}
                     </th>
                     {importMode === 'LEGACY_PUBLISHED' && (
                       <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary min-w-[180px]">
@@ -852,6 +854,9 @@ export default function ContentImportPage() {
                           <td className="px-3 py-2.5 font-mono text-slate-500">
                             #{row.row_number}
                           </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 dark:text-slate-300 font-mono font-semibold">
+                            {row.planned_date || '-'}
+                          </td>
                           <td className="px-3 py-2.5 font-medium text-ink">
                             {row.title || <span className="italic text-rose-500">Kosong</span>}
                           </td>
@@ -863,9 +868,6 @@ export default function ContentImportPage() {
                           </td>
                           <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">
                             {row.platform || '-'}
-                          </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 dark:text-slate-300 font-mono">
-                            {row.planned_date || '-'}
                           </td>
                           {importMode === 'LEGACY_PUBLISHED' && (
                             <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300 space-y-1">
@@ -883,30 +885,42 @@ export default function ContentImportPage() {
                                 <span className="text-slate-400 italic text-[11px]">Tanpa URL</span>
                               )}
 
-                              {(pData?.views > 0 || pData?.likes > 0 || pData?.comments > 0 || pData?.shares > 0) && (
+                              {(pData?.reach > 0 || pData?.views > 0 || pData?.likes > 0 || pData?.comments > 0 || pData?.saves > 0 || pData?.shares > 0) && (
                                 <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+                                  {pData.reach > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200/60 dark:border-purple-800/40">
+                                      <Users className="h-2.5 w-2.5 text-purple-600" />
+                                      Reach: {pData.reach.toLocaleString()}
+                                    </span>
+                                  )}
                                   {pData.views > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                      <Eye className="h-2.5 w-2.5 text-blue-500" />
-                                      {pData.views.toLocaleString()}
+                                    <span className="inline-flex items-center gap-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40">
+                                      <Eye className="h-2.5 w-2.5 text-blue-600" />
+                                      Views: {pData.views.toLocaleString()}
                                     </span>
                                   )}
                                   {pData.likes > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                      <Heart className="h-2.5 w-2.5 text-rose-500" />
-                                      {pData.likes.toLocaleString()}
+                                    <span className="inline-flex items-center gap-0.5 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200/60 dark:border-rose-800/40">
+                                      <Heart className="h-2.5 w-2.5 text-rose-600" />
+                                      Likes: {pData.likes.toLocaleString()}
                                     </span>
                                   )}
                                   {pData.comments > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                      <MessageSquare className="h-2.5 w-2.5 text-emerald-500" />
-                                      {pData.comments.toLocaleString()}
+                                    <span className="inline-flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/40">
+                                      <MessageSquare className="h-2.5 w-2.5 text-emerald-600" />
+                                      Komen: {pData.comments.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {pData.saves > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/40">
+                                      <Bookmark className="h-2.5 w-2.5 text-amber-600" />
+                                      Saves: {pData.saves.toLocaleString()}
                                     </span>
                                   )}
                                   {pData.shares > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                      <Share2 className="h-2.5 w-2.5 text-purple-500" />
-                                      {pData.shares.toLocaleString()}
+                                    <span className="inline-flex items-center gap-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/40">
+                                      <Share2 className="h-2.5 w-2.5 text-indigo-600" />
+                                      Shares: {pData.shares.toLocaleString()}
                                     </span>
                                   )}
                                 </div>

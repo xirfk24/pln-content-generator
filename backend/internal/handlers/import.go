@@ -68,9 +68,11 @@ type ImportRowInput struct {
 	Reference       string `json:"reference"`
 	// Additional fields for LEGACY_PUBLISHED mode
 	PostURL  string `json:"post_url"`
+	Reach    *int   `json:"reach"`
 	Views    *int   `json:"views"`
 	Likes    *int   `json:"likes"`
 	Comments *int   `json:"comments"`
+	Saves    *int   `json:"saves"`
 	Shares   *int   `json:"shares"`
 }
 
@@ -108,9 +110,11 @@ type ParsedRowData struct {
 	// Additional fields for LEGACY_PUBLISHED mode
 	ImportMode string  `json:"import_mode"`
 	PostURL    *string `json:"post_url"`
+	Reach      int     `json:"reach"`
 	Views      int     `json:"views"`
 	Likes      int     `json:"likes"`
 	Comments   int     `json:"comments"`
+	Saves      int     `json:"saves"`
 	Shares     int     `json:"shares"`
 }
 
@@ -386,9 +390,16 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 				postURLPtr = &v
 			}
 
+			reachVal := 0
+			if row.Reach != nil && *row.Reach > 0 {
+				reachVal = *row.Reach
+			}
 			viewsVal := 0
 			if row.Views != nil && *row.Views > 0 {
 				viewsVal = *row.Views
+			}
+			if reachVal == 0 && viewsVal > 0 {
+				reachVal = viewsVal
 			}
 			likesVal := 0
 			if row.Likes != nil && *row.Likes > 0 {
@@ -397,6 +408,10 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 			commentsVal := 0
 			if row.Comments != nil && *row.Comments > 0 {
 				commentsVal = *row.Comments
+			}
+			savesVal := 0
+			if row.Saves != nil && *row.Saves > 0 {
+				savesVal = *row.Saves
 			}
 			sharesVal := 0
 			if row.Shares != nil && *row.Shares > 0 {
@@ -425,9 +440,11 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 				Reference:         refPtr,
 				ImportMode:        importMode,
 				PostURL:           postURLPtr,
+				Reach:             reachVal,
 				Views:             viewsVal,
 				Likes:             likesVal,
 				Comments:          commentsVal,
+				Saves:             savesVal,
 				Shares:            sharesVal,
 			}
 		}
@@ -668,22 +685,27 @@ func (h *Handler) ImportContents(c *gin.Context) {
 					continue
 				}
 
-				if row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Shares > 0 {
+				if row.Reach > 0 || row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Saves > 0 || row.Shares > 0 {
 					recDate := row.PlannedDate
 					if recDate == "" {
 						recDate = time.Now().Format("2006-01-02")
 					}
+					reachVal := row.Reach
+					if reachVal == 0 {
+						reachVal = row.Views
+					}
 					_, errMet := h.Pool.Exec(c.Request.Context(), `
 						INSERT INTO performance_metrics (
 							publication_id, views, likes, comments, shares, saves, reach, recorded_at
-						) VALUES ($1, $2, $3, $4, $5, 0, $2, $6)
+						) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 						ON CONFLICT (publication_id, recorded_at) DO UPDATE SET
 							views = EXCLUDED.views,
 							likes = EXCLUDED.likes,
 							comments = EXCLUDED.comments,
 							shares = EXCLUDED.shares,
+							saves = EXCLUDED.saves,
 							reach = EXCLUDED.reach
-					`, pubID, row.Views, row.Likes, row.Comments, row.Shares, recDate)
+					`, pubID, row.Views, row.Likes, row.Comments, row.Shares, row.Saves, reachVal, recDate)
 					if errMet != nil {
 						log.Printf("Import row %d metric insert error: %v", rowNum, errMet)
 					}

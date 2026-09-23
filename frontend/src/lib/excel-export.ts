@@ -1,11 +1,22 @@
 import ExcelJS from 'exceljs'
 import {
   CONTENT_STATUS_LABELS,
+  CONTENT_PURPOSES,
+  POSTING_CATEGORIES,
   CONTENT_PURPOSE_LABELS,
   POSTING_CATEGORY_LABELS,
-  CONTENT_PRIORITY_LABELS,
 } from '@/constants'
 import { formatDate } from '@/lib/utils'
+
+export interface PublicationMetrics {
+  url: string
+  reach: number
+  views: number
+  likes: number
+  comments: number
+  saves: number
+  shares: number
+}
 
 export interface ReportItem {
   id?: string
@@ -19,7 +30,14 @@ export interface ReportItem {
   posting_category?: string | null
   status: string
   planned_date?: string | null
-  priority?: string | null
+  post_url?: string | null
+  reach?: number
+  views?: number
+  likes?: number
+  comments?: number
+  saves?: number
+  shares?: number
+  platform_publications?: Record<string, PublicationMetrics>
 }
 
 export interface ExportReportOptions {
@@ -46,6 +64,14 @@ const INDO_MONTH_NAMES = [
   'Oktober',
   'November',
   'Desember',
+]
+
+const MASTER_PLATFORMS = [
+  'Instagram',
+  'Facebook',
+  'TikTok',
+  'YouTube',
+  'Twitter/X',
 ]
 
 /**
@@ -83,7 +109,7 @@ function sanitizeSheetName(name: string): string {
 }
 
 // ==========================================
-// COLOR PALETTE (PLN Light Blue Theme)
+// COLOR PALETTE (PLN Light Blue Theme & Section Colors)
 // ==========================================
 const PLN_CYAN_PRIMARY = '00A2B9'   // Warna utama PLN Cyan
 const PLN_DARK_CYAN = '005B6E'      // Warna teks header / title
@@ -119,28 +145,28 @@ function populateSheet(
   // 1. HEADER BANNER PERUSAHAAN (Rows 1–4)
   // ==========================================
   // Row 1: Instansi
-  ws.mergeCells('A1:L1')
+  ws.mergeCells('A1:Z1')
   const r1 = ws.getCell('A1')
   r1.value = 'PT PLN (PERSERO) UNIT INDUK DISTRIBUSI JAWA BARAT'
   r1.font = { name: 'Calibri', size: 12, bold: true, color: { argb: PLN_DARK_CYAN } }
   r1.alignment = { vertical: 'middle', horizontal: 'left' }
 
   // Row 2: Judul Dokumen
-  ws.mergeCells('A2:L2')
+  ws.mergeCells('A2:Z2')
   const r2 = ws.getCell('A2')
   r2.value = sheetTitle
   r2.font = { name: 'Calibri', size: 15, bold: true, color: { argb: TEXT_DARK } }
   r2.alignment = { vertical: 'middle', horizontal: 'left' }
 
   // Row 3: Periode Info
-  ws.mergeCells('A3:L3')
+  ws.mergeCells('A3:Z3')
   const r3 = ws.getCell('A3')
   r3.value = `Periode: ${periodSubtitle}`
   r3.font = { name: 'Calibri', size: 11, bold: true, color: { argb: PLN_DARK_CYAN } }
   r3.alignment = { vertical: 'middle', horizontal: 'left' }
 
   // Row 4: Metadata Cetak & Filter Tambahan
-  ws.mergeCells('A4:L4')
+  ws.mergeCells('A4:Z4')
   const r4 = ws.getCell('A4')
   const filterParts = []
   if (options.platformName) filterParts.push(`Platform: ${options.platformName}`)
@@ -169,57 +195,57 @@ function populateSheet(
     ['DRAFT', 'PENDING_REVIEW'].includes(i.status)
   ).length
 
-  // Card 1: Total Konten (A6:C7)
-  ws.mergeCells('A6:C6')
+  // Card 1: Total Konten (A6:D7)
+  ws.mergeCells('A6:D6')
   ws.getCell('A6').value = isMonthlySheet ? 'TOTAL KONTEN BULAN INI' : 'TOTAL KONTEN'
   ws.getCell('A6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: PLN_DARK_CYAN } }
   ws.getCell('A6').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells('A7:C7')
+  ws.mergeCells('A7:D7')
   ws.getCell('A7').value = totalCount
   ws.getCell('A7').font = { name: 'Calibri', size: 16, bold: true, color: { argb: TEXT_DARK } }
   ws.getCell('A7').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  // Card 2: Dipublikasikan (D6:F7)
-  ws.mergeCells('D6:F6')
-  ws.getCell('D6').value = 'SUDAH DIPUBLIKASIKAN'
-  ws.getCell('D6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: '047857' } }
-  ws.getCell('D6').alignment = { horizontal: 'center', vertical: 'middle' }
+  // Card 2: Dipublikasikan (E6:H7)
+  ws.mergeCells('E6:H6')
+  ws.getCell('E6').value = 'SUDAH DIPUBLIKASIKAN'
+  ws.getCell('E6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: '047857' } }
+  ws.getCell('E6').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells('D7:F7')
+  ws.mergeCells('E7:H7')
   const pubPercent = totalCount > 0 ? Math.round((publishedCount / totalCount) * 100) : 0
-  ws.getCell('D7').value = `${publishedCount} Konten (${pubPercent}%)`
-  ws.getCell('D7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: '047857' } }
-  ws.getCell('D7').alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getCell('E7').value = `${publishedCount} Konten (${pubPercent}%)`
+  ws.getCell('E7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: '047857' } }
+  ws.getCell('E7').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  // Card 3: Dalam Produksi & Siap (G6:I7)
-  ws.mergeCells('G6:I6')
-  ws.getCell('G6').value = 'PRODUKSI & SIAP PUBLIKASI'
-  ws.getCell('G6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0369A1' } }
-  ws.getCell('G6').alignment = { horizontal: 'center', vertical: 'middle' }
+  // Card 3: Dalam Produksi & Siap (I6:L7)
+  ws.mergeCells('I6:L6')
+  ws.getCell('I6').value = 'PRODUKSI & SIAP PUBLIKASI'
+  ws.getCell('I6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: '0369A1' } }
+  ws.getCell('I6').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells('G7:I7')
-  ws.getCell('G7').value = `${inProgressCount} Konten`
-  ws.getCell('G7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: '0369A1' } }
-  ws.getCell('G7').alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.mergeCells('I7:L7')
+  ws.getCell('I7').value = `${inProgressCount} Konten`
+  ws.getCell('I7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: '0369A1' } }
+  ws.getCell('I7').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  // Card 4: Draft & Review (J6:L7)
-  ws.mergeCells('J6:L6')
-  ws.getCell('J6').value = 'DRAFT & REVIEW KONSEP'
-  ws.getCell('J6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'B45309' } }
-  ws.getCell('J6').alignment = { horizontal: 'center', vertical: 'middle' }
+  // Card 4: Draft & Review (M6:P7)
+  ws.mergeCells('M6:P6')
+  ws.getCell('M6').value = 'DRAFT & REVIEW KONSEP'
+  ws.getCell('M6').font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'B45309' } }
+  ws.getCell('M6').alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells('J7:L7')
-  ws.getCell('J7').value = `${draftOrReviewCount} Konten`
-  ws.getCell('J7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'B45309' } }
-  ws.getCell('J7').alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.mergeCells('M7:P7')
+  ws.getCell('M7').value = `${draftOrReviewCount} Konten`
+  ws.getCell('M7').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'B45309' } }
+  ws.getCell('M7').alignment = { horizontal: 'center', vertical: 'middle' }
 
   // Style cards background and borders
   const cardRanges = [
-    { startCol: 1, endCol: 3, bg: 'E6F7FA' },
-    { startCol: 4, endCol: 6, bg: 'ECFDF5' },
-    { startCol: 7, endCol: 9, bg: 'F0F9FF' },
-    { startCol: 10, endCol: 12, bg: 'FFFBEB' },
+    { startCol: 1, endCol: 4, bg: 'E6F7FA' },
+    { startCol: 5, endCol: 8, bg: 'ECFDF5' },
+    { startCol: 9, endCol: 12, bg: 'F0F9FF' },
+    { startCol: 13, endCol: 16, bg: 'FFFBEB' },
   ]
 
   cardRanges.forEach(({ startCol, endCol, bg }) => {
@@ -247,23 +273,52 @@ function populateSheet(
 
   // ==========================================
   // 3. TABLE HEADERS (Row 9)
+  // Base headers + Kolom per Platform
   // ==========================================
-  const headers = [
-    'No.',
+  const baseHeaders = [
+    'Tanggal Rencana/Terbit',
     'Judul Konten',
     'Topik / Subtema',
     'Content Pillar',
-    'Platform',
     'Format',
     'Tujuan Konten',
     'Kategori Posting',
-    'Tanggal Rencana',
-    'Prioritas',
     'Status Konten',
   ]
 
+  const baseHeaderFills = [
+    'FF1E40AF', // Tanggal: Dark Blue
+    'FF00A2B9', // Judul: Cyan
+    'FF00A2B9', // Topik: Cyan
+    'FF00A2B9', // Pillar: Cyan
+    'FF00A2B9', // Format: Cyan
+    'FF00A2B9', // Tujuan: Cyan
+    'FF00A2B9', // Kategori: Cyan
+    'FF005B6E', // Status: Dark Cyan
+  ]
+
+  const headers = [...baseHeaders]
+  const headerFills = [...baseHeaderFills]
+
+  MASTER_PLATFORMS.forEach((pName) => {
+    headers.push(`Link ${pName}`)
+    headerFills.push('FF047857') // Emerald for Link
+    headers.push(`Reach ${pName}`)
+    headerFills.push('FF5B21B6') // Violet for Insight
+    headers.push(`Views ${pName}`)
+    headerFills.push('FF5B21B6')
+    headers.push(`Likes ${pName}`)
+    headerFills.push('FF5B21B6')
+    headers.push(`Komen ${pName}`)
+    headerFills.push('FF5B21B6')
+    headers.push(`Saves ${pName}`)
+    headerFills.push('FF5B21B6')
+    headers.push(`Shares ${pName}`)
+    headerFills.push('FF5B21B6')
+  })
+
   const headerRow = ws.getRow(9)
-  headerRow.height = 28
+  headerRow.height = 32
 
   headers.forEach((h, idx) => {
     const colNum = idx + 1
@@ -273,7 +328,7 @@ function populateSheet(
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: PLN_CYAN_PRIMARY },
+      fgColor: { argb: headerFills[idx] || PLN_CYAN_PRIMARY },
     }
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
     cell.border = {
@@ -285,19 +340,28 @@ function populateSheet(
   })
 
   // Set column widths
-  ws.columns = [
-    { key: 'no', width: 6 },
-    { key: 'title', width: 34 },
+  const cols: Array<{ key: string; width: number }> = [
+    { key: 'date', width: 22 },
+    { key: 'title', width: 36 },
     { key: 'topic', width: 24 },
-    { key: 'pillar', width: 28 },
-    { key: 'platform', width: 16 },
+    { key: 'pillar', width: 30 },
     { key: 'format', width: 16 },
     { key: 'purpose', width: 18 },
     { key: 'posting', width: 18 },
-    { key: 'date', width: 16 },
-    { key: 'priority', width: 12 },
-    { key: 'status', width: 22 },
+    { key: 'status', width: 20 },
   ]
+
+  MASTER_PLATFORMS.forEach((pName) => {
+    cols.push({ key: `link_${pName}`, width: 32 })
+    cols.push({ key: `reach_${pName}`, width: 14 })
+    cols.push({ key: `views_${pName}`, width: 14 })
+    cols.push({ key: `likes_${pName}`, width: 12 })
+    cols.push({ key: `comments_${pName}`, width: 14 })
+    cols.push({ key: `saves_${pName}`, width: 12 })
+    cols.push({ key: `shares_${pName}`, width: 12 })
+  })
+
+  ws.columns = cols
 
   // ==========================================
   // 4. DATA ROWS (Row 10 onwards)
@@ -318,25 +382,29 @@ function populateSheet(
     const postingLabel = item.posting_category
       ? POSTING_CATEGORY_LABELS[item.posting_category] || item.posting_category
       : '-'
-    const priorityLabel = item.priority
-      ? CONTENT_PRIORITY_LABELS[item.priority] || item.priority
-      : '-'
-
     const dateFormatted = item.planned_date ? formatDate(item.planned_date) : '-'
 
-    const rowValues = [
-      index + 1,
+    const rowValues: Array<string | number> = [
+      dateFormatted,
       item.title || '-',
       item.topic || '-',
       item.pillar || '-',
-      item.platform || '-',
       item.format || '-',
       purposeLabel,
       postingLabel,
-      dateFormatted,
-      priorityLabel,
       statusLabel,
     ]
+
+    MASTER_PLATFORMS.forEach((pName) => {
+      const pm = item.platform_publications?.[pName]
+      rowValues.push(pm?.url || '-')
+      rowValues.push(pm?.reach || 0)
+      rowValues.push(pm?.views || 0)
+      rowValues.push(pm?.likes || 0)
+      rowValues.push(pm?.comments || 0)
+      rowValues.push(pm?.saves || 0)
+      rowValues.push(pm?.shares || 0)
+    })
 
     rowValues.forEach((val, cIdx) => {
       const cell = row.getCell(cIdx + 1)
@@ -354,20 +422,15 @@ function populateSheet(
         right: { style: 'thin', color: { argb: BORDER_COLOR } },
       }
 
-      // Column alignments
       if (cIdx === 0) {
         cell.alignment = { vertical: 'middle', horizontal: 'center' }
-      } else if (cIdx === 1 || cIdx === 2 || cIdx === 3) {
-        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
-      } else if (cIdx === 4 || cIdx === 5 || cIdx === 8 || cIdx === 10) {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: TEXT_DARK } }
+      } else if (cIdx === 7) {
         cell.alignment = { vertical: 'middle', horizontal: 'center' }
-      } else if (cIdx === 11) {
-        cell.alignment = { vertical: 'middle', horizontal: 'center' }
-        if (item.status === 'PUBLISHED') {
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '047857' } }
-        } else if (item.status === 'APPROVED' || item.status === 'READY_TO_PUBLISH') {
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '0369A1' } }
-        }
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '047857' } }
+      } else if (typeof val === 'number') {
+        cell.alignment = { vertical: 'middle', horizontal: 'right' }
+        cell.numFmt = '#,##0'
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'left' }
       }
@@ -378,10 +441,11 @@ function populateSheet(
 
   // Empty state row if no data
   if (items.length === 0) {
-    ws.mergeCells(`A${currentRowIndex}:L${currentRowIndex}`)
+    const totalCols = headers.length
+    ws.mergeCells(9, 1, 9, totalCols)
     const emptyCell = ws.getCell(`A${currentRowIndex}`)
     emptyCell.value = isMonthlySheet
-      ? 'Tidak ada konten yang direncanakan pada bulan ini.'
+      ? 'Tidak ada konten yang dipublikasikan pada bulan ini.'
       : 'Tidak ada data konten yang sesuai dengan filter yang dipilih.'
     emptyCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: TEXT_MUTED } }
     emptyCell.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -409,13 +473,13 @@ function populateSheet(
   summaryLeft.font = { name: 'Calibri', size: 10, bold: true, color: { argb: PLN_DARK_CYAN } }
   summaryLeft.alignment = { vertical: 'middle', horizontal: 'left' }
 
-  ws.mergeCells(`I${currentRowIndex}:L${currentRowIndex}`)
+  ws.mergeCells(`I${currentRowIndex}:P${currentRowIndex}`)
   const summaryRight = ws.getCell(`I${currentRowIndex}`)
   summaryRight.value = `Publikasi: ${publishedCount} | Dalam Proses: ${inProgressCount} | Draft: ${draftOrReviewCount}`
   summaryRight.font = { name: 'Calibri', size: 10, bold: true, color: { argb: PLN_DARK_CYAN } }
   summaryRight.alignment = { vertical: 'middle', horizontal: 'right' }
 
-  for (let c = 1; c <= 12; c++) {
+  for (let c = 1; c <= 16; c++) {
     const cell = ws.getCell(currentRowIndex, c)
     cell.fill = {
       type: 'pattern',
@@ -426,7 +490,7 @@ function populateSheet(
       top: { style: 'thin', color: { argb: PLN_CYAN_PRIMARY } },
       bottom: { style: 'double', color: { argb: PLN_CYAN_PRIMARY } },
       left: c === 1 ? { style: 'thin', color: { argb: PLN_CYAN_PRIMARY } } : undefined,
-      right: c === 12 ? { style: 'thin', color: { argb: PLN_CYAN_PRIMARY } } : undefined,
+      right: c === 16 ? { style: 'thin', color: { argb: PLN_CYAN_PRIMARY } } : undefined,
     }
   }
   ws.getRow(currentRowIndex).height = 24
@@ -438,7 +502,7 @@ function populateSheet(
   // ==========================================
   // 6. OFFICIAL FOOTER NOTE
   // ==========================================
-  ws.mergeCells(`A${currentRowIndex}:L${currentRowIndex}`)
+  ws.mergeCells(`A${currentRowIndex}:P${currentRowIndex}`)
   const foot = ws.getCell(`A${currentRowIndex}`)
   foot.value =
     '* Dokumen ini digenerate secara otomatis oleh Sistem Content Manager – Humas PLN Unit Induk Distribusi Jawa Barat.'
@@ -448,7 +512,7 @@ function populateSheet(
   // Auto-filter on the header row
   ws.autoFilter = {
     from: 'A9',
-    to: 'L9',
+    to: 'P9',
   }
 }
 
@@ -486,10 +550,8 @@ export async function exportContentReportToExcel(
   // ============================================================
   // GENERATE MONTHLY SHEETS (SHEETS PER BULAN)
   // ============================================================
-  // Tentukan daftar bulan yang akan dibuatkan sheet
   const monthMap = new Map<string, { label: string; items: ReportItem[]; startDate?: string; endDate?: string }>()
 
-  // 1. Jika ada rentang tanggal semester (dateFrom & dateTo), buatkan slot semua bulan dalam semester
   if (options.dateFrom && options.dateTo) {
     const sDate = new Date(options.dateFrom)
     const eDate = new Date(options.dateTo)
@@ -515,14 +577,12 @@ export async function exportContentReportToExcel(
     }
   }
 
-  // 2. Masukkan konten ke masing-masing bulan
   items.forEach((item) => {
     if (item.planned_date) {
       const mKey = item.planned_date.substring(0, 7) // 'YYYY-MM'
       if (monthMap.has(mKey)) {
         monthMap.get(mKey)!.items.push(item)
       } else {
-        // Jika belum ada di map (misal tanggal di luar dateFrom/dateTo)
         const [yStr, mStr] = mKey.split('-')
         const y = parseInt(yStr, 10)
         const m = parseInt(mStr, 10) - 1
@@ -537,16 +597,12 @@ export async function exportContentReportToExcel(
     }
   })
 
-  // 3. Buat worksheet untuk setiap bulan
-  // Urutkan bulan secara kronologis
   const sortedMonthKeys = Array.from(monthMap.keys()).sort()
 
-  // Hanya buat sheet bulanan jika ada minimal 1 bulan
   sortedMonthKeys.forEach((mKey) => {
     const monthData = monthMap.get(mKey)!
     const sheetName = sanitizeSheetName(monthData.label)
 
-    // Hindari nama sheet duplikat dengan main sheet
     const finalSheetName = sheetName === mainSheetName ? `${sheetName} (Bulan)` : sheetName
 
     const wsMonth = wb.addWorksheet(finalSheetName)
@@ -560,7 +616,6 @@ export async function exportContentReportToExcel(
     populateSheet(wsMonth, monthData.items, monthTitle, monthSubtitle, options, true)
   })
 
-  // Generate buffer & trigger download
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

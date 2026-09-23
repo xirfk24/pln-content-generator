@@ -36,7 +36,9 @@ func New(databaseURL string) (*pgxpool.Pool, error) {
 	}
 
 	// Auto-apply required schema migrations idempotently
-	runMigrations(ctx, pool)
+	migCtx, migCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer migCancel()
+	runMigrations(migCtx, pool)
 
 	return pool, nil
 }
@@ -74,16 +76,17 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 			('Solusi Masalah & FAQ (Problem Solving / Help)', 'Panduan penyelesaian kendala, FAQ kelistrikan, dan kanal pengaduan')
 		ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description`,
 
-		// Seed standard official Platforms
+		// Seed standard official Platforms (Website & LinkedIn removed)
+		`DELETE FROM platforms WHERE LOWER(name) IN ('website', 'linkedin')`,
 		`INSERT INTO platforms (name, icon) VALUES
 			('Instagram', 'instagram'),
 			('Facebook', 'facebook'),
 			('TikTok', 'tiktok'),
 			('YouTube', 'youtube'),
-			('LinkedIn', 'linkedin'),
-			('Website', 'website'),
 			('Twitter/X', 'twitter')
 		ON CONFLICT (name) DO UPDATE SET icon = EXCLUDED.icon`,
+
+
 
 		// Planning Periods (Semester-based planning)
 		`CREATE TABLE IF NOT EXISTS planning_periods (

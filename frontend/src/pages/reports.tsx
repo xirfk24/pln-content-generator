@@ -73,7 +73,7 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState<string>('')
   const [platformId, setPlatformId] = useState<string>('')
   const [pillarId, setPillarId] = useState<string>('')
-  const [status, setStatus] = useState<string>('')
+  const [status, setStatus] = useState<string>('PUBLISHED')
 
   // 1. Load Master Data & Planning Periods on Mount
   useEffect(() => {
@@ -86,7 +86,10 @@ export default function ReportsPage() {
         setPeriods(pList)
         setMasterData({
           pillars: masterRes.pillars || [],
-          platforms: masterRes.platforms || [],
+          platforms: (masterRes.platforms || []).filter(
+            (p: { id: string; name: string }) =>
+              !['website', 'linkedin'].includes(p.name.toLowerCase())
+          ),
         })
 
         // Default to the AKTIF period, or the first period
@@ -560,6 +563,28 @@ export default function ReportsPage() {
                 ))}
               </Select>
             </div>
+
+            {/* 7. Status Konten */}
+            <div className="space-y-1">
+              <label htmlFor="report-status" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Status Konten
+              </label>
+              <Select
+                id="report-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="text-xs font-medium"
+              >
+                <option value="">Semua Status Konten</option>
+                <option value="PUBLISHED">Semua Konten Dipublikasikan (PUBLISHED)</option>
+                <option value="DRAFT">Draft Konsep</option>
+                <option value="PENDING_REVIEW">Menunggu Review Konsep</option>
+                <option value="APPROVED">Konsep Disetujui</option>
+                <option value="PRODUCTION">Dalam Produksi</option>
+                <option value="READY_TO_PUBLISH">Siap Publikasi</option>
+                <option value="REJECTED">Ditolak / Dibatalkan</option>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -603,36 +628,32 @@ export default function ReportsPage() {
               <table className="w-full text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-3 py-3 text-center font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 w-12">
                       No.
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      Tanggal Terbit
+                    </th>
+                    <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 min-w-[200px]">
                       Judul Konten & Tema
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Content Pillar
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Platform
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Format
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Tujuan
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Kategori
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Tanggal Rencana
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Prioritas
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="px-3 py-3 text-center font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Status
                     </th>
+                    {masterData.platforms.map((plat) => (
+                      <th
+                        key={plat.id}
+                        className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 min-w-[200px]"
+                      >
+                        {plat.name} (Tautan & Insight)
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -641,10 +662,13 @@ export default function ReportsPage() {
                       key={row.id || index}
                       className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                     >
-                      <td className="px-4 py-3 font-medium text-slate-400 text-center">
+                      <td className="px-3 py-3 font-medium text-slate-400 text-center">
                         {index + 1}
                       </td>
-                      <td className="px-4 py-3 max-w-xs">
+                      <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-800 dark:text-slate-200">
+                        {row.planned_date ? formatDate(row.planned_date) : '-'}
+                      </td>
+                      <td className="px-3 py-3 max-w-xs">
                         <div className="font-semibold text-slate-900 dark:text-white line-clamp-2">
                           {row.title}
                         </div>
@@ -652,7 +676,7 @@ export default function ReportsPage() {
                           {row.topic}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         {row.pillar ? (
                           <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             {row.pillar}
@@ -661,37 +685,67 @@ export default function ReportsPage() {
                           '-'
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                        {row.platform || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
                         {row.format || '-'}
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                        {row.content_purpose
-                          ? CONTENT_PURPOSE_LABELS[row.content_purpose] ?? row.content_purpose
-                          : '-'}
+                      <td className="px-3 py-3 text-center">
+                        <StatusBadge status="PUBLISHED" />
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                        {row.posting_category
-                          ? POSTING_CATEGORY_LABELS[row.posting_category] ?? row.posting_category
-                          : '-'}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
-                        {row.planned_date ? formatDate(row.planned_date) : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {row.priority ? (
-                          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                            {CONTENT_PRIORITY_LABELS[row.priority] || row.priority}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={row.status as never} />
-                      </td>
+
+                      {masterData.platforms.map((plat) => {
+                        const pm = row.platform_publications?.[plat.name]
+                        return (
+                          <td key={plat.id} className="px-3 py-3 text-xs space-y-1 min-w-[180px]">
+                            {pm?.url ? (
+                              <a
+                                href={pm.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[#00A2B9] hover:underline font-mono text-[11px] truncate max-w-[170px]"
+                              >
+                                Tautan {plat.name}
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">-</span>
+                            )}
+
+                            {pm && (pm.reach > 0 || pm.views > 0 || pm.likes > 0 || pm.comments > 0 || pm.saves > 0 || pm.shares > 0) && (
+                              <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-700 dark:text-slate-300 mt-1">
+                                {pm.reach ? (
+                                  <span className="inline-block bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-mono">
+                                    Reach: {pm.reach.toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {pm.views ? (
+                                  <span className="inline-block bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-mono">
+                                    Views: {pm.views.toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {pm.likes ? (
+                                  <span className="inline-block bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800 font-mono">
+                                    Likes: {pm.likes.toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {pm.comments ? (
+                                  <span className="inline-block bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 font-mono">
+                                    Komen: {pm.comments.toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {pm.saves ? (
+                                  <span className="inline-block bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-mono">
+                                    Saves: {pm.saves.toLocaleString()}
+                                  </span>
+                                ) : null}
+                                {pm.shares ? (
+                                  <span className="inline-block bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 font-mono">
+                                    Shares: {pm.shares.toLocaleString()}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </td>
+                        )
+                      })}
                     </tr>
                   ))}
                 </tbody>

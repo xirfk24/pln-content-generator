@@ -279,10 +279,24 @@ func (h *Handler) MyTasks(c *gin.Context) {
 		return
 	}
 
-	// Ambil konten milik user yang tidak dalam tabungan, urutkan dari yang terbaru dibuat (created_at DESC)
-	query := contentSelect + " WHERE (c.created_by = $1 OR c.pic ILIKE $2) AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.created_at DESC"
-	userSearch := "%" + user.Email + "%"
-	contents, err := h.queryContents(c.Request.Context(), query, user.ID, userSearch)
+	// Ambil konten milik user (atau seluruh konten jika role ADMIN) yang tidak dalam tabungan
+	var query string
+	var args []any
+
+	if user.Role == "ADMIN" {
+		query = contentSelect + " WHERE COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.created_at DESC"
+	} else {
+		query = contentSelect + " WHERE (c.created_by = $1 OR c.pic ILIKE $2 OR c.pic ILIKE $3 OR c.pic IS NULL OR c.pic = '') AND COALESCE(c.is_savings, FALSE) = FALSE ORDER BY c.created_at DESC"
+		userEmailSearch := "%" + user.Email + "%"
+		var fullName string
+		if user.FullName != nil {
+			fullName = *user.FullName
+		}
+		userFullNameSearch := "%" + fullName + "%"
+		args = append(args, user.ID, userEmailSearch, userFullNameSearch)
+	}
+
+	contents, err := h.queryContents(c.Request.Context(), query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil daftar tugas"})
 		return

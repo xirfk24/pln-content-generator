@@ -105,6 +105,7 @@ export interface Content {
   day: string | null
   brief_link?: string | null
   production_link?: string | null
+  pic?: string | null
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | null
   status: ContentStatus
   is_savings?: boolean

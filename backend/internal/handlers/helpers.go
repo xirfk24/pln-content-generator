@@ -30,7 +30,13 @@ func parseDateStr(s string) (time.Time, bool) {
 	if s == "" {
 		return time.Time{}, false
 	}
-	// Remove ISO time part if present (e.g. 2026-07-13T00:00:00)
+
+	// Support Excel serial date numbers (e.g., 46217 for 2026-07-14)
+	if serial, err := strconv.Atoi(s); err == nil && serial > 35000 && serial < 80000 {
+		t := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC).AddDate(0, 0, serial)
+		return t, true
+	}
+
 	if idx := strings.Index(s, "T"); idx != -1 {
 		s = s[:idx]
 	}
@@ -40,9 +46,14 @@ func parseDateStr(s string) (time.Time, bool) {
 		"02/01/2006",
 		"02-01-2006",
 		"02.01.2006",
+		"02,01,2006",
 		"2006/01/02",
+		"2006.01.02",
+		"2006,01,02",
 		"2/1/2006",
 		"2-1-2006",
+		"2.1.2006",
+		"2,1,2006",
 		time.RFC3339,
 		"2006-01-02 15:04:05",
 	}

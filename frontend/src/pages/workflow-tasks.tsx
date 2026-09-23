@@ -586,8 +586,8 @@ export default function MyTasksPage() {
                           <div className="shrink-0">{group.actions(content)}</div>
                         </div>
 
-                        {/* Catatan Revisi jika ada / jika status REVISION_REQUIRED */}
-                        {(content.status === 'REVISION_REQUIRED' || content.latest_comment) && (
+                        {/* Catatan Revisi untuk kategori Perlu Revisi */}
+                        {group.key === 'revisions' && (
                           <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-950 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
                             <div className="flex items-start gap-2.5">
                               <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
@@ -599,6 +599,16 @@ export default function MyTasksPage() {
                                   {content.latest_comment || 'Konten ini memerlukan perbaikan. Silakan periksa naskah/aset dan ajukan kembali.'}
                                 </p>
                               </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Catatan / Feedback Terakhir untuk kategori selain Revisi jika ada */}
+                        {group.key !== 'revisions' && content.latest_comment && (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
+                            <div className="flex items-start gap-2">
+                              <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">Catatan/Feedback Terakhir:</span>
+                              <span className="text-slate-600 dark:text-slate-400 truncate">{content.latest_comment}</span>
                             </div>
                           </div>
                         )}
