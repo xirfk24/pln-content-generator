@@ -628,9 +628,6 @@ export default function ReportsPage() {
                       Tanggal Rencana
                     </th>
                     <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      PIC
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Prioritas
                     </th>
                     <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -682,9 +679,6 @@ export default function ReportsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
                         {row.planned_date ? formatDate(row.planned_date) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                        {row.pic || '-'}
                       </td>
                       <td className="px-4 py-3">
                         {row.priority ? (
