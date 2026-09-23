@@ -52,8 +52,102 @@ function addAoA(ws: ExcelJS.Worksheet, aoa: (string | number)[][]) {
   aoa.forEach((row) => ws.addRow(row))
 }
 
+type ColumnCategory = 'MANDATORY' | 'SYSTEM' | 'METRICS' | 'OPTIONAL'
+
 /**
- * Generate dan download file Template Excel (.xlsx) dengan pilihan mode:
+ * Styling helper untuk mempercantik tampilan sheet Excel dengan warna, border, font, dan alignment profesional.
+ */
+function styleWorksheet(
+  ws: ExcelJS.Worksheet,
+  columnTypes?: ColumnCategory[]
+) {
+  // 1. Tampilkan grid lines secara tegas
+  ws.views = [{ showGridLines: true }]
+
+  // 2. Formatting Header Row (Baris 1)
+  const headerRow = ws.getRow(1)
+  headerRow.height = 32
+
+  headerRow.eachCell((cell, colNumber) => {
+    const colType = columnTypes?.[colNumber - 1] || 'MANDATORY'
+    let bgColor = '1A3A6B' // Default Corporate PLN Dark Navy
+
+    if (colType === 'SYSTEM') {
+      bgColor = '0E6251' // Deep Emerald Teal
+    } else if (colType === 'METRICS') {
+      bgColor = '5B2C6F' // Deep Indigo Purple
+    } else if (colType === 'OPTIONAL') {
+      bgColor = '34495E' // Slate Gray
+    }
+
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF' + bgColor },
+    }
+    cell.font = {
+      name: 'Segoe UI',
+      size: 10.5,
+      bold: true,
+      color: { argb: 'FFFFFFFF' },
+    }
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: 'center',
+      wrapText: true,
+    }
+    cell.border = {
+      top: { style: 'medium', color: { argb: 'FF0F172A' } },
+      left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+      bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
+      right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+    }
+  })
+
+  // 3. Formatting Data Rows (Baris 2 dan seterusnya)
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+    row.height = 24
+
+    const isEven = rowNumber % 2 === 0
+    const rowBg = isEven ? 'F8FAFC' : 'FFFFFF'
+
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = {
+        name: 'Segoe UI',
+        size: 9.5,
+        color: { argb: 'FF1E293B' },
+      }
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF' + rowBg },
+      }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      }
+
+      // Format Angka vs Teks vs Tanggal
+      if (typeof cell.value === 'number') {
+        cell.alignment = { vertical: 'middle', horizontal: 'right' }
+        cell.numFmt = '#,##0'
+      } else {
+        const strVal = String(cell.value || '').trim()
+        if (/^\d{4}-\d{2}-\d{2}$/.test(strVal) || strVal === 'UID' || strVal === 'EDUCATION') {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        } else {
+          cell.alignment = { vertical: 'middle', horizontal: 'left' }
+        }
+      }
+    })
+  })
+}
+
+/**
+ * Generate dan download file Template Excel (.xlsx) dengan styling warna & border yang rapi:
  * - PLAN: Rencana Konten Baru
  * - LEGACY_PUBLISHED: Arsip Pemindahan Data Lama
  */
@@ -86,6 +180,22 @@ export async function downloadExcelTemplate(
       'Shares / Bagikan (Angka)',
       'PIC (Opsional)',
       'Brief / Keterangan (Opsional)',
+    ]
+
+    const columnTypes: ColumnCategory[] = [
+      'MANDATORY',
+      'MANDATORY',
+      'MANDATORY',
+      'SYSTEM',
+      'SYSTEM',
+      'SYSTEM',
+      'METRICS',
+      'METRICS',
+      'METRICS',
+      'METRICS',
+      'METRICS',
+      'OPTIONAL',
+      'OPTIONAL',
     ]
 
     const sampleRows = [
@@ -123,30 +233,39 @@ export async function downloadExcelTemplate(
 
     addAoA(wsTemplate, [headers, ...sampleRows])
 
-    const colWidths = [26, 38, 28, 44, 20, 28, 38, 22, 18, 20, 18, 24, 40]
+    const colWidths = [28, 38, 28, 44, 20, 28, 38, 22, 18, 20, 18, 24, 40]
     colWidths.forEach((w, i) => {
       wsTemplate.getColumn(i + 1).width = w
     })
 
-    // Sheet Panduan
+    styleWorksheet(wsTemplate, columnTypes)
+
+    // Sheet 2: Panduan Pemindahan Data
     const wsGuide = wb.addWorksheet('Panduan Pemindahan Data')
     const guideHeaders = ['No', 'Nama Kolom', 'Status', 'Format', 'Contoh', 'Keterangan']
     const guideRows = [
-      [1, 'Tanggal Publikasi', 'Wajib', 'YYYY-MM-DD', '2026-08-15', 'Tanggal saat konten tersebut pernah ditayangkan'],
-      [2, 'Judul Konten', 'Wajib', 'Teks', 'Tips Token Listrik', 'Judul resmi konten lama'],
-      [3, 'Topik Konten', 'Wajib', 'Teks', 'PLN Mobile', 'Topik bahasan'],
-      [4, 'Content Pillar', 'Pilihan Sistem', 'Pilihan Resmi', pillar1, 'Gunakan nama pilar resmi di Sheet Referensi'],
-      [5, 'Format Konten', 'Pilihan Sistem', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', ')],
-      [6, 'Target Platform', 'Pilihan Sistem', 'Pilihan Resmi', 'Instagram, TikTok', 'Pisahkan koma jika tayang di banyak platform'],
-      [7, 'Link Postingan', 'Opsional', 'URL Web', 'https://instagram.com/p/...', 'Tautan postingan asli yang telah terbit'],
-      [8, 'Views / Jangkauan', 'Opsional', 'Angka', '12500', 'Jumlah tayangan / jangkauan audiens'],
-      [9, 'Likes / Suka', 'Opsional', 'Angka', '840', 'Jumlah suka / reaksi'],
-      [10, 'Comments / Komentar', 'Opsional', 'Angka', '45', 'Jumlah komentar'],
-      [11, 'Shares / Bagikan', 'Opsional', 'Angka', '120', 'Jumlah dibagikan'],
+      [1, 'Tanggal Publikasi', 'Wajib (Biru)', 'YYYY-MM-DD', '2026-08-15', 'Tanggal saat konten tersebut pernah ditayangkan'],
+      [2, 'Judul Konten', 'Wajib (Biru)', 'Teks', 'Tips Token Listrik', 'Judul resmi konten lama'],
+      [3, 'Topik Konten', 'Wajib (Biru)', 'Teks', 'PLN Mobile', 'Topik bahasan'],
+      [4, 'Content Pillar', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', pillar1, 'Gunakan nama pilar resmi di Sheet Referensi'],
+      [5, 'Format Konten', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', ')],
+      [6, 'Target Platform', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', 'Instagram, TikTok', 'Pisahkan koma jika tayang di banyak platform'],
+      [7, 'Link Postingan', 'Data Insight (Ungu)', 'URL Web', 'https://instagram.com/p/...', 'Tautan postingan asli yang telah terbit'],
+      [8, 'Views / Jangkauan', 'Data Insight (Ungu)', 'Angka', 12500, 'Jumlah tayangan / jangkauan audiens'],
+      [9, 'Likes / Suka', 'Data Insight (Ungu)', 'Angka', 840, 'Jumlah suka / reaksi'],
+      [10, 'Comments / Komentar', 'Data Insight (Ungu)', 'Angka', 45, 'Jumlah komentar'],
+      [11, 'Shares / Bagikan', 'Data Insight (Ungu)', 'Angka', 120, 'Jumlah dibagikan'],
+      [12, 'PIC', 'Opsional (Abu)', 'Teks', 'Tim Media Sosial', 'Penanggung jawab konten'],
+      [13, 'Brief / Keterangan', 'Opsional (Abu)', 'Teks', 'Catatan penayangan', 'Deskripsi tambahan'],
     ]
     addAoA(wsGuide, [guideHeaders, ...guideRows])
+    const guideWidths = [6, 24, 20, 18, 32, 46]
+    guideWidths.forEach((w, i) => {
+      wsGuide.getColumn(i + 1).width = w
+    })
+    styleWorksheet(wsGuide, ['MANDATORY', 'MANDATORY', 'SYSTEM', 'SYSTEM', 'OPTIONAL', 'OPTIONAL'])
 
-    // Sheet Referensi
+    // Sheet 3: Referensi Pilihan
     const wsRef = wb.addWorksheet('Referensi Pilihan')
     const refPillars = masterData?.pillars?.map((p) => p.name) || CONTENT_PILLAR_OPTIONS
     const refPlatforms = masterData?.platforms?.map((p) => p.name) || [
@@ -159,6 +278,11 @@ export async function downloadExcelTemplate(
       refRows.push([refPillars[i] || '', refPlatforms[i] || '', CONTENT_FORMATS[i] || ''])
     }
     addAoA(wsRef, [refHeaders, ...refRows])
+    const refWidths = [46, 28, 22]
+    refWidths.forEach((w, i) => {
+      wsRef.getColumn(i + 1).width = w
+    })
+    styleWorksheet(wsRef, ['SYSTEM', 'SYSTEM', 'SYSTEM'])
 
     const buffer = await wb.xlsx.writeBuffer()
     triggerDownload(
@@ -184,6 +308,21 @@ export async function downloadExcelTemplate(
       'Brief / Keterangan (Opsional)',
       'Target Audience (Opsional)',
       'Link Referensi (Opsional)',
+    ]
+
+    const columnTypes: ColumnCategory[] = [
+      'MANDATORY',
+      'MANDATORY',
+      'SYSTEM',
+      'SYSTEM',
+      'SYSTEM',
+      'SYSTEM',
+      'SYSTEM',
+      'MANDATORY',
+      'OPTIONAL',
+      'OPTIONAL',
+      'OPTIONAL',
+      'OPTIONAL',
     ]
 
     const sampleRows = [
@@ -219,10 +358,12 @@ export async function downloadExcelTemplate(
 
     addAoA(wsTemplate, [headers, ...sampleRows])
 
-    const colWidths = [38, 28, 44, 20, 28, 22, 22, 26, 22, 40, 30, 28]
+    const colWidths = [38, 28, 44, 20, 28, 22, 22, 28, 22, 40, 30, 28]
     colWidths.forEach((w, i) => {
       wsTemplate.getColumn(i + 1).width = w
     })
+
+    styleWorksheet(wsTemplate, columnTypes)
 
     // Sheet 2: Panduan Pengisian
     const wsGuide = wb.addWorksheet('Panduan Pengisian')
@@ -245,13 +386,18 @@ export async function downloadExcelTemplate(
       [6, 'Content Purpose', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
       [7, 'Posting Category', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'UID', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
       [8, 'Tanggal Rencana Publikasi', 'Wajib (Biru)', 'Tanggal (YYYY-MM-DD)', '2026-09-20', 'Format YYYY-MM-DD (contoh: 2026-09-20)', 'Format DD/MM/YYYY tidak didukung.'],
-      [9, 'PIC', 'Opsional (Kuning)', 'Teks', 'Tim Media Sosial / Adit', 'Person in charge atau nama tim pelaksana', 'Boleh dikosongkan.'],
-      [10, 'Brief / Keterangan', 'Opsional (Kuning)', 'Teks Paragraf', 'Penjelasan narasi slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
-      [11, 'Target Audience', 'Opsional (Kuning)', 'Teks', 'Pelanggan Rumah Tangga', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
-      [12, 'Link Referensi', 'Opsional (Kuning)', 'URL Web', 'https://pln.co.id/press-release', 'Tautan rujukan berita atau materi', 'Boleh dikosongkan.'],
+      [9, 'PIC', 'Opsional (Abu)', 'Teks', 'Tim Media Sosial / Adit', 'Person in charge atau nama tim pelaksana', 'Boleh dikosongkan.'],
+      [10, 'Brief / Keterangan', 'Opsional (Abu)', 'Teks Paragraf', 'Penjelasan narasi slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
+      [11, 'Target Audience', 'Opsional (Abu)', 'Teks', 'Pelanggan Rumah Tangga', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
+      [12, 'Link Referensi', 'Opsional (Abu)', 'URL Web', 'https://pln.co.id/press-release', 'Tautan rujukan berita atau materi', 'Boleh dikosongkan.'],
     ]
 
     addAoA(wsGuide, [guideHeaders, ...guideRows])
+    const guideWidths = [6, 24, 20, 20, 32, 44, 38]
+    guideWidths.forEach((w, i) => {
+      wsGuide.getColumn(i + 1).width = w
+    })
+    styleWorksheet(wsGuide, ['MANDATORY', 'MANDATORY', 'SYSTEM', 'SYSTEM', 'OPTIONAL', 'OPTIONAL', 'OPTIONAL'])
 
     // Sheet 3: Referensi Pilihan
     const wsRef = wb.addWorksheet('Referensi Pilihan')
@@ -288,6 +434,11 @@ export async function downloadExcelTemplate(
     }
 
     addAoA(wsRef, [refHeaders, ...refRows])
+    const refWidths = [46, 26, 20, 20, 20]
+    refWidths.forEach((w, i) => {
+      wsRef.getColumn(i + 1).width = w
+    })
+    styleWorksheet(wsRef, ['SYSTEM', 'SYSTEM', 'SYSTEM', 'SYSTEM', 'SYSTEM'])
 
     const buffer = await wb.xlsx.writeBuffer()
     triggerDownload(
@@ -418,7 +569,7 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
 }
 
 /**
- * Export Laporan Hasil Validasi ke file Excel
+ * Export Laporan Hasil Validasi ke file Excel dengan styling yang rapi
  */
 export async function downloadValidationReportExcel(
   rows: Array<{
@@ -466,10 +617,21 @@ export async function downloadValidationReportExcel(
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Laporan Validasi')
   addAoA(ws, [headers, ...reportData])
-  const colWidths = [16, 36, 24, 32, 24, 18, 16, 60]
+  const colWidths = [16, 38, 26, 32, 24, 20, 16, 60]
   colWidths.forEach((w, i) => {
     ws.getColumn(i + 1).width = w
   })
+
+  styleWorksheet(ws, [
+    'MANDATORY',
+    'MANDATORY',
+    'MANDATORY',
+    'SYSTEM',
+    'SYSTEM',
+    'MANDATORY',
+    'SYSTEM',
+    'OPTIONAL',
+  ])
 
   const buffer = await wb.xlsx.writeBuffer()
   triggerDownload(
