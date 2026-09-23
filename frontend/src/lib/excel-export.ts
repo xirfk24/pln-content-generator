@@ -19,7 +19,6 @@ export interface ReportItem {
   posting_category?: string | null
   status: string
   planned_date?: string | null
-  pic?: string | null
   priority?: string | null
 }
 
@@ -259,7 +258,6 @@ function populateSheet(
     'Tujuan Konten',
     'Kategori Posting',
     'Tanggal Rencana',
-    'PIC',
     'Prioritas',
     'Status Konten',
   ]
@@ -297,7 +295,6 @@ function populateSheet(
     { key: 'purpose', width: 18 },
     { key: 'posting', width: 18 },
     { key: 'date', width: 16 },
-    { key: 'pic', width: 18 },
     { key: 'priority', width: 12 },
     { key: 'status', width: 22 },
   ]
@@ -337,7 +334,6 @@ function populateSheet(
       purposeLabel,
       postingLabel,
       dateFormatted,
-      item.pic || '-',
       priorityLabel,
       statusLabel,
     ]
