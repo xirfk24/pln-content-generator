@@ -33,7 +33,6 @@ import {
   Copy,
   Info,
   Layers,
-  User as UserIcon,
   Filter,
   Sparkles,
   ArrowUpRight,
@@ -46,7 +45,7 @@ import type { Publication, Content, Platform, PerformanceMetric, UserRole } from
 import { cn } from '@/lib/utils'
 
 interface PublicationRow extends Publication {
-  content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'pic' | 'is_savings'> & {
+  content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'is_savings'> & {
     pillar_name?: string | null
     planned_date?: string | null
     is_savings?: boolean
@@ -76,7 +75,6 @@ interface GroupedContentPublication {
   title: string
   topic: string
   pillarName?: string
-  pic?: string | null
   plannedDate: string | null
   status: UnifiedPublishingStatus
   statusLabel: string
@@ -224,7 +222,6 @@ export default function PublishingPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [scheduleFilter, setScheduleFilter] = useState<string>('ALL')
   const [platformFilter, setPlatformFilter] = useState<string>('')
-  const [picFilter, setPicFilter] = useState<string>('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
@@ -360,7 +357,6 @@ export default function PublishingPage() {
           title: pub.content?.title || 'Konten Tanpa Judul',
           topic: pub.content?.topic || '',
           pillarName: pub.content?.pillar_name || undefined,
-          pic: pub.content?.pic || null,
           plannedDate: effectiveDate,
           status: 'NOT_PUBLISHED',
           statusLabel: 'Belum Dijadwalkan',
@@ -454,15 +450,6 @@ export default function PublishingPage() {
     return { today, tomorrow, overdue }
   }, [groupedContents])
 
-  // Extract unique PICs for filter
-  const uniquePics = useMemo(() => {
-    const set = new Set<string>()
-    groupedContents.forEach((g) => {
-      if (g.pic) set.add(g.pic)
-    })
-    return Array.from(set).sort()
-  }, [groupedContents])
-
   // Filter Grouped Contents
   const filteredContents = useMemo(() => {
     return groupedContents.filter((group) => {
@@ -472,8 +459,7 @@ export default function PublishingPage() {
         const matchTitle = group.title.toLowerCase().includes(q)
         const matchTopic = group.topic.toLowerCase().includes(q)
         const matchPillar = (group.pillarName || '').toLowerCase().includes(q)
-        const matchPic = (group.pic || '').toLowerCase().includes(q)
-        if (!matchTitle && !matchTopic && !matchPillar && !matchPic) return false
+        if (!matchTitle && !matchTopic && !matchPillar) return false
       }
 
       // 2. Schedule & Status Filter
@@ -501,14 +487,9 @@ export default function PublishingPage() {
         if (!hasPlatform) return false
       }
 
-      // 4. PIC Filter
-      if (picFilter) {
-        if (group.pic !== picFilter) return false
-      }
-
       return true
     })
-  }, [groupedContents, searchQuery, scheduleFilter, platformFilter, picFilter])
+  }, [groupedContents, searchQuery, scheduleFilter, platformFilter])
 
   // Automatic Urgency-Based Sorting
   const sortedContents = useMemo(() => {
@@ -867,7 +848,7 @@ export default function PublishingPage() {
                 <span>
                   Satu konten dapat ditayangkan di beberapa platform. Klik tombol{' '}
                   <span className="font-semibold underline underline-offset-2">
-                    Atur Penayangan
+                    Link Publikasi
                   </span>{' '}
                   untuk mengisi tautan atau melihat platform terkait.
                 </span>
@@ -1052,7 +1033,7 @@ export default function PublishingPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
               <Input
                 type="text"
-                placeholder="Cari judul konten, topik, atau PIC..."
+                placeholder="Cari judul konten, topik, atau pilar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 text-xs h-9"
@@ -1086,9 +1067,7 @@ export default function PublishingPage() {
                 {platforms
                   .filter(
                     (p) =>
-                      !['linkedin', 'website', 'twitter/x', 'twitter', 'x'].includes(
-                        p.name.toLowerCase().trim()
-                      )
+                      !['linkedin', 'website'].includes(p.name.toLowerCase().trim())
                   )
                   .map((p) => (
                     <option key={p.id} value={p.name}>
@@ -1098,21 +1077,6 @@ export default function PublishingPage() {
               </Select>
             </div>
 
-            {/* PIC Filter */}
-            <div className="md:col-span-3">
-              <Select
-                value={picFilter}
-                onChange={(e) => setPicFilter(e.target.value)}
-                className="text-xs h-9 w-full"
-              >
-                <option value="">Semua Penanggung Jawab (PIC)</option>
-                {uniquePics.map((pic) => (
-                  <option key={pic} value={pic}>
-                    PIC: {pic}
-                  </option>
-                ))}
-              </Select>
-            </div>
           </div>
         </div>
       </Card>
@@ -1157,7 +1121,6 @@ export default function PublishingPage() {
                 setSearchQuery('')
                 setScheduleFilter('ALL')
                 setPlatformFilter('')
-                setPicFilter('')
                 setDateFrom('')
                 setDateTo('')
               }}
@@ -1238,15 +1201,6 @@ export default function PublishingPage() {
                               <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                 {group.pillarName}
                               </span>
-                            )}
-                            {group.pic && (
-                              <>
-                                <span>•</span>
-                                <span className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-                                  <UserIcon className="h-3 w-3" />
-                                  {group.pic}
-                                </span>
-                              </>
                             )}
                           </div>
                         </div>
@@ -1384,7 +1338,7 @@ export default function PublishingPage() {
                               ? 'Lihat Publikasi'
                               : group.status === 'CANCELLED'
                               ? 'Lihat Detail'
-                              : 'Atur Penayangan'}
+                              : 'Link Publikasi'}
                           </Button>
                         </div>
                       </td>
@@ -1463,12 +1417,6 @@ export default function PublishingPage() {
                     <span className="text-ink-muted block text-[11px]">Content Pillar:</span>
                     <span className="font-semibold text-ink">
                       {activeManageGroup.pillarName || '-'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-ink-muted block text-[11px]">Penanggung Jawab (PIC):</span>
-                    <span className="font-semibold text-ink">
-                      {activeManageGroup.pic || '-'}
                     </span>
                   </div>
                   <div className="col-span-2 sm:col-span-1">
