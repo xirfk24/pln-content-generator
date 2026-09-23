@@ -49,6 +49,16 @@ func canModifyContent(role string, createdBy *string, userID string) bool {
 	return *createdBy == userID
 }
 
+// isRepostPostingCategory returns true if the given category represents a repost.
+// Repost contents are automatically approved without needing gatekeeper workflow review.
+func isRepostPostingCategory(cat *string) bool {
+	if cat == nil {
+		return false
+	}
+	c := strings.ToUpper(strings.TrimSpace(*cat))
+	return strings.HasPrefix(c, "REPOST") || c == "REPOST_ID" || c == "REPOST_MOBILE" || c == "REPOST ID" || c == "REPOST MOBILE"
+}
+
 // requireContentAccess enforces ownership on the content row with the given
 // id using canModifyContent. It writes the HTTP error response itself and
 // returns false when access is denied or the content does not exist.
@@ -334,16 +344,26 @@ func (h *Handler) CreateContent(c *gin.Context) {
 		format = strings.TrimSpace(*in.Format)
 	}
 
+	postingCat := cleanStr(in.PostingCategory)
+	initialStatus := "DRAFT"
+	historyAction := "CREATED"
+	historyComment := "Konten baru dibuat sebagai Draft"
+	if isRepostPostingCategory(postingCat) {
+		initialStatus = "APPROVED"
+		historyAction = "AUTO_APPROVED"
+		historyComment = "Konten Repost otomatis disetujui (Approved)"
+	}
+
 	var id string
 	err := h.Pool.QueryRow(c.Request.Context(), `
 		INSERT INTO contents (title, topic, pillar_id, category_id, platform_id, platform_ids, format,
 			brief, content_purpose, content_purposes, posting_category, target_audience, planned_date, planned_week, day,
 			brief_link, pic, priority, source_idea_id, is_savings, savings_reason, savings_month, created_by, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'DRAFT')
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
 		RETURNING id
 	`, title, topic, pillarID, categoryID, primaryPlatformID, platformIDs, format,
-		cleanStr(in.Brief), primaryPurpose, contentPurposes, cleanStr(in.PostingCategory), cleanStr(in.TargetAudience), plannedDate, plannedWeek, day,
-		cleanStr(in.BriefLink), cleanStr(in.Pic), cleanStr(in.Priority), cleanUUIDStr(in.SourceIdeaID), isSavings, cleanStr(in.SavingsReason), cleanStr(in.SavingsMonth), user.ID).Scan(&id)
+		cleanStr(in.Brief), primaryPurpose, contentPurposes, postingCat, cleanStr(in.TargetAudience), plannedDate, plannedWeek, day,
+		cleanStr(in.BriefLink), cleanStr(in.Pic), cleanStr(in.Priority), cleanUUIDStr(in.SourceIdeaID), isSavings, cleanStr(in.SavingsReason), cleanStr(in.SavingsMonth), user.ID, initialStatus).Scan(&id)
 	if err != nil {
 		log.Printf("CreateContent error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan konten baru"})
@@ -353,8 +373,8 @@ func (h *Handler) CreateContent(c *gin.Context) {
 	// Catat di history
 	_, _ = h.Pool.Exec(c.Request.Context(), `
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
-		VALUES ($1, 'CREATED', NULL, 'DRAFT', 'Konten baru dibuat sebagai Draft', $2)
-	`, id, user.ID)
+		VALUES ($1, $2, NULL, $3, $4, $5)
+	`, id, historyAction, initialStatus, historyComment, user.ID)
 
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {
@@ -471,7 +491,19 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		}
 	}
 	if in.PostingCategory != nil {
-		add("posting_category", cleanStr(in.PostingCategory))
+		cleanPC := cleanStr(in.PostingCategory)
+		add("posting_category", cleanPC)
+		if isRepostPostingCategory(cleanPC) {
+			var currentStatus string
+			_ = h.Pool.QueryRow(c.Request.Context(), "SELECT status FROM contents WHERE id = $1", id).Scan(&currentStatus)
+			if currentStatus == "DRAFT" || currentStatus == "REVISION_REQUIRED" {
+				add("status", "APPROVED")
+				_, _ = h.Pool.Exec(c.Request.Context(), `
+					INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
+					VALUES ($1, 'AUTO_APPROVED', $2, 'APPROVED', 'Konten Repost otomatis disetujui (Approved)', $3)
+				`, id, currentStatus, user.ID)
+			}
+		}
 	}
 	if in.TargetAudience != nil {
 		add("target_audience", cleanStr(in.TargetAudience))
@@ -880,6 +912,13 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func derefBool(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }
 
 func derefTime(t *timeDb) models.Time {

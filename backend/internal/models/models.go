@@ -106,6 +106,7 @@ type PublicationContent struct {
 	Pic         *string `json:"pic"`
 	PillarName  *string `json:"pillar_name,omitempty"`
 	PlannedDate *string `json:"planned_date,omitempty"`
+	IsSavings   bool    `json:"is_savings"`
 }
 
 type PerformanceMetric struct {

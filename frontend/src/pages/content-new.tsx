@@ -74,7 +74,7 @@ function NewContentForm() {
         planned_date: plannedDateParam || prev.planned_date,
         brief: briefParam || prev.brief,
         topic: topicParam || (titleParam ? 'Z - Lain-Lain' : prev.topic),
-        posting_category: postingCategoryParam || (titleParam ? 'CAMPAIGN' : prev.posting_category),
+        posting_category: postingCategoryParam || (titleParam ? 'UID' : prev.posting_category),
         priority: prev.priority || 'MEDIUM',
       }))
     }
@@ -382,9 +382,15 @@ function NewContentForm() {
                       </option>
                     ))}
                   </Select>
-                  <p className="text-[11px] text-ink-muted">
-                    Klasifikasi penayangan konten (Original, Repost, Kampanye, dll.)
-                  </p>
+                  {form.posting_category?.startsWith('REPOST') ? (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-md border border-emerald-200 dark:border-emerald-800/50">
+                      <span>✓ Konten Repost otomatis langsung berstatus <strong>APPROVED</strong> (Disetujui).</span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-ink-muted">
+                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Lain-lain).
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -409,8 +415,8 @@ function NewContentForm() {
               />
             </div>
 
-            {/* Format, Tanggal Rencana & Prioritas */}
-            <div className="grid gap-4 md:grid-cols-3">
+            {/* Format & Tanggal Rencana */}
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="format">Format Konten *</Label>
                 <Select
@@ -440,48 +446,18 @@ function NewContentForm() {
                   className="font-normal text-slate-700 dark:text-slate-200"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioritas Konten</Label>
-                <Select
-                  id="priority"
-                  value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                  className="w-full font-normal text-slate-700 dark:text-slate-200"
-                >
-                  <option value="">Pilih Prioritas Konten</option>
-                  {CONTENT_PRIORITIES.map((p) => (
-                    <option key={p} value={p}>
-                      {CONTENT_PRIORITY_LABELS[p]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
             </div>
 
-            {/* Target Audience & PIC */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="target_audience">Target Audiens</Label>
-                <Input
-                  id="target_audience"
-                  value={form.target_audience}
-                  onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
-                  placeholder="Contoh: Pelanggan Rumah Tangga, Generasi Muda, Pengguna EV..."
-                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pic">PIC / Pembuat Konten</Label>
-                <Input
-                  id="pic"
-                  value={form.pic}
-                  onChange={(e) => setForm({ ...form, pic: e.target.value })}
-                  placeholder="Nama staf humas penanggung jawab..."
-                  className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
-                />
-              </div>
+            {/* Target Audience */}
+            <div className="space-y-2">
+              <Label htmlFor="target_audience">Target Audiens</Label>
+              <Input
+                id="target_audience"
+                value={form.target_audience}
+                onChange={(e) => setForm({ ...form, target_audience: e.target.value })}
+                placeholder="Contoh: Pelanggan Rumah Tangga, Generasi Muda, Pengguna EV..."
+                className="font-normal text-slate-700 dark:text-slate-200 placeholder:font-normal placeholder:text-slate-400"
+              />
             </div>
 
             {/* Brief Konten */}

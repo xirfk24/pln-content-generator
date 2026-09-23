@@ -53,7 +53,7 @@ func (h *Handler) contentAllowsPublish(ctx context.Context, contentID string) (s
 
 // GET /api/publications
 func (h *Handler) ListPublications(c *gin.Context) {
-	where := []string{"TRUE"}
+	where := []string{"COALESCE(c.is_savings, FALSE) = FALSE"}
 	args := []any{}
 
 	if v := c.Query("status"); v != "" {
@@ -467,7 +467,8 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		       pl.id, pl.name, pl.icon, pl.created_at,
 		       c.id, c.title, c.topic, c.status, c.pic,
 		       pil.name,
-		       c.planned_date::TEXT
+		       c.planned_date::TEXT,
+		       COALESCE(c.is_savings, FALSE)
 		FROM publications p
 		LEFT JOIN platforms pl ON pl.id = p.platform_id
 		LEFT JOIN contents c ON c.id = p.content_id
@@ -491,10 +492,11 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 		var plCreated *timeDb
 		var cID, cTitle, cTopic, cStatus *string
 		var cPic, cancelReason, pilName, cPlannedDate *string
+		var cIsSavings *bool
 		if err := rows.Scan(&p.ID, &p.ContentID, &p.PlatformID, &p.PlannedPublishDate, &p.ActualPublishDate,
 			&p.URL, &p.Status, &p.Notes, &cancelReason, &p.CreatedAt, &p.UpdatedAt,
 			&plID, &plName, &plIcon, &plCreated,
-			&cID, &cTitle, &cTopic, &cStatus, &cPic, &pilName, &cPlannedDate); err != nil {
+			&cID, &cTitle, &cTopic, &cStatus, &cPic, &pilName, &cPlannedDate, &cIsSavings); err != nil {
 			log.Printf("queryPublicationsWithContent scan error: %v", err)
 			continue
 		}
@@ -511,6 +513,7 @@ func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string
 				Pic:         cPic,
 				PillarName:  pilName,
 				PlannedDate: cPlannedDate,
+				IsSavings:   derefBool(cIsSavings),
 			}
 		}
 		out = append(out, p)

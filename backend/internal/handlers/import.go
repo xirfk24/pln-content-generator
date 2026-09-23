@@ -28,11 +28,26 @@ var validPurposes = map[string]string{
 }
 
 var validPostingCats = map[string]string{
-	"ORIGINAL":      "ORIGINAL",
-	"REPOST_PLN_ID": "REPOST_PLN_ID", "REPOST PLN ID": "REPOST_PLN_ID",
-	"REPOST_UP3": "REPOST_UP3", "REPOST UP3": "REPOST_UP3",
-	"CAMPAIGN": "CAMPAIGN", "KAMPANYE": "CAMPAIGN",
-	"OTHER": "OTHER", "LAINNYA": "OTHER",
+	"UID":               "UID",
+	"KONTEN UID":        "UID",
+	"ORIGINAL":          "UID",
+	"REPOST_ID":         "REPOST_ID",
+	"REPOST ID":         "REPOST_ID",
+	"REPOST_PLN_ID":     "REPOST_ID",
+	"REPOST PLN ID":     "REPOST_ID",
+	"REPOST_MOBILE":     "REPOST_MOBILE",
+	"REPOST MOBILE":     "REPOST_MOBILE",
+	"REPOST_PLN_MOBILE": "REPOST_MOBILE",
+	"REPOST PLN MOBILE": "REPOST_MOBILE",
+	"REPOST_UP3":        "REPOST_MOBILE",
+	"REPOST UP3":        "REPOST_MOBILE",
+	"CAMPAIGN":          "UID",
+	"KAMPANYE":          "UID",
+	"OTHER":             "LAINNYA",
+	"LAINNYA":           "LAINNYA",
+	"LAIN-LAIN":         "LAINNYA",
+	"LAIN LAIN":         "LAINNYA",
+	"LAINN":             "LAINNYA",
 }
 
 type ImportRowInput struct {
@@ -531,6 +546,15 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			contentPurposes = []string{}
 		}
 
+		initialStatus := "DRAFT"
+		historyAction := "CREATED"
+		historyComment := "Konten berhasil diimpor secara massal"
+		if isRepostPostingCategory(postingCategory) {
+			initialStatus = "APPROVED"
+			historyAction = "AUTO_APPROVED"
+			historyComment = "Konten Repost otomatis disetujui (Approved) saat impor"
+		}
+
 		var insertedID string
 		err := h.Pool.QueryRow(c.Request.Context(), `
 			INSERT INTO contents (
@@ -538,12 +562,12 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				brief, content_purpose, content_purposes, posting_category, target_audience,
 				planned_date, planned_week, day,
 				reference, pic, created_by, status
-			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'DRAFT')
+			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 			RETURNING id
 		`, title, topic, resolvedPillar, resolvedCategory, resolvedPrimaryPlatform, platformIDs, format,
 			cleanStr(row.Brief), contentPurpose, contentPurposes, postingCategory, cleanStr(row.TargetAudience),
 			plannedDate, plannedWeek, dayStr,
-			cleanStr(row.Reference), cleanStr(row.PIC), user.ID).Scan(&insertedID)
+			cleanStr(row.Reference), cleanStr(row.PIC), user.ID, initialStatus).Scan(&insertedID)
 
 		if err != nil {
 			log.Printf("Import row %d insert error: %v", rowNum, err)
@@ -555,8 +579,8 @@ func (h *Handler) ImportContents(c *gin.Context) {
 		// Catat history approval
 		_, _ = h.Pool.Exec(c.Request.Context(), `
 			INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
-			VALUES ($1, 'CREATED', NULL, 'DRAFT', 'Konten berhasil diimpor secara massal', $2)
-		`, insertedID, user.ID)
+			VALUES ($1, $2, NULL, $3, $4, $5)
+		`, insertedID, historyAction, initialStatus, historyComment, user.ID)
 
 		imported++
 	}

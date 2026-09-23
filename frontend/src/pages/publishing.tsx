@@ -46,9 +46,10 @@ import type { Publication, Content, Platform, PerformanceMetric, UserRole } from
 import { cn } from '@/lib/utils'
 
 interface PublicationRow extends Publication {
-  content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'pic'> & {
+  content?: Pick<Content, 'id' | 'title' | 'topic' | 'status' | 'pic' | 'is_savings'> & {
     pillar_name?: string | null
     planned_date?: string | null
+    is_savings?: boolean
   }
 }
 
@@ -262,6 +263,23 @@ export default function PublishingPage() {
   const [newScheduleDate, setNewScheduleDate] = useState('')
   const [scheduleSaving, setScheduleSaving] = useState(false)
 
+  // Bank Konten (Tabungan Konten) Modal State
+  const [tabunganModal, setTabunganModal] = useState<{
+    open: boolean
+    contentId: string
+    title: string
+    defaultReason?: string
+  }>({
+    open: false,
+    contentId: '',
+    title: '',
+    defaultReason: '',
+  })
+  const [tabunganReason, setTabunganReason] = useState('')
+  const [tabunganMonth, setTabunganMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [tabunganSaving, setTabunganSaving] = useState(false)
+  const [tabunganError, setTabunganError] = useState<string | null>(null)
+
   const loadPublications = useCallback(async () => {
     setLoading(true)
     try {
@@ -320,6 +338,9 @@ export default function PublishingPage() {
     >()
 
     publications.forEach((pub) => {
+      // Abaikan jika konten sudah masuk ke Konten Tabungan / Bank Konten
+      if (pub.content?.is_savings) return
+
       const contentId = pub.content_id || pub.id
       const existing = map.get(contentId)
       // Prioritas 1: Tanggal rencana konten terbaru (pub.content?.planned_date)
@@ -600,30 +621,68 @@ export default function PublishingPage() {
     }
   }
 
-  // Aksi: Pindahkan Konten Terlambat ke Bank Konten
-  async function handleMoveDelayToTabungan(pub: PublicationRow) {
-    if (!pub.content_id) return
-    if (
-      !confirm(
-        'Pindahkan konten yang terlambat ini ke Bank Konten agar dapat dijadwalkan ulang dengan aman di kemudian hari?'
-      )
-    )
-      return
+  // Aksi: Buka Modal Pindah ke Bank Konten
+  function handleOpenTabunganModal(
+    contentId: string,
+    title: string,
+    reason?: string,
+    date?: string | null
+  ) {
+    const r = reason || 'Disimpan dari antrean publikasi ke Bank Konten'
+    setTabunganModal({
+      open: true,
+      contentId,
+      title,
+      defaultReason: r,
+    })
+    setTabunganReason(r)
+    setTabunganMonth(date?.slice(0, 7) || new Date().toISOString().slice(0, 7))
+    setTabunganError(null)
+  }
+
+  // Aksi: Simpan Konten ke Bank Konten (Tabungan Konten)
+  async function handleSaveToTabungan() {
+    if (!tabunganModal.contentId) return
+    setTabunganSaving(true)
+    setTabunganError(null)
+
     try {
-      const res = await apiFetch(`/api/contents/${pub.content_id}/move-to-tabungan`, {
+      const res = await apiFetch(`/api/contents/${tabunganModal.contentId}/move-to-tabungan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reason: `Publikasi tertunda/terlambat (jadwal upload: ${pub.planned_publish_date || '-'})`,
+          reason: tabunganReason.trim() || 'Disimpan dari antrean publikasi ke Bank Konten',
+          month: tabunganMonth || new Date().toISOString().slice(0, 7),
         }),
       })
-      if (res.ok) {
-        notifySuccess('Konten berhasil dipindahkan ke Bank Konten.')
-        await loadPublications()
+
+      const data = await res.json()
+      if (!res.ok) {
+        setTabunganError(data.error || 'Gagal memindahkan konten ke Bank Konten.')
+        return
       }
-    } catch (err) {
-      console.error(err)
+
+      const targetId = tabunganModal.contentId
+      setTabunganModal({ open: false, contentId: '', title: '', defaultReason: '' })
+      if (manageModalContentId === targetId) {
+        setManageModalContentId(null)
+      }
+      setPublications((prev) => prev.filter((p) => p.content_id !== targetId && p.content?.id !== targetId))
+      notifySuccess('Konten berhasil dipindahkan ke Bank Konten (Tabungan Konten).')
+      await loadPublications()
+    } catch {
+      setTabunganError('Terjadi kesalahan jaringan saat menyimpan ke Bank Konten.')
+    } finally {
+      setTabunganSaving(false)
     }
+  }
+
+  // Aksi: Pindahkan Konten Terlambat ke Bank Konten
+  function handleMoveDelayToTabungan(pub: PublicationRow) {
+    if (!pub.content_id) return
+    const contentTitle = pub.content?.title || 'Konten'
+    const defaultReason = `Publikasi tertunda/terlambat (${pub.platform?.name || 'Platform'}, jadwal upload: ${pub.planned_publish_date || '-'})`
+    handleOpenTabunganModal(pub.content_id, contentTitle, defaultReason, pub.planned_publish_date)
   }
 
   // Aksi: Update Jadwal Upload Grup Publikasi & Sinkronisasi
@@ -1287,27 +1346,47 @@ export default function PublishingPage() {
                         {renderStatusBadge(group.status, group.statusLabel)}
                       </td>
 
-                      {/* Kolom 6: Aksi Tunggal */}
+                      {/* Kolom 6: Aksi */}
                       <td className="px-5 py-4 align-middle whitespace-nowrap text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => setManageModalContentId(group.contentId)}
-                          className={cn(
-                            'text-xs font-semibold h-8.5 rounded-lg px-3.5 shadow-2xs transition-all',
-                            group.status === 'FULLY_PUBLISHED'
-                              ? 'bg-surface border border-border text-ink hover:bg-surface-muted'
-                              : group.status === 'CANCELLED'
-                              ? 'bg-surface border border-border text-ink-secondary hover:bg-surface-muted'
-                              : 'bg-teal-600 hover:bg-teal-700 text-white'
+                        <div className="flex items-center justify-end gap-1.5">
+                          {group.status !== 'FULLY_PUBLISHED' && group.status !== 'CANCELLED' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleOpenTabunganModal(
+                                  group.contentId,
+                                  group.title,
+                                  `Dipindahkan dari Antrean Publikasi (${group.topic || 'Publikasi'})`,
+                                  group.plannedDate
+                                )
+                              }
+                              className="text-xs font-medium h-8.5 rounded-lg px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                              title="Pindahkan ke Bank Konten (Tabungan Konten)"
+                            >
+                              <BookmarkCheck className="h-4 w-4" />
+                            </Button>
                           )}
-                        >
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5 opacity-80" />
-                          {group.status === 'FULLY_PUBLISHED'
-                            ? 'Lihat Publikasi'
-                            : group.status === 'CANCELLED'
-                            ? 'Lihat Detail'
-                            : 'Atur Penayangan'}
-                        </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setManageModalContentId(group.contentId)}
+                            className={cn(
+                              'text-xs font-semibold h-8.5 rounded-lg px-3.5 shadow-2xs transition-all',
+                              group.status === 'FULLY_PUBLISHED'
+                                ? 'bg-surface border border-border text-ink hover:bg-surface-muted'
+                                : group.status === 'CANCELLED'
+                                ? 'bg-surface border border-border text-ink-secondary hover:bg-surface-muted'
+                                : 'bg-teal-600 hover:bg-teal-700 text-white'
+                            )}
+                          >
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5 opacity-80" />
+                            {group.status === 'FULLY_PUBLISHED'
+                              ? 'Lihat Publikasi'
+                              : group.status === 'CANCELLED'
+                              ? 'Lihat Detail'
+                              : 'Atur Penayangan'}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1342,14 +1421,34 @@ export default function PublishingPage() {
                       {activeManageGroup.title}
                     </h2>
                   </div>
-                  <Link
-                    href={`/content/${activeManageGroup.contentId}`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0 pt-1"
-                  >
-                    <span>Buka Rencana</span>
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0 pt-1">
+                    {activeManageGroup.status !== 'FULLY_PUBLISHED' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleOpenTabunganModal(
+                            activeManageGroup.contentId,
+                            activeManageGroup.title,
+                            `Dipindahkan dari Antrean Publikasi (${activeManageGroup.topic || 'Publikasi'})`,
+                            activeManageGroup.plannedDate
+                          )
+                        }
+                        className="text-xs h-8 text-indigo-700 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 dark:text-indigo-300 dark:border-indigo-900/50 dark:bg-indigo-950/40"
+                      >
+                        <BookmarkCheck className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
+                        Simpan ke Bank Konten
+                      </Button>
+                    )}
+                    <Link
+                      href={`/content/${activeManageGroup.contentId}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      <span>Buka Rencana</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Metadata Pill Grid */}
@@ -2033,6 +2132,89 @@ export default function PublishingPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* 7. DIALOG: PINDAHKAN KONTEN KE BANK KONTEN (TABUNGAN KONTEN)               */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={tabunganModal.open}
+        onOpenChange={(open) => !tabunganSaving && setTabunganModal((prev) => ({ ...prev, open }))}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-ink flex items-center gap-2">
+              <BookmarkCheck className="h-5 w-5 text-indigo-600" />
+              Simpan ke Bank Konten
+            </DialogTitle>
+            <DialogDescription className="text-xs text-ink-muted">
+              Konten &quot;<strong className="text-ink font-semibold">{tabunganModal.title}</strong>&quot; akan dipindahkan dari antrean publikasi ke Bank Konten (Tabungan Konten) dan dapat dijadwalkan ulang sewaktu-waktu.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="space-y-1.5">
+              <Label htmlFor="tabunganReason" className="text-xs font-semibold text-ink">
+                Alasan Penyimpanan ke Bank Konten (Opsional)
+              </Label>
+              <Textarea
+                id="tabunganReason"
+                value={tabunganReason}
+                onChange={(e) => setTabunganReason(e.target.value)}
+                placeholder="Contoh: Publikasi ditunda, menunggu momen kampanye berikutnya, materi visual perlu penyesuaian..."
+                rows={3}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="tabunganMonth" className="text-xs font-semibold text-ink">
+                Bulan Bank Konten (YYYY-MM)
+              </Label>
+              <Input
+                id="tabunganMonth"
+                type="month"
+                value={tabunganMonth}
+                onChange={(e) => setTabunganMonth(e.target.value)}
+                className="text-xs h-9"
+              />
+            </div>
+
+            {tabunganError && (
+              <p className="text-xs font-medium text-danger bg-rose-50 dark:bg-rose-950/40 p-2 rounded border border-rose-200 dark:border-rose-900/60">
+                {tabunganError}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setTabunganModal({ open: false, contentId: '', title: '', defaultReason: '' })}
+              disabled={tabunganSaving}
+              className="text-xs h-9"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveToTabungan}
+              disabled={tabunganSaving}
+              className="text-xs h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+            >
+              {tabunganSaving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
+                  Simpan ke Bank Konten
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -417,7 +417,7 @@ export default function ContentCalendarPage() {
       planned_date: dateStr,
       brief,
       topic,
-      posting_category: item.type === 'PLN' ? 'REGULAR' : 'CAMPAIGN',
+      posting_category: 'UID',
     })
     router.push(`/content/planning/new?${query.toString()}`)
   }

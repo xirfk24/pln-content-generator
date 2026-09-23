@@ -112,17 +112,23 @@ export const CONTENT_PURPOSE_LABELS: Record<string, string> = {
 }
 
 export const POSTING_CATEGORIES = [
-  'ORIGINAL',
-  'CAMPAIGN',
+  'UID',
+  'REPOST_ID',
+  'REPOST_MOBILE',
   'OTHER',
 ] as const
 
 export const POSTING_CATEGORY_LABELS: Record<string, string> = {
-  ORIGINAL: 'Konten Original',
-  REPOST_PLN_ID: 'Repost PLN ID',
+  UID: 'UID',
+  REPOST_ID: 'Repost id',
+  REPOST_MOBILE: 'Repost mobile',
+  OTHER: 'Lain-lain',
+  // Backward compatibility
+  ORIGINAL: 'UID',
+  REPOST_PLN_ID: 'Repost id',
+  REPOST_PLN_MOBILE: 'Repost mobile',
   REPOST_UP3: 'Repost UP3',
   CAMPAIGN: 'Kampanye / Event',
-  OTHER: 'Lainnya',
 }
 
 export const ENGAGEMENT_FORMULA =

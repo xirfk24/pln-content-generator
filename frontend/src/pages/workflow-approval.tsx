@@ -956,74 +956,18 @@ export default function ApprovalPage() {
                         )}
                       </td>
 
-                      {/* AKSI CEPAT & MENU */}
+                      {/* AKSI MENU (TITIK 3) */}
                       <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Aksi Cepat Konsep */}
-                          {role === 'ADMIN' && isPendingConcept && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
-                                className="h-7 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-                                title="Setujui Konsep & Lanjut ke Produksi"
-                              >
-                                Setujui Konsep
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
-                                className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
-                                title="Langsung Siap Publikasi (Bypass)"
-                              >
-                                Siap Publikasi
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'REVISION')}
-                                className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
-                                title="Minta Revisi Konsep"
-                              >
-                                Revisi
-                              </Button>
-                            </>
-                          )}
-
-                          {/* Aksi Cepat Produksi */}
-                          {role === 'ADMIN' && isPendingProd && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
-                                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                title="Setujui Produksi & Jadikan Siap Publikasi"
-                              >
-                                <Check className="mr-1 h-3.5 w-3.5" />
-                                Siap Publikasi
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'REVISION')}
-                                className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
-                                title="Minta Revisi Produksi"
-                              >
-                                Revisi
-                              </Button>
-                            </>
-                          )}
-
-                          {/* 3-Dots Dropdown */}
+                        <div className="flex items-center justify-end">
                           <div className="relative inline-block text-left">
                             <button
                               type="button"
                               onClick={() =>
                                 setActiveMenuId(activeMenuId === content.id ? null : content.id)
                               }
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none dark:hover:bg-slate-800"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                               aria-label="Actions"
+                              title="Pilihan Aksi"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
@@ -1031,7 +975,7 @@ export default function ApprovalPage() {
                             {activeMenuId === content.id && (
                               <div
                                 ref={menuRef}
-                                className="absolute right-0 z-30 mt-1 w-52 origin-top-right rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800 text-left"
+                                className="absolute right-0 z-30 mt-1 w-56 origin-top-right rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800 text-left"
                               >
                                 <Link
                                   href={`/content/${content.id}`}
@@ -1062,7 +1006,10 @@ export default function ApprovalPage() {
                                       <>
                                         <button
                                           type="button"
-                                          onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
+                                          onClick={() => {
+                                            setActiveMenuId(null)
+                                            openActionDialog(content, 'APPROVE_CONCEPT')
+                                          }}
                                           className="flex w-full items-center px-4 py-2 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/30"
                                         >
                                           <Check className="mr-2 h-3.5 w-3.5" />
@@ -1070,7 +1017,10 @@ export default function ApprovalPage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
+                                          onClick={() => {
+                                            setActiveMenuId(null)
+                                            openActionDialog(content, 'READY_TO_PUBLISH')
+                                          }}
                                           className="flex w-full items-center px-4 py-2 text-xs font-medium text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-950/30"
                                         >
                                           <Send className="mr-2 h-3.5 w-3.5" />
@@ -1082,7 +1032,10 @@ export default function ApprovalPage() {
                                     {isPendingProd && (
                                       <button
                                         type="button"
-                                        onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
+                                        onClick={() => {
+                                          setActiveMenuId(null)
+                                          openActionDialog(content, 'APPROVE_PRODUCTION')
+                                        }}
                                         className="flex w-full items-center px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
                                       >
                                         <Check className="mr-2 h-3.5 w-3.5" />
@@ -1094,7 +1047,10 @@ export default function ApprovalPage() {
                                       <>
                                         <button
                                           type="button"
-                                          onClick={() => openActionDialog(content, 'REVISION')}
+                                          onClick={() => {
+                                            setActiveMenuId(null)
+                                            openActionDialog(content, 'REVISION')
+                                          }}
                                           className="flex w-full items-center px-4 py-2 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
                                         >
                                           <RotateCcw className="mr-2 h-3.5 w-3.5" />
@@ -1102,7 +1058,10 @@ export default function ApprovalPage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => openActionDialog(content, 'REJECT')}
+                                          onClick={() => {
+                                            setActiveMenuId(null)
+                                            openActionDialog(content, 'REJECT')
+                                          }}
                                           className="flex w-full items-center px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                                         >
                                           <XCircle className="mr-2 h-3.5 w-3.5" />

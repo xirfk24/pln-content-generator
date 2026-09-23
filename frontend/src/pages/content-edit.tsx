@@ -357,9 +357,15 @@ export default function EditContentPage() {
                       </option>
                     ))}
                   </Select>
-                  <p className="text-[11px] text-ink-muted">
-                    Klasifikasi penayangan konten (Original, Repost, Kampanye, dll.)
-                  </p>
+                  {form.posting_category?.startsWith('REPOST') ? (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-md border border-emerald-200 dark:border-emerald-800/50">
+                      <span>✓ Konten Repost otomatis langsung berstatus <strong>APPROVED</strong> (Disetujui).</span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-ink-muted">
+                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Lain-lain).
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

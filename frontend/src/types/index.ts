@@ -49,11 +49,15 @@ export type ContentPurpose =
   | 'INFORMATION'
 
 export type PostingCategory =
+  | 'UID'
+  | 'REPOST_ID'
+  | 'REPOST_MOBILE'
+  | 'OTHER'
   | 'ORIGINAL'
   | 'REPOST_PLN_ID'
+  | 'REPOST_PLN_MOBILE'
   | 'REPOST_UP3'
   | 'CAMPAIGN'
-  | 'OTHER'
 
 export interface User {
   id: string
@@ -146,6 +150,7 @@ export interface Publication {
     status: string
     pic: string | null
     pillar_name?: string | null
+    is_savings?: boolean
   }
   performance_metrics?: PerformanceMetric[]
 }
