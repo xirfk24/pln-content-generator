@@ -53,6 +53,20 @@ func (h *Handler) contentAllowsPublish(ctx context.Context, contentID string) (s
 
 // GET /api/publications
 func (h *Handler) ListPublications(c *gin.Context) {
+	// Auto-sync: Pastikan setiap konten yang belum memiliki record publikasi dibuatkan record publikasi awal
+	_, _ = h.Pool.Exec(c.Request.Context(), `
+		INSERT INTO publications (content_id, platform_id, planned_publish_date, status, notes)
+		SELECT 
+			c.id, 
+			c.platform_id, 
+			c.planned_date, 
+			CASE WHEN c.status = 'PUBLISHED' THEN 'PUBLISHED' ELSE 'PLANNED' END,
+			'Auto-sync antrean publikasi'
+		FROM contents c
+		LEFT JOIN publications p ON p.content_id = c.id
+		WHERE p.id IS NULL AND COALESCE(c.is_savings, FALSE) = FALSE
+	`)
+
 	where := []string{"COALESCE(c.is_savings, FALSE) = FALSE"}
 	args := []any{}
 
@@ -128,8 +142,6 @@ func (h *Handler) CreatePublication(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Status publikasi tidak valid. Gunakan PLANNED, PUBLISHED, DELAYED, atau CANCELLED"})
 			return
 		}
-		// Creating an already-PUBLISHED record is equivalent to the
-		// MARK_PUBLISHED workflow action — only allowed on approved content.
 		if status == "PUBLISHED" {
 			if _, ok := h.contentAllowsPublish(c.Request.Context(), *in.ContentID); !ok {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Konten tidak ditemukan"})
@@ -188,7 +200,6 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		}
 	}
 
-	// Validasi pembatalan wajib ada alasan
 	if in.Status != nil && (*in.Status == "CANCELLED" || *in.Status == "CANCEL") {
 		if in.CancelReason == nil || strings.TrimSpace(*in.CancelReason) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Alasan pembatalan wajib diisi saat membatalkan publikasi"})
@@ -196,7 +207,6 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		}
 	}
 
-	// Whitelist status publikasi + gate transisi PUBLISHED ke state workflow.
 	normalizedStatus := ""
 	if in.Status != nil && *in.Status != "" {
 		normalizedStatus = normalizePubStatus(*in.Status)
@@ -264,7 +274,6 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 		return
 	}
 
-	// Jika status jadi PUBLISHED, update juga konten terkait jika semua publikasi sudah dipublikasikan
 	if normalizedStatus == "PUBLISHED" {
 		var contentID string
 		_ = h.Pool.QueryRow(c.Request.Context(), "SELECT content_id FROM publications WHERE id = $1", id).Scan(&contentID)
@@ -283,8 +292,6 @@ func (h *Handler) UpdatePublication(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"publication": pub, "message": "Data publikasi berhasil diperbarui"})
 }
 
-// DELETE /api/publications/:id — admin only, matching the UI which only
-// exposes the delete action to ADMINs.
 func (h *Handler) DeletePublication(c *gin.Context) {
 	user := requireUser(c)
 	if user == nil {
@@ -303,7 +310,6 @@ func (h *Handler) DeletePublication(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Publikasi berhasil dihapus"})
 }
 
-// GET /api/publications/:id/metrics
 func (h *Handler) ListMetrics(c *gin.Context) {
 	id := c.Param("id")
 	rows, err := h.Pool.Query(c.Request.Context(), `
@@ -338,7 +344,6 @@ type metricInput struct {
 	RecordedAt *string  `json:"recorded_at"`
 }
 
-// POST /api/publications/:id/metrics — upsert by (publication_id, recorded_at)
 func (h *Handler) UpsertMetric(c *gin.Context) {
 	id := c.Param("id")
 	var in metricInput
@@ -415,10 +420,6 @@ func (h *Handler) getMetric(ctx context.Context, id string) *models.PerformanceM
 	return &m
 }
 
-// gatePublish enforces the workflow rule for marking a publication PUBLISHED:
-// the content must be APPROVED, READY_TO_PUBLISH, or already PUBLISHED —
-// the same states the MARK_PUBLISHED workflow action accepts. It writes the
-// HTTP error response itself and returns false when the gate rejects.
 func (h *Handler) gatePublish(c *gin.Context, contentID string) bool {
 	status, ok := h.contentAllowsPublish(c.Request.Context(), contentID)
 	if !ok {
@@ -434,7 +435,6 @@ func (h *Handler) gatePublish(c *gin.Context, contentID string) bool {
 	return true
 }
 
-// publicationContentID returns the content id of the given publication.
 func (h *Handler) publicationContentID(ctx context.Context, pubID string) (string, bool) {
 	var contentID string
 	err := h.Pool.QueryRow(ctx, "SELECT content_id FROM publications WHERE id = $1", pubID).Scan(&contentID)
@@ -444,7 +444,6 @@ func (h *Handler) publicationContentID(ctx context.Context, pubID string) (strin
 	return contentID, true
 }
 
-// getPublication fetches one publication with platform + content + metrics.
 func (h *Handler) getPublication(ctx context.Context, id string) *models.Publication {
 	publications, pubIDs := h.queryPublicationsWithContent(ctx, "p.id = $1", id)
 	if len(publications) == 0 {
@@ -454,7 +453,6 @@ func (h *Handler) getPublication(ctx context.Context, id string) *models.Publica
 	return &publications[0]
 }
 
-// queryPublicationsWithContent fetches publications joined with platform and content.
 func (h *Handler) queryPublicationsWithContent(ctx context.Context, where string, args ...any) ([]models.Publication, []string) {
 	rows, err := h.Pool.Query(ctx, `
 		SELECT p.id, p.content_id, p.platform_id,

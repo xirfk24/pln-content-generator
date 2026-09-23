@@ -225,7 +225,7 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 		} else {
 			t, ok := parseDateStr(res.PlannedDate)
 			if !ok {
-				res.Errors = append(res.Errors, fmt.Sprintf("Format tanggal '%s' tidak valid. Gunakan format YYYY-MM-DD (contoh: 2026-09-15).", res.PlannedDate))
+				res.Errors = append(res.Errors, fmt.Sprintf("Format tanggal '%s' tidak valid. Gunakan format DD/MM/YYYY atau YYYY-MM-DD (contoh: 13/07/2026 atau 2026-07-13).", res.PlannedDate))
 			} else {
 				formattedDate = t.Format("2006-01-02")
 				pWeek = weekNumber(t)
@@ -505,7 +505,7 @@ func (h *Handler) ImportContents(c *gin.Context) {
 
 		if _, ok := parseDateStr(row.PlannedDate); !ok {
 			skipped++
-			errs = append(errs, importError{Row: rowNum, Field: "planned_date", Message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD."})
+			errs = append(errs, importError{Row: rowNum, Field: "planned_date", Message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD atau DD/MM/YYYY."})
 			continue
 		}
 		format := strings.TrimSpace(row.Format)
@@ -637,21 +637,22 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			VALUES ($1, $2, NULL, $3, $4, $5)
 		`, insertedID, historyAction, initialStatus, historyComment, user.ID)
 
-		// Jika mode LEGACY_PUBLISHED, buat record di publications & performance_metrics
-		if rowMode == "LEGACY_PUBLISHED" {
-			targetPlatforms := resolvedPlatformIDs
-			if len(targetPlatforms) == 0 && resolvedPrimaryPlatform != nil {
-				targetPlatforms = []string{*resolvedPrimaryPlatform}
-			}
-			if len(targetPlatforms) == 0 {
-				targetPlatforms = []string{""}
+		// Buat record di publications (dan performance_metrics jika ada)
+		targetPlatforms := resolvedPlatformIDs
+		if len(targetPlatforms) == 0 && resolvedPrimaryPlatform != nil {
+			targetPlatforms = []string{*resolvedPrimaryPlatform}
+		}
+		if len(targetPlatforms) == 0 {
+			targetPlatforms = []string{""}
+		}
+
+		for _, platID := range targetPlatforms {
+			var pID *string
+			if platID != "" {
+				pID = &platID
 			}
 
-			for _, platID := range targetPlatforms {
-				var pID *string
-				if platID != "" {
-					pID = &platID
-				}
+			if rowMode == "LEGACY_PUBLISHED" {
 				postURL := cleanStrPtr(row.PostURL)
 
 				var pubID string
@@ -667,7 +668,6 @@ func (h *Handler) ImportContents(c *gin.Context) {
 					continue
 				}
 
-				// Jika terdapat angka insight (views/likes/comments/shares > 0), insert ke performance_metrics
 				if row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Shares > 0 {
 					recDate := row.PlannedDate
 					if recDate == "" {
@@ -687,6 +687,20 @@ func (h *Handler) ImportContents(c *gin.Context) {
 					if errMet != nil {
 						log.Printf("Import row %d metric insert error: %v", rowNum, errMet)
 					}
+				}
+			} else {
+				// Mode PLAN: Buat record publikasi dengan status PLANNED agar langsung muncul di Antrean Publikasi (/publishing)
+				pubStatus := "PLANNED"
+				if initialStatus == "PUBLISHED" {
+					pubStatus = "PUBLISHED"
+				}
+				_, errPub := h.Pool.Exec(c.Request.Context(), `
+					INSERT INTO publications (
+						content_id, platform_id, planned_publish_date, status, notes
+					) VALUES ($1, $2, $3, $4, 'Diimpor dari rencana konten')
+				`, insertedID, pID, plannedDate, pubStatus)
+				if errPub != nil {
+					log.Printf("Import row %d plan publication insert error: %v", rowNum, errPub)
 				}
 			}
 		}
