@@ -27,6 +27,12 @@ export interface ParsedImportRow {
   brief: string
   target_audience: string
   reference: string
+  // Additional fields for LEGACY_PUBLISHED import mode
+  post_url?: string
+  views?: number
+  likes?: number
+  comments?: number
+  shares?: number
 }
 
 /** Trigger a browser download from a Blob. */
@@ -47,158 +53,248 @@ function addAoA(ws: ExcelJS.Worksheet, aoa: (string | number)[][]) {
 }
 
 /**
- * Generate dan download file Template Excel (.xlsx) dengan 3 Sheet Berwarna & Lengkap
+ * Generate dan download file Template Excel (.xlsx) dengan pilihan mode:
+ * - PLAN: Rencana Konten Baru
+ * - LEGACY_PUBLISHED: Arsip Pemindahan Data Lama
  */
-export async function downloadExcelTemplate(masterData?: MasterDataInfo) {
+export async function downloadExcelTemplate(
+  masterData?: MasterDataInfo,
+  mode: 'PLAN' | 'LEGACY_PUBLISHED' = 'PLAN'
+) {
   const wb = new ExcelJS.Workbook()
-
-  // ==========================================
-  // SHEET 1: TEMPLATE IMPORT
-  // ==========================================
-  const wsTemplate = wb.addWorksheet('Template Import')
-
-  const headers = [
-    'Judul Konten (Wajib)',
-    'Topik Konten (Wajib)',
-    'Content Pillar (Pilihan Sistem)',
-    'Format Konten (Pilihan Sistem)',
-    'Target Platform (Pilihan Sistem)',
-    'Content Purpose (Pilihan Sistem)',
-    'Posting Category (Pilihan Sistem)',
-    'Tanggal Rencana Publikasi (YYYY-MM-DD)',
-    'PIC (Opsional)',
-    'Brief / Keterangan (Opsional)',
-    'Target Audience (Opsional)',
-    'Link Referensi (Opsional)',
-  ]
 
   const pillar1 = masterData?.pillars?.[0]?.name || CONTENT_PILLAR_OPTIONS[0] || 'Inovasi Layanan & Digitalisasi (PLN Mobile)'
   const pillar2 = masterData?.pillars?.[1]?.name || CONTENT_PILLAR_OPTIONS[1] || 'Transisi Energi & Keberlanjutan (Green Energy)'
 
-  const sampleRows = [
-    [
-      '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Efisiensi Energi di Rumah',
-      'PLN Mobile & Edukasi Tarif',
-      pillar1,
-      'Carousel',
-      'Instagram, TikTok',
-      'EDUCATION',
-      'UID',
-      '2026-09-20',
-      'Tim Media Sosial',
-      'Edukasi tips hemat listrik bagi pelanggan rumah tangga di wilayah Jawa Barat.',
-      'Pelanggan Rumah Tangga',
-      'https://pln.co.id',
-    ],
-    [
-      '[CONTOH - HAPUS SEBELUM IMPORT] Green Energy Transition: PLTS Terapung Cirata',
-      'Transisi Energi Bersih',
-      pillar2,
-      'Vid/Reels/Shorts',
-      'Instagram, YouTube, TikTok',
-      'INFORMATION',
-      'UID',
-      '2026-09-25',
-      'Tim Humas & Komunikasi',
-      'Highlight komitmen EBT PLN UID Jawa Barat menyongsong Net Zero Emission.',
-      'Masyarakat Umum & Stakeholder',
-      '',
-    ],
-  ]
+  if (mode === 'LEGACY_PUBLISHED') {
+    // ==========================================
+    // MODE 2: ARSIP PEMINDAHAN DATA LAMA (TERBIT + INSIGHT)
+    // ==========================================
+    const wsTemplate = wb.addWorksheet('Template Arsip Data Lama')
 
-  addAoA(wsTemplate, [headers, ...sampleRows])
+    const headers = [
+      'Tanggal Publikasi (YYYY-MM-DD)',
+      'Judul Konten (Wajib)',
+      'Topik Konten (Wajib)',
+      'Content Pillar (Pilihan Sistem)',
+      'Format Konten (Pilihan Sistem)',
+      'Target Platform (Pilihan Sistem)',
+      'Link Postingan (URL Post)',
+      'Views / Jangkauan (Angka)',
+      'Likes / Suka (Angka)',
+      'Comments / Komentar (Angka)',
+      'Shares / Bagikan (Angka)',
+      'PIC (Opsional)',
+      'Brief / Keterangan (Opsional)',
+    ]
 
-  // Lebar kolom
-  const colWidths = [38, 28, 44, 20, 28, 22, 22, 26, 22, 40, 30, 28]
-  colWidths.forEach((w, i) => {
-    wsTemplate.getColumn(i + 1).width = w
-  })
+    const sampleRows = [
+      [
+        '2026-08-15',
+        '[CONTOH - HAPUS SEBELUM IMPORT] Peluncuran Fitur Baru PLN Mobile Jabar',
+        'Layanan & Digitalisasi',
+        pillar1,
+        'Carousel',
+        'Instagram, TikTok',
+        'https://www.instagram.com/p/C123456789/',
+        12500,
+        840,
+        45,
+        120,
+        'Tim Medsos PLN UID Jabar',
+        'Arsip dokumentasi penayangan konten edukasi fitur transaksi token.',
+      ],
+      [
+        '2026-08-20',
+        '[CONTOH - HAPUS SEBELUM IMPORT] Peringatan Hari Listrik Nasional ke-81',
+        'Event & Momentum',
+        pillar2,
+        'Vid/Reels/Shorts',
+        'Instagram, YouTube',
+        'https://youtube.com/shorts/abc123xyz',
+        35000,
+        2400,
+        180,
+        450,
+        'Tim Humas',
+        'Video highlight perayaan HLN di kantor PLN UID Jabar.',
+      ],
+    ]
 
-  // ==========================================
-  // SHEET 2: PANDUAN PENGISIAN
-  // ==========================================
-  const wsGuide = wb.addWorksheet('Panduan Pengisian')
+    addAoA(wsTemplate, [headers, ...sampleRows])
 
-  const guideHeaders = [
-    'No',
-    'Nama Kolom',
-    'Status Kolom',
-    'Format / Tipe Data',
-    'Contoh Pengisian',
-    'Nilai yang Diperbolehkan / Keterangan',
-    'Catatan Kesalahan Umum',
-  ]
+    const colWidths = [26, 38, 28, 44, 20, 28, 38, 22, 18, 20, 18, 24, 40]
+    colWidths.forEach((w, i) => {
+      wsTemplate.getColumn(i + 1).width = w
+    })
 
-  const guideRows = [
-    [1, 'Judul Konten', 'Wajib (Biru)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul singkat, menarik, dan informatif', 'Jangan dikosongkan.'],
-    [2, 'Topik Konten', 'Wajib (Biru)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
-    [3, 'Content Pillar', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
-    [4, 'Format Konten', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
-    [5, 'Target Platform', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Bisa Multi)', 'Instagram, TikTok, YouTube', 'Pisahkan dengan tanda koma (,) jika konten tayang di lebih dari 1 platform', 'Nama platform tidak sesuai (misal: "IG" tanpa keterangan).'],
-    [6, 'Content Purpose', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
-    [7, 'Posting Category', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'UID', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi (UID, REPOST_ID, REPOST_MOBILE, LAINNYA).'],
-    [8, 'Tanggal Rencana Publikasi', 'Wajib (Biru)', 'Tanggal (YYYY-MM-DD)', '2026-09-20', 'Tahun-Bulan-Tanggal 4 digit tahun (contoh: 2026-09-20)', 'Format DD/MM/YYYY atau teks bulan tidak didukung.'],
-    [9, 'PIC', 'Opsional (Kuning)', 'Teks', 'Tim Media Sosial / Adit', 'Person in charge atau nama tim pelaksana', 'Boleh dikosongkan.'],
-    [10, 'Brief / Keterangan', 'Opsional (Kuning)', 'Teks Paragraf', 'Penjelasan narasi dan visual slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
-    [11, 'Target Audience', 'Opsional (Kuning)', 'Teks', 'Pelanggan Rumah Tangga & Milenial', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
-    [12, 'Link Referensi', 'Opsional (Kuning)', 'URL Web', 'https://pln.co.id/press-release', 'Tautan rujukan berita atau materi', 'Boleh dikosongkan.'],
-  ]
+    // Sheet Panduan
+    const wsGuide = wb.addWorksheet('Panduan Pemindahan Data')
+    const guideHeaders = ['No', 'Nama Kolom', 'Status', 'Format', 'Contoh', 'Keterangan']
+    const guideRows = [
+      [1, 'Tanggal Publikasi', 'Wajib', 'YYYY-MM-DD', '2026-08-15', 'Tanggal saat konten tersebut pernah ditayangkan'],
+      [2, 'Judul Konten', 'Wajib', 'Teks', 'Tips Token Listrik', 'Judul resmi konten lama'],
+      [3, 'Topik Konten', 'Wajib', 'Teks', 'PLN Mobile', 'Topik bahasan'],
+      [4, 'Content Pillar', 'Pilihan Sistem', 'Pilihan Resmi', pillar1, 'Gunakan nama pilar resmi di Sheet Referensi'],
+      [5, 'Format Konten', 'Pilihan Sistem', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', ')],
+      [6, 'Target Platform', 'Pilihan Sistem', 'Pilihan Resmi', 'Instagram, TikTok', 'Pisahkan koma jika tayang di banyak platform'],
+      [7, 'Link Postingan', 'Opsional', 'URL Web', 'https://instagram.com/p/...', 'Tautan postingan asli yang telah terbit'],
+      [8, 'Views / Jangkauan', 'Opsional', 'Angka', '12500', 'Jumlah tayangan / jangkauan audiens'],
+      [9, 'Likes / Suka', 'Opsional', 'Angka', '840', 'Jumlah suka / reaksi'],
+      [10, 'Comments / Komentar', 'Opsional', 'Angka', '45', 'Jumlah komentar'],
+      [11, 'Shares / Bagikan', 'Opsional', 'Angka', '120', 'Jumlah dibagikan'],
+    ]
+    addAoA(wsGuide, [guideHeaders, ...guideRows])
 
-  addAoA(wsGuide, [guideHeaders, ...guideRows])
-  const guideWidths = [6, 26, 22, 22, 36, 48, 42]
-  guideWidths.forEach((w, i) => {
-    wsGuide.getColumn(i + 1).width = w
-  })
+    // Sheet Referensi
+    const wsRef = wb.addWorksheet('Referensi Pilihan')
+    const refPillars = masterData?.pillars?.map((p) => p.name) || CONTENT_PILLAR_OPTIONS
+    const refPlatforms = masterData?.platforms?.map((p) => p.name) || [
+      'Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Website', 'Twitter/X', 'Threads',
+    ]
+    const maxRows = Math.max(refPillars.length, refPlatforms.length, CONTENT_FORMATS.length)
+    const refHeaders = ['Content Pillar (Resmi)', 'Target Platform', 'Format Konten']
+    const refRows: string[][] = []
+    for (let i = 0; i < maxRows; i++) {
+      refRows.push([refPillars[i] || '', refPlatforms[i] || '', CONTENT_FORMATS[i] || ''])
+    }
+    addAoA(wsRef, [refHeaders, ...refRows])
 
-  // ==========================================
-  // SHEET 3: REFERENSI PILIHAN
-  // ==========================================
-  const wsRef = wb.addWorksheet('Referensi Pilihan')
+    const buffer = await wb.xlsx.writeBuffer()
+    triggerDownload(
+      new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      'Template_Import_Arsip_Data_Lama_PLN.xlsx'
+    )
+  } else {
+    // ==========================================
+    // MODE 1: IMPORT RENCANA KONTEN (DEFAULT)
+    // ==========================================
+    const wsTemplate = wb.addWorksheet('Template Import')
 
-  const refPillars = masterData?.pillars?.map((p) => p.name) || CONTENT_PILLAR_OPTIONS
-  const refPlatforms = masterData?.platforms?.map((p) => p.name) || [
-    'Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Website', 'Twitter/X', 'Threads',
-  ]
+    const headers = [
+      'Judul Konten (Wajib)',
+      'Topik Konten (Wajib)',
+      'Content Pillar (Pilihan Sistem)',
+      'Format Konten (Pilihan Sistem)',
+      'Target Platform (Pilihan Sistem)',
+      'Content Purpose (Pilihan Sistem)',
+      'Posting Category (Pilihan Sistem)',
+      'Tanggal Rencana Publikasi (YYYY-MM-DD)',
+      'PIC (Opsional)',
+      'Brief / Keterangan (Opsional)',
+      'Target Audience (Opsional)',
+      'Link Referensi (Opsional)',
+    ]
 
-  const maxRows = Math.max(
-    refPillars.length,
-    refPlatforms.length,
-    CONTENT_FORMATS.length,
-    CONTENT_PURPOSES.length,
-    POSTING_CATEGORIES.length,
-  )
+    const sampleRows = [
+      [
+        '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Efisiensi Energi di Rumah',
+        'PLN Mobile & Edukasi Tarif',
+        pillar1,
+        'Carousel',
+        'Instagram, TikTok',
+        'EDUCATION',
+        'UID',
+        '2026-09-20',
+        'Tim Media Sosial',
+        'Edukasi tips hemat listrik bagi pelanggan rumah tangga di wilayah Jawa Barat.',
+        'Pelanggan Rumah Tangga',
+        'https://pln.co.id',
+      ],
+      [
+        '[CONTOH - HAPUS SEBELUM IMPORT] Green Energy Transition: PLTS Terapung Cirata',
+        'Transisi Energi Bersih',
+        pillar2,
+        'Vid/Reels/Shorts',
+        'Instagram, YouTube, TikTok',
+        'INFORMATION',
+        'UID',
+        '2026-09-25',
+        'Tim Humas & Komunikasi',
+        'Highlight komitmen EBT PLN UID Jawa Barat menyongsong Net Zero Emission.',
+        'Masyarakat Umum & Stakeholder',
+        '',
+      ],
+    ]
 
-  const refHeaders = [
-    'Content Pillar (Resmi)',
-    'Target Platform (Dapat Digabung)',
-    'Format Konten',
-    'Content Purpose',
-    'Posting Category',
-  ]
+    addAoA(wsTemplate, [headers, ...sampleRows])
 
-  const refRows: string[][] = []
-  for (let i = 0; i < maxRows; i++) {
-    refRows.push([
-      refPillars[i] || '',
-      refPlatforms[i] || '',
-      CONTENT_FORMATS[i] || '',
-      CONTENT_PURPOSES[i] || '',
-      POSTING_CATEGORIES[i] || '',
-    ])
+    const colWidths = [38, 28, 44, 20, 28, 22, 22, 26, 22, 40, 30, 28]
+    colWidths.forEach((w, i) => {
+      wsTemplate.getColumn(i + 1).width = w
+    })
+
+    // Sheet 2: Panduan Pengisian
+    const wsGuide = wb.addWorksheet('Panduan Pengisian')
+    const guideHeaders = [
+      'No',
+      'Nama Kolom',
+      'Status Kolom',
+      'Format / Tipe Data',
+      'Contoh Pengisian',
+      'Nilai yang Diperbolehkan / Keterangan',
+      'Catatan Kesalahan Umum',
+    ]
+
+    const guideRows = [
+      [1, 'Judul Konten', 'Wajib (Biru)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul singkat, menarik, dan informatif', 'Jangan dikosongkan.'],
+      [2, 'Topik Konten', 'Wajib (Biru)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
+      [3, 'Content Pillar', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
+      [4, 'Format Konten', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
+      [5, 'Target Platform', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Bisa Multi)', 'Instagram, TikTok, YouTube', 'Pisahkan dengan tanda koma (,) jika konten tayang di lebih dari 1 platform', 'Nama platform tidak sesuai.'],
+      [6, 'Content Purpose', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
+      [7, 'Posting Category', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'UID', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
+      [8, 'Tanggal Rencana Publikasi', 'Wajib (Biru)', 'Tanggal (YYYY-MM-DD)', '2026-09-20', 'Format YYYY-MM-DD (contoh: 2026-09-20)', 'Format DD/MM/YYYY tidak didukung.'],
+      [9, 'PIC', 'Opsional (Kuning)', 'Teks', 'Tim Media Sosial / Adit', 'Person in charge atau nama tim pelaksana', 'Boleh dikosongkan.'],
+      [10, 'Brief / Keterangan', 'Opsional (Kuning)', 'Teks Paragraf', 'Penjelasan narasi slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
+      [11, 'Target Audience', 'Opsional (Kuning)', 'Teks', 'Pelanggan Rumah Tangga', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
+      [12, 'Link Referensi', 'Opsional (Kuning)', 'URL Web', 'https://pln.co.id/press-release', 'Tautan rujukan berita atau materi', 'Boleh dikosongkan.'],
+    ]
+
+    addAoA(wsGuide, [guideHeaders, ...guideRows])
+
+    // Sheet 3: Referensi Pilihan
+    const wsRef = wb.addWorksheet('Referensi Pilihan')
+    const refPillars = masterData?.pillars?.map((p) => p.name) || CONTENT_PILLAR_OPTIONS
+    const refPlatforms = masterData?.platforms?.map((p) => p.name) || [
+      'Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Website', 'Twitter/X', 'Threads',
+    ]
+
+    const maxRows = Math.max(
+      refPillars.length,
+      refPlatforms.length,
+      CONTENT_FORMATS.length,
+      CONTENT_PURPOSES.length,
+      POSTING_CATEGORIES.length,
+    )
+
+    const refHeaders = [
+      'Content Pillar (Resmi)',
+      'Target Platform',
+      'Format Konten',
+      'Content Purpose',
+      'Posting Category',
+    ]
+
+    const refRows: string[][] = []
+    for (let i = 0; i < maxRows; i++) {
+      refRows.push([
+        refPillars[i] || '',
+        refPlatforms[i] || '',
+        CONTENT_FORMATS[i] || '',
+        CONTENT_PURPOSES[i] || '',
+        POSTING_CATEGORIES[i] || '',
+      ])
+    }
+
+    addAoA(wsRef, [refHeaders, ...refRows])
+
+    const buffer = await wb.xlsx.writeBuffer()
+    triggerDownload(
+      new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      'Template_Import_Rencana_Konten_PLN.xlsx'
+    )
   }
-
-  addAoA(wsRef, [refHeaders, ...refRows])
-  const refWidths = [46, 30, 22, 22, 22]
-  refWidths.forEach((w, i) => {
-    wsRef.getColumn(i + 1).width = w
-  })
-
-  // Trigger download
-  const buffer = await wb.xlsx.writeBuffer()
-  triggerDownload(
-    new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    'Template_Import_Rencana_Konten_PLN.xlsx',
-  )
 }
 
 /**
@@ -209,11 +305,10 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(arrayBuffer)
 
-  // Pilih sheet pertama atau sheet bernama "Template Import"
   const sheetName =
     wb.worksheets.find((ws) => {
       const n = ws.name.toLowerCase()
-      return n.includes('template') || n.includes('import')
+      return n.includes('template') || n.includes('import') || n.includes('arsip') || n.includes('data')
     })?.name ||
     wb.worksheets[0]?.name
 
@@ -226,10 +321,9 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     throw new Error('Sheet data tidak ditemukan di dalam file Excel.')
   }
 
-  // Convert to array-of-arrays
   const rawData: string[][] = []
-  ws.eachRow((row, rowNumber) => {
-    const values = (row.values as any[]).slice(1) // index 0 is empty in exceljs
+  ws.eachRow((row) => {
+    const values = (row.values as any[]).slice(1)
     rawData.push(values.map((v) => (v != null ? String(v) : '')))
   })
 
@@ -239,7 +333,6 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
 
   const headerRow = rawData[0].map((h) => h.trim().toLowerCase())
 
-  // Helper untuk mencari index kolom berdasarkan kata kunci
   const findColIdx = (keywords: string[]): number => {
     return headerRow.findIndex((col) => keywords.some((kw) => col.includes(kw.toLowerCase())))
   }
@@ -256,12 +349,27 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   const idxPic = findColIdx(['pic', 'penanggung'])
   const idxBrief = findColIdx(['brief', 'keterangan', 'deskripsi'])
   const idxAudience = findColIdx(['audience', 'audiens', 'sasaran'])
-  const idxRef = findColIdx(['link', 'referensi', 'reference', 'tautan'])
+  const idxRef = findColIdx(['link referensi', 'referensi', 'reference', 'tautan referensi'])
+
+  // Additional fields for LEGACY_PUBLISHED
+  const idxPostUrl = findColIdx(['link postingan', 'url postingan', 'post url', 'link post', 'url'])
+  const idxViews = findColIdx(['views', 'view', 'jangkauan', 'reach', 'tayangan'])
+  const idxLikes = findColIdx(['likes', 'like', 'suka'])
+  const idxComments = findColIdx(['comments', 'comment', 'komen', 'komentar'])
+  const idxShares = findColIdx(['shares', 'share', 'bagikan'])
 
   if (idxTitle === -1 || idxTopic === -1) {
     throw new Error(
-      'Header kolom Judul Konten ("Title") dan Topik Konten ("Topic") tidak ditemukan. Pastikan menggunakan format template yang disediakan.',
+      'Header kolom Judul Konten ("Title") dan Topik Konten ("Topic") tidak ditemukan. Pastikan menggunakan format template yang disediakan.'
     )
+  }
+
+  const parseNum = (valStr: string): number | undefined => {
+    if (!valStr || !valStr.trim()) return undefined
+    const clean = valStr.replace(/[^0-9]/g, '')
+    if (!clean) return undefined
+    const n = parseInt(clean, 10)
+    return isNaN(n) ? undefined : n
   }
 
   const parsedRows: ParsedImportRow[] = []
@@ -269,23 +377,21 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   for (let i = 1; i < rawData.length; i++) {
     const r = rawData[i]
     if (!r || r.every((cell) => cell.trim() === '')) {
-      continue // Skip baris kosong
+      continue
     }
 
     const titleVal = (r[idxTitle] || '').trim()
-    // Skip baris contoh yang diawali [CONTOH
     if (titleVal.toUpperCase().startsWith('[CONTOH')) {
       continue
     }
 
     let dateVal = idxDate !== -1 ? (r[idxDate] || '').trim() : ''
-    // Format date string jika ada waktu atau format ISO
     if (dateVal.includes('T')) {
       dateVal = dateVal.split('T')[0]
     }
 
     parsedRows.push({
-      row_number: i + 1, // Baris 1-indexed di Excel
+      row_number: i + 1,
       title: titleVal,
       topic: idxTopic !== -1 ? (r[idxTopic] || '').trim() : '',
       pillar: idxPillar !== -1 ? (r[idxPillar] || '').trim() : '',
@@ -299,6 +405,12 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
       brief: idxBrief !== -1 ? (r[idxBrief] || '').trim() : '',
       target_audience: idxAudience !== -1 ? (r[idxAudience] || '').trim() : '',
       reference: idxRef !== -1 ? (r[idxRef] || '').trim() : '',
+      // Legacy Published data
+      post_url: idxPostUrl !== -1 ? (r[idxPostUrl] || '').trim() : undefined,
+      views: idxViews !== -1 ? parseNum(r[idxViews]) : undefined,
+      likes: idxLikes !== -1 ? parseNum(r[idxLikes]) : undefined,
+      comments: idxComments !== -1 ? parseNum(r[idxComments]) : undefined,
+      shares: idxShares !== -1 ? parseNum(r[idxShares]) : undefined,
     })
   }
 
@@ -306,26 +418,29 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
 }
 
 /**
- * Export Laporan Hasil Validasi atau Hasil Import ke file Excel
+ * Export Laporan Hasil Validasi ke file Excel
  */
-export async function downloadValidationReportExcel(rows: Array<{
-  row_number: number
-  title: string
-  topic: string
-  pillar?: string
-  platform?: string
-  planned_date?: string
-  status: string
-  errors?: string[]
-  warnings?: string[]
-}>, filename = 'Laporan_Validasi_Import_Konten.xlsx') {
+export async function downloadValidationReportExcel(
+  rows: Array<{
+    row_number: number
+    title: string
+    topic: string
+    pillar?: string
+    platform?: string
+    planned_date?: string
+    status: string
+    errors?: string[]
+    warnings?: string[]
+  }>,
+  filename = 'Laporan_Validasi_Import_Konten.xlsx'
+) {
   const headers = [
     'No. Baris Excel',
     'Judul Konten',
     'Topik Konten',
     'Content Pillar',
     'Target Platform',
-    'Tanggal Rencana',
+    'Tanggal Rencana / Terbit',
     'Status Validasi',
     'Detail Error / Catatan Perbaikan',
   ]
@@ -359,6 +474,6 @@ export async function downloadValidationReportExcel(rows: Array<{
   const buffer = await wb.xlsx.writeBuffer()
   triggerDownload(
     new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    filename,
+    filename
   )
 }

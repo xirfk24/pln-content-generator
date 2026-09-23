@@ -20,10 +20,14 @@ import {
   ArrowRight,
   RotateCcw,
   Sparkles,
-  Info,
   Layers,
   Calendar,
   ExternalLink,
+  Archive,
+  Eye,
+  Heart,
+  MessageSquare,
+  Share2,
 } from 'lucide-react'
 import Link from '@/compat/next'
 import {
@@ -62,9 +66,11 @@ interface ImportExecutionResult {
 }
 
 type StepperStep = 1 | 2 | 3 | 4 | 5
+type ImportMode = 'PLAN' | 'LEGACY_PUBLISHED'
 
 export default function ContentImportPage() {
   const [currentStep, setCurrentStep] = useState<StepperStep>(1)
+  const [importMode, setImportMode] = useState<ImportMode>('PLAN')
   const [masterData, setMasterData] = useState<MasterDataInfo>({ pillars: [], platforms: [] })
 
   // Step 1: File Selection
@@ -160,7 +166,7 @@ export default function ContentImportPage() {
       const res = await apiFetch('/api/contents/import/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: parsedRows }),
+        body: JSON.stringify({ import_mode: importMode, rows: parsedRows }),
       })
 
       const rawText = await res.text()
@@ -209,7 +215,7 @@ export default function ContentImportPage() {
       const res = await apiFetch('/api/contents/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: validParsedData }),
+        body: JSON.stringify({ import_mode: importMode, rows: validParsedData }),
       })
 
       const rawText = await res.text()
@@ -284,10 +290,10 @@ export default function ContentImportPage() {
       {/* Header & Breadcrumb */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-          Import Rencana Konten Massal
+          Import Konten Massal
         </h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          Impor batch rencana konten menggunakan template Excel resmi dengan validasi sebelum penyimpanan.
+          Impor draf rencana konten baru atau pemindahan arsip data terbit lama beserta statistik insight.
         </p>
       </div>
 
@@ -295,7 +301,7 @@ export default function ContentImportPage() {
       <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {[
-            { num: 1, label: 'Upload File' },
+            { num: 1, label: 'Pilih Mode & File' },
             { num: 2, label: 'Validasi' },
             { num: 3, label: 'Preview & Analisis' },
             { num: 4, label: 'Konfirmasi' },
@@ -333,31 +339,106 @@ export default function ContentImportPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* STEP 1: UPLOAD FILE & DOWNLOAD TEMPLATE                   */}
+      {/* STEP 1: PILIH MODE, UPLOAD FILE & DOWNLOAD TEMPLATE       */}
       {/* ========================================================= */}
       {currentStep === 1 && (
         <div className="space-y-5">
-          {/* Card 1: Download Template Excel 3 Sheet */}
+          {/* Section Mode Switcher */}
+          <Card className="border-border shadow-xs">
+            <CardHeader className="pb-3 border-b bg-surface-muted/30">
+              <CardTitle className="text-sm font-semibold text-ink flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                1. Pilih Mode Impor Data Konten
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Mode 1: Rencana Konten */}
+                <div
+                  onClick={() => setImportMode('PLAN')}
+                  className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                    importMode === 'PLAN'
+                      ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20 dark:border-blue-700 dark:bg-blue-950/30'
+                      : 'border-slate-200 hover:border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-ink">Import Rencana Konten Baru</h4>
+                        {importMode === 'PLAN' && (
+                          <Badge className="bg-blue-600 text-white text-[10px]">Aktif</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Gunakan untuk mengimpor draf ide/rencana konten baru yang akan diproses melalui alur kerja (Status: <strong>DRAFT</strong>).
+                      </p>
+                      <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium pt-1">
+                        ✓ Judul • Topik • Pilar • Format • Platform • Tanggal Rencana • PIC
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mode 2: Pemindahan Data Lama / Terbit */}
+                <div
+                  onClick={() => setImportMode('LEGACY_PUBLISHED')}
+                  className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                    importMode === 'LEGACY_PUBLISHED'
+                      ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 dark:border-emerald-700 dark:bg-emerald-950/30'
+                      : 'border-slate-200 hover:border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
+                      <Archive className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-ink">Pemindahan Data Lama / Arsip Terbit</h4>
+                        {importMode === 'LEGACY_PUBLISHED' && (
+                          <Badge className="bg-emerald-600 text-white text-[10px]">Aktif</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Gunakan untuk mengimpor arsip konten historis yang pernah tayang. Konten langsung berstatus <strong>DIPUBLIKASIKAN (PUBLISHED)</strong> beserta tautan postingan &amp; insight.
+                      </p>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium pt-1">
+                        ✓ Tanggal Terbit • Judul • Topik • Pilar • Format • Platform • Link Post • Views • Like • Komen • Share
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Download Template Excel Resmi */}
           <Card className="border-border shadow-xs">
             <CardHeader className="pb-3 border-b bg-surface-muted/30">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <CardTitle className="text-sm font-semibold text-ink flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                    1. Download Template Excel Resmi
+                    2. Download Template Excel Resmi ({importMode === 'LEGACY_PUBLISHED' ? 'Mode Data Lama' : 'Mode Rencana Konten'})
                   </CardTitle>
                   <p className="text-xs text-ink-muted mt-0.5">
-                    Gunakan template Excel 3-Sheet (.xlsx) berpenanda warna untuk pengisian data yang akurat
+                    Gunakan template Excel berpenanda warna yang telah disesuaikan dengan mode impor pilihan Anda
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { void downloadExcelTemplate(masterData) }}
+                  onClick={() => { void downloadExcelTemplate(masterData, importMode) }}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800 shrink-0 font-medium"
                 >
                   <Download className="mr-1.5 h-4 w-4" />
-                  Download Template .xlsx
+                  {importMode === 'LEGACY_PUBLISHED'
+                    ? 'Download Template Data Lama (.xlsx)'
+                    : 'Download Template Rencana Konten (.xlsx)'}
                 </Button>
               </div>
             </CardHeader>
@@ -369,7 +450,9 @@ export default function ContentImportPage() {
                     Sheet 1: Template Import
                   </div>
                   <p className="text-blue-700/80 dark:text-blue-300/80 leading-relaxed text-[11px]">
-                    Kolom Biru (Wajib), Hijau (Pilihan Sistem), dan Kuning (Opsional). Dilengkapi baris contoh yang otomatis dilewati sistem.
+                    {importMode === 'LEGACY_PUBLISHED'
+                      ? 'Kolom Tanggal Terbit, Judul, Topik, Pilar, Format, Platform, Link Post, dan Insight (Views, Likes, Komen, Share).'
+                      : 'Kolom Biru (Wajib), Hijau (Pilihan Sistem), dan Kuning (Opsional). Baris contoh otomatis dilewati sistem.'}
                   </p>
                 </div>
 
@@ -379,7 +462,7 @@ export default function ContentImportPage() {
                     Sheet 2: Panduan Pengisian
                   </div>
                   <p className="text-emerald-700/80 dark:text-emerald-300/80 leading-relaxed text-[11px]">
-                    Penjelasan lengkap format tanggal (YYYY-MM-DD), aturan multi-platform (pisahkan koma), dan pencegahan kesalahan umum.
+                    Penjelasan format tanggal (YYYY-MM-DD), penulisan URL postingan media sosial, serta pengisian angka performa insight.
                   </p>
                 </div>
 
@@ -389,19 +472,19 @@ export default function ContentImportPage() {
                     Sheet 3: Referensi Pilihan
                   </div>
                   <p className="text-purple-700/80 dark:text-purple-300/80 leading-relaxed text-[11px]">
-                    Daftar resmi Content Pillar Humas PLN UID Jawa Barat, Target Platform, Format Konten, dan Tujuan Konten dari database.
+                    Daftar resmi Content Pillar Humas PLN UID Jawa Barat, Target Platform, dan Format Konten dari database.
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Card 2: Dropzone Upload File */}
+          {/* Dropzone Upload File */}
           <Card className="border-border shadow-xs">
             <CardHeader className="pb-3 border-b bg-surface-muted/30">
               <CardTitle className="text-sm font-semibold text-ink flex items-center gap-2">
                 <Upload className="h-4 w-4 text-primary" />
-                2. Upload &amp; Pilih File Rencana Konten
+                3. Upload &amp; Pilih File Data Konten
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
@@ -450,7 +533,7 @@ export default function ContentImportPage() {
                     <div>
                       <p className="text-xs font-semibold text-ink">{file.name}</p>
                       <p className="text-[11px] text-ink-muted">
-                        {(file.size / 1024).toFixed(1)} KB • Terdeteksi <strong>{parsedRows.length} baris</strong> rencana konten
+                        {(file.size / 1024).toFixed(1)} KB • Terdeteksi <strong>{parsedRows.length} baris</strong> data konten ({importMode === 'LEGACY_PUBLISHED' ? 'Arsip Terbit' : 'Rencana Konten'})
                       </p>
                     </div>
                   </div>
@@ -497,7 +580,9 @@ export default function ContentImportPage() {
         <Card className="p-12 text-center shadow-xs">
           <div className="flex flex-col items-center justify-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <h3 className="text-base font-semibold text-ink">Memvalidasi Data Rencana Konten...</h3>
+            <h3 className="text-base font-semibold text-ink">
+              Memvalidasi Data {importMode === 'LEGACY_PUBLISHED' ? 'Arsip Data Lama' : 'Rencana Konten'}...
+            </h3>
             <p className="text-xs text-ink-muted max-w-md">
               Sistem sedang memeriksa kesesuaian format tanggal, relasi pilar dan platform di database, serta mendeteksi kemungkinan duplikasi.
             </p>
@@ -723,12 +808,17 @@ export default function ContentImportPage() {
                       Platform
                     </th>
                     <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary whitespace-nowrap">
-                      Tgl Rencana
+                      {importMode === 'LEGACY_PUBLISHED' ? 'Tgl Terbit' : 'Tgl Rencana'}
                     </th>
+                    {importMode === 'LEGACY_PUBLISHED' && (
+                      <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary min-w-[180px]">
+                        Link &amp; Insight Performa
+                      </th>
+                    )}
                     <th className="px-3 py-2.5 text-center font-semibold text-ink-secondary w-24">
                       Status
                     </th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary min-w-[250px]">
+                    <th className="px-3 py-2.5 text-left font-semibold text-ink-secondary min-w-[200px]">
                       Detail Masalah / Catatan
                     </th>
                   </tr>
@@ -736,7 +826,7 @@ export default function ContentImportPage() {
                 <tbody className="divide-y divide-border">
                   {filteredPreviewRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={importMode === 'LEGACY_PUBLISHED' ? 9 : 8} className="py-8 text-center text-slate-400 text-xs">
                         Tidak ada data yang sesuai dengan filter atau pencarian saat ini.
                       </td>
                     </tr>
@@ -746,6 +836,7 @@ export default function ContentImportPage() {
                       const isRowWarning = row.status === 'WARNING'
                       const isRowDuplicate = row.status === 'DUPLICATE'
                       const isRowInvalid = row.status === 'INVALID'
+                      const pData = row.parsed_data
 
                       return (
                         <tr
@@ -776,6 +867,52 @@ export default function ContentImportPage() {
                           <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 dark:text-slate-300 font-mono">
                             {row.planned_date || '-'}
                           </td>
+                          {importMode === 'LEGACY_PUBLISHED' && (
+                            <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                              {pData?.post_url ? (
+                                <a
+                                  href={pData.post_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px] truncate max-w-[160px]"
+                                >
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                  Link Post
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">Tanpa URL</span>
+                              )}
+
+                              {(pData?.views > 0 || pData?.likes > 0 || pData?.comments > 0 || pData?.shares > 0) && (
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+                                  {pData.views > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      <Eye className="h-2.5 w-2.5 text-blue-500" />
+                                      {pData.views.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {pData.likes > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      <Heart className="h-2.5 w-2.5 text-rose-500" />
+                                      {pData.likes.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {pData.comments > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      <MessageSquare className="h-2.5 w-2.5 text-emerald-500" />
+                                      {pData.comments.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {pData.shares > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      <Share2 className="h-2.5 w-2.5 text-purple-500" />
+                                      {pData.shares.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          )}
                           <td className="px-3 py-2.5 text-center">
                             {isRowValid && (
                               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 text-[10px]">
@@ -819,7 +956,7 @@ export default function ContentImportPage() {
                               </ul>
                             ) : (
                               <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                Siap diimport
+                                {importMode === 'LEGACY_PUBLISHED' ? 'Siap diimport sebagai Terbit (PUBLISHED)' : 'Siap diimport sebagai Draft'}
                               </span>
                             )}
                           </td>
@@ -842,18 +979,23 @@ export default function ContentImportPage() {
           <CardHeader className="border-b bg-surface-muted/30">
             <CardTitle className="text-base font-semibold text-ink flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              Konfirmasi Import Data Rencana Konten
+              Konfirmasi Import Data ({importMode === 'LEGACY_PUBLISHED' ? 'Arsip Data Lama' : 'Rencana Konten'})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/50 dark:bg-blue-950/30">
               <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
-                Pemberitahuan Partial Import
+                Pemberitahuan Import {importMode === 'LEGACY_PUBLISHED' ? 'Mode Arsip Data Lama' : 'Mode Rencana Konten'}
               </h4>
               <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
                 Terdapat <strong>{validationSummary.valid} baris data valid</strong> dan{' '}
                 <strong>{validationSummary.invalid + validationSummary.duplicate} baris data bermasalah</strong>.
-                Sesuai kebijakan keamanan data, sistem <strong>hanya akan menyimpan {validationSummary.valid} data valid</strong> ke dalam database sebagai rencana konten baru (status <em>Planned</em>).
+                Sistem akan menyimpan <strong>{validationSummary.valid} data valid</strong> ke database
+                {importMode === 'LEGACY_PUBLISHED' ? (
+                  <span> langsung berstatus <strong>DIPUBLIKASIKAN (PUBLISHED)</strong> beserta link postingan &amp; data insight performa.</span>
+                ) : (
+                  <span> sebagai rencana/draf konten baru (status <em>DRAFT</em>).</span>
+                )}
               </p>
             </div>
 
@@ -866,7 +1008,9 @@ export default function ContentImportPage() {
                 <div className="text-3xl font-bold text-emerald-900 dark:text-emerald-200 mt-1">
                   {validationSummary.valid}
                 </div>
-                <span className="text-[11px] text-emerald-600">Konten Valid</span>
+                <span className="text-[11px] text-emerald-600">
+                  {importMode === 'LEGACY_PUBLISHED' ? 'Konten Dipublikasikan' : 'Draf Rencana Konten'}
+                </span>
               </div>
 
               <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/40 dark:border-rose-900/40 dark:bg-rose-950/20">
@@ -933,7 +1077,7 @@ export default function ContentImportPage() {
           <CardHeader className="border-b bg-surface-muted/30">
             <CardTitle className="text-base font-semibold text-ink flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              Proses Import Rencana Konten Selesai
+              Proses Import Data ({importMode === 'LEGACY_PUBLISHED' ? 'Arsip Data Lama' : 'Rencana Konten'}) Selesai
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
@@ -946,7 +1090,9 @@ export default function ContentImportPage() {
                 <div className="text-3xl font-bold text-emerald-900 dark:text-emerald-200 mt-1">
                   {importResult.imported}
                 </div>
-                <span className="text-[11px] text-emerald-600">Rencana Konten Baru</span>
+                <span className="text-[11px] text-emerald-600">
+                  {importMode === 'LEGACY_PUBLISHED' ? 'Konten Terbit & Insight' : 'Rencana Konten Baru'}
+                </span>
               </div>
 
               <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20">
@@ -961,7 +1107,7 @@ export default function ContentImportPage() {
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/60">
                 <span className="text-xs text-slate-700 dark:text-slate-400 font-semibold">
-                  Total Diproses
+                  Total Dipproses
                 </span>
                 <div className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
                   {importResult.imported + importResult.skipped}
@@ -1010,12 +1156,21 @@ export default function ContentImportPage() {
                   Download Laporan Hasil (.xlsx)
                 </Button>
 
-                <Link href="/content/planning">
-                  <Button size="sm" className="text-xs font-semibold">
-                    <FileText className="mr-1.5 h-3.5 w-3.5" />
-                    Lihat Rencana Konten
-                  </Button>
-                </Link>
+                {importMode === 'LEGACY_PUBLISHED' ? (
+                  <Link href="/analytics/performance">
+                    <Button size="sm" className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      Lihat Analitik &amp; Performa
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/content/planning">
+                    <Button size="sm" className="text-xs font-semibold">
+                      <FileText className="mr-1.5 h-3.5 w-3.5" />
+                      Lihat Rencana Konten
+                    </Button>
+                  </Link>
+                )}
 
                 <Link href="/content/planning?tab=calendar">
                   <Button size="sm" variant="outline" className="text-xs">

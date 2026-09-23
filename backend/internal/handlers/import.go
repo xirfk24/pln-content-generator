@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -65,6 +66,12 @@ type ImportRowInput struct {
 	Brief           string `json:"brief"`
 	TargetAudience  string `json:"target_audience"`
 	Reference       string `json:"reference"`
+	// Additional fields for LEGACY_PUBLISHED mode
+	PostURL  string `json:"post_url"`
+	Views    *int   `json:"views"`
+	Likes    *int   `json:"likes"`
+	Comments *int   `json:"comments"`
+	Shares   *int   `json:"shares"`
 }
 
 type importError struct {
@@ -74,7 +81,8 @@ type importError struct {
 }
 
 type ValidateImportInput struct {
-	Rows []ImportRowInput `json:"rows"`
+	ImportMode string           `json:"import_mode"` // "PLAN" (default) or "LEGACY_PUBLISHED"
+	Rows       []ImportRowInput `json:"rows"`
 }
 
 type ParsedRowData struct {
@@ -97,6 +105,13 @@ type ParsedRowData struct {
 	Brief             *string  `json:"brief"`
 	TargetAudience    *string  `json:"target_audience"`
 	Reference         *string  `json:"reference"`
+	// Additional fields for LEGACY_PUBLISHED mode
+	ImportMode string  `json:"import_mode"`
+	PostURL    *string `json:"post_url"`
+	Views      int     `json:"views"`
+	Likes      int     `json:"likes"`
+	Comments   int     `json:"comments"`
+	Shares     int     `json:"shares"`
 }
 
 type RowValidationResult struct {
@@ -143,6 +158,11 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 	if len(in.Rows) > 500 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Maksimal 500 baris data per proses import"})
 		return
+	}
+
+	importMode := strings.ToUpper(strings.TrimSpace(in.ImportMode))
+	if importMode != "LEGACY_PUBLISHED" {
+		importMode = "PLAN"
 	}
 
 	// Load master data maps
@@ -192,12 +212,16 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 			res.Errors = append(res.Errors, "Topik Konten wajib diisi.")
 		}
 
-		// 3. Validasi Tanggal Rencana Publikasi
+		// 3. Validasi Tanggal Rencana/Publikasi
 		var formattedDate string
 		var pWeek int
 		var pDay string
 		if res.PlannedDate == "" {
-			res.Errors = append(res.Errors, "Tanggal Rencana Publikasi wajib diisi.")
+			if importMode == "LEGACY_PUBLISHED" {
+				res.Errors = append(res.Errors, "Tanggal Publikasi wajib diisi.")
+			} else {
+				res.Errors = append(res.Errors, "Tanggal Rencana Publikasi wajib diisi.")
+			}
 		} else {
 			t, ok := parseDateStr(res.PlannedDate)
 			if !ok {
@@ -238,7 +262,6 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 		if platInput == "" {
 			res.Errors = append(res.Errors, fmt.Sprintf("Target Platform wajib diisi. Pilihan tersedia: %s.", strings.Join(platformNamesList, ", ")))
 		} else {
-			// Split by comma, semicolon, slash, or newline
 			rawPlats := splitMulti(platInput)
 			for _, pRaw := range rawPlats {
 				pClean := strings.TrimSpace(pRaw)
@@ -266,7 +289,6 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 			format = "Carousel"
 			res.Warnings = append(res.Warnings, "Format konten dikosongkan, default ke 'Carousel'.")
 		} else if !validFormats[format] {
-			// Try case-insensitive lookup
 			matchedFmt := ""
 			for vf := range validFormats {
 				if strings.EqualFold(vf, format) {
@@ -317,14 +339,12 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 		if res.Title != "" && formattedDate != "" {
 			dedupKey := fmt.Sprintf("%s|%s", strings.ToLower(res.Title), formattedDate)
 
-			// In-file duplicate
 			if firstRow, exists := seenInFile[dedupKey]; exists {
 				res.Errors = append(res.Errors, fmt.Sprintf("Duplikat di dalam file: Judul dan Tanggal sama persis dengan baris %d.", firstRow))
 				res.Status = "DUPLICATE"
 			} else {
 				seenInFile[dedupKey] = rowNum
 
-				// Database duplicate check
 				var dbCount int
 				_ = h.Pool.QueryRow(c.Request.Context(),
 					"SELECT COUNT(*) FROM contents WHERE LOWER(title) = LOWER($1) AND planned_date = $2",
@@ -349,7 +369,7 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 
 		// Siapkan parsed data jika valid atau warning
 		if res.Status == "VALID" || res.Status == "WARNING" {
-			var picPtr, briefPtr, taPtr, refPtr *string
+			var picPtr, briefPtr, taPtr, refPtr, postURLPtr *string
 			if v := strings.TrimSpace(row.PIC); v != "" {
 				picPtr = &v
 			}
@@ -361,6 +381,26 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 			}
 			if v := strings.TrimSpace(row.Reference); v != "" {
 				refPtr = &v
+			}
+			if v := strings.TrimSpace(row.PostURL); v != "" {
+				postURLPtr = &v
+			}
+
+			viewsVal := 0
+			if row.Views != nil && *row.Views > 0 {
+				viewsVal = *row.Views
+			}
+			likesVal := 0
+			if row.Likes != nil && *row.Likes > 0 {
+				likesVal = *row.Likes
+			}
+			commentsVal := 0
+			if row.Comments != nil && *row.Comments > 0 {
+				commentsVal = *row.Comments
+			}
+			sharesVal := 0
+			if row.Shares != nil && *row.Shares > 0 {
+				sharesVal = *row.Shares
 			}
 
 			res.ParsedData = &ParsedRowData{
@@ -383,6 +423,12 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 				Brief:             briefPtr,
 				TargetAudience:    taPtr,
 				Reference:         refPtr,
+				ImportMode:        importMode,
+				PostURL:           postURLPtr,
+				Views:             viewsVal,
+				Likes:             likesVal,
+				Comments:          commentsVal,
+				Shares:            sharesVal,
 			}
 		}
 
@@ -411,7 +457,8 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 }
 
 type ExecuteImportInput struct {
-	Rows []ParsedRowData `json:"rows"`
+	ImportMode string          `json:"import_mode"`
+	Rows       []ParsedRowData `json:"rows"`
 }
 
 // POST /api/contents/import
@@ -431,11 +478,14 @@ func (h *Handler) ImportContents(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data valid yang dikirim untuk diimport"})
 		return
 	}
-	// Mirror the /import/validate cap so a client hitting /import directly
-	// cannot bypass the 500-row limit.
 	if len(in.Rows) > 500 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Maksimal 500 baris data per proses import"})
 		return
+	}
+
+	globalImportMode := strings.ToUpper(strings.TrimSpace(in.ImportMode))
+	if globalImportMode != "LEGACY_PUBLISHED" {
+		globalImportMode = "PLAN"
 	}
 
 	imported := 0
@@ -453,9 +503,6 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			continue
 		}
 
-		// Re-validate on the execute path: a client can POST to /import
-		// directly, bypassing /import/validate, so we cannot trust
-		// ParsedRowData to contain only canonical values.
 		if _, ok := parseDateStr(row.PlannedDate); !ok {
 			skipped++
 			errs = append(errs, importError{Row: rowNum, Field: "planned_date", Message: "Format tanggal tidak valid. Gunakan YYYY-MM-DD."})
@@ -497,9 +544,7 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				postingCategory = &canonPtr
 			}
 		}
-		// Resolve pillar/category/platform by ID or name — do not persist
-		// raw client-supplied UUIDs (may be foreign keys to other tenants'
-		// rows or simply invalid).
+
 		resolvedPillar := h.resolvePillarID(c.Request.Context(), row.PillarID)
 		resolvedCategory := h.resolveCategoryID(c.Request.Context(), row.CategoryID)
 		resolvedPrimaryPlatform := h.resolvePlatformID(c.Request.Context(), row.PrimaryPlatformID)
@@ -546,10 +591,20 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			contentPurposes = []string{}
 		}
 
+		rowMode := strings.ToUpper(strings.TrimSpace(row.ImportMode))
+		if rowMode == "" {
+			rowMode = globalImportMode
+		}
+
 		initialStatus := "DRAFT"
 		historyAction := "CREATED"
 		historyComment := "Konten berhasil diimpor secara massal"
-		if isRepostPostingCategory(postingCategory) {
+
+		if rowMode == "LEGACY_PUBLISHED" {
+			initialStatus = "PUBLISHED"
+			historyAction = "MARK_PUBLISHED"
+			historyComment = "Data arsip/lama diimpor langsung sebagai konten publikasi"
+		} else if isRepostPostingCategory(postingCategory) {
 			initialStatus = "APPROVED"
 			historyAction = "AUTO_APPROVED"
 			historyComment = "Konten Repost otomatis disetujui (Approved) saat impor"
@@ -582,6 +637,60 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			VALUES ($1, $2, NULL, $3, $4, $5)
 		`, insertedID, historyAction, initialStatus, historyComment, user.ID)
 
+		// Jika mode LEGACY_PUBLISHED, buat record di publications & performance_metrics
+		if rowMode == "LEGACY_PUBLISHED" {
+			targetPlatforms := resolvedPlatformIDs
+			if len(targetPlatforms) == 0 && resolvedPrimaryPlatform != nil {
+				targetPlatforms = []string{*resolvedPrimaryPlatform}
+			}
+			if len(targetPlatforms) == 0 {
+				targetPlatforms = []string{""}
+			}
+
+			for _, platID := range targetPlatforms {
+				var pID *string
+				if platID != "" {
+					pID = &platID
+				}
+				postURL := cleanStrPtr(row.PostURL)
+
+				var pubID string
+				errPub := h.Pool.QueryRow(c.Request.Context(), `
+					INSERT INTO publications (
+						content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes
+					) VALUES ($1, $2, $3, $4, $5, 'PUBLISHED', $6)
+					RETURNING id
+				`, insertedID, pID, plannedDate, plannedDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
+
+				if errPub != nil {
+					log.Printf("Import row %d publication insert error: %v", rowNum, errPub)
+					continue
+				}
+
+				// Jika terdapat angka insight (views/likes/comments/shares > 0), insert ke performance_metrics
+				if row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Shares > 0 {
+					recDate := row.PlannedDate
+					if recDate == "" {
+						recDate = time.Now().Format("2006-01-02")
+					}
+					_, errMet := h.Pool.Exec(c.Request.Context(), `
+						INSERT INTO performance_metrics (
+							publication_id, views, likes, comments, shares, saves, reach, recorded_at
+						) VALUES ($1, $2, $3, $4, $5, 0, $2, $6)
+						ON CONFLICT (publication_id, recorded_at) DO UPDATE SET
+							views = EXCLUDED.views,
+							likes = EXCLUDED.likes,
+							comments = EXCLUDED.comments,
+							shares = EXCLUDED.shares,
+							reach = EXCLUDED.reach
+					`, pubID, row.Views, row.Likes, row.Comments, row.Shares, recDate)
+					if errMet != nil {
+						log.Printf("Import row %d metric insert error: %v", rowNum, errMet)
+					}
+				}
+			}
+		}
+
 		imported++
 	}
 
@@ -590,6 +699,17 @@ func (h *Handler) ImportContents(c *gin.Context) {
 		"skipped":  skipped,
 		"errors":   errs,
 	})
+}
+
+func cleanStrPtr(p *string) *string {
+	if p == nil {
+		return nil
+	}
+	v := strings.TrimSpace(*p)
+	if v == "" {
+		return nil
+	}
+	return &v
 }
 
 // Helper functions for matching
@@ -650,16 +770,13 @@ func matchPillar(input string, m map[string]struct{ ID, Name string }) (string, 
 	if inLower == "" {
 		return "", "", false
 	}
-	// Exact
 	if res, ok := m[inLower]; ok {
 		return res.ID, res.Name, true
 	}
-	// Prefix / substring match
 	for k, res := range m {
 		if strings.Contains(k, inLower) || strings.Contains(inLower, k) {
 			return res.ID, res.Name, true
 		}
-		// Match short names before parentheses
 		if idx := strings.Index(k, "("); idx != -1 {
 			short := strings.TrimSpace(k[:idx])
 			if strings.Contains(inLower, short) || strings.Contains(short, inLower) {
@@ -675,11 +792,9 @@ func matchPlatform(input string, m map[string]struct{ ID, Name string }) (string
 	if inLower == "" {
 		return "", "", false
 	}
-	// Direct map check
 	if res, ok := m[inLower]; ok {
 		return res.ID, res.Name, true
 	}
-	// Keyword matching
 	for k, res := range m {
 		if strings.Contains(inLower, "insta") && strings.Contains(k, "insta") {
 			return res.ID, res.Name, true
