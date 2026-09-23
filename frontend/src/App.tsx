@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, Outlet } from 'react-router-dom'
 import { createClient } from '@/lib/supabase/client'
+import { apiFetch } from '@/lib/api'
 import { MainLayout } from '@/components/layout/main-layout'
 
 import HomePage from './pages/home'
@@ -79,6 +80,47 @@ function AppLayout() {
   )
 }
 
+// RequireRole membatasi halaman untuk ADMIN. Backend tetap sumber kebenaran
+// (RequireRole("ADMIN") di Go), ini lapisan UX agar STAFF tidak melihat
+// shell halaman admin sebelum request API ditolak.
+function RequireRole({ children }: { children: ReactNode }) {
+  const [checking, setChecking] = useState(true)
+  const [allowed, setAllowed] = useState(false)
+
+  useEffect(() => {
+    apiFetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setAllowed(data?.user?.profile?.role === 'ADMIN')
+        setChecking(false)
+      })
+      .catch(() => {
+        setAllowed(false)
+        setChecking(false)
+      })
+  }, [])
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-ink-secondary">Loading...</p>
+      </div>
+    )
+  }
+  if (!allowed) {
+    return <Navigate to="/unauthorized" replace />
+  }
+  return <>{children}</>
+}
+
+function AdminLayout() {
+  return (
+    <RequireRole>
+      <Outlet />
+    </RequireRole>
+  )
+}
+
 export default function App() {
   return (
     <Routes>
@@ -105,12 +147,16 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/recap" element={<RecapPage />} />
         <Route path="/content/import" element={<ContentImportPage />} />
-        <Route path="/admin/users" element={<AdminUsersPage />} />
-        <Route path="/admin/categories" element={<AdminCategoriesPage />} />
-        <Route path="/admin/pillars" element={<AdminPillarsPage />} />
-        <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
-        <Route path="/admin/periods" element={<AdminPeriodsPage />} />
-        <Route path="/periode-perencanaan" element={<AdminPeriodsPage />} />
+
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+          <Route path="/admin/pillars" element={<AdminPillarsPage />} />
+          <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
+          <Route path="/admin/periods" element={<AdminPeriodsPage />} />
+          <Route path="/periode-perencanaan" element={<AdminPeriodsPage />} />
+        </Route>
+
         <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 

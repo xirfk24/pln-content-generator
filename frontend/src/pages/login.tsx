@@ -6,7 +6,7 @@ import { useRouter } from '@/compat/next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react'
 
 import { PLNLogo } from '@/components/ui/pln-logo'
 
@@ -234,39 +234,6 @@ export default function LoginPage() {
                 </button>
               </p>
             </form>
-
-            {/* Quick Demo Accounts Pill Selector */}
-            <div className="pt-2">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-800/60">
-                <div className="flex items-center justify-between pb-1.5">
-                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                    Quick Demo Accounts
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    pwd: demo1234
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { email: 'admin@pln.co.id', label: 'Admin' },
-                    { email: 'staff1@pln.co.id', label: 'Staff 1' },
-                    { email: 'staff2@pln.co.id', label: 'Staff 2' },
-                  ].map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => {
-                        setEmail(acc.email)
-                        setPassword('demo1234')
-                      }}
-                      className="inline-flex items-center rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs border border-slate-200 hover:border-[#00A3A6] hover:text-[#00A3A6] transition dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                    >
-                      {acc.label} ({acc.email.split('@')[0]})
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Footer Copyright */}
