@@ -429,7 +429,7 @@ export default function DashboardPage() {
       {/* Banner Penjelasan Modul */}
       <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-sky-50 p-4 text-xs text-blue-900 shadow-sm sm:text-sm">
         <p className="font-semibold text-blue-950">
-          📊 Modul Dasbor Utama & Performa Konten
+          📊 Modul Dashboard Utama & Performa Konten
         </p>
         <p className="mt-1 text-xs text-blue-700">
           Menyajikan ringkasan metrik konten, pemantauan efektivitas publikasi, serta status alur persetujuan Bagian Komunikasi PLN UID Jawa Barat secara real-time.
@@ -437,7 +437,7 @@ export default function DashboardPage() {
       </div>
 
       <PageHeader
-        title="Dasbor Utama"
+        title="Dashboard Utama"
         description="Ringkasan aktivitas konten, alur kerja publikasi, dan performa komunikasi humas."
       />
 

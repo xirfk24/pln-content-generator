@@ -41,7 +41,7 @@ type NavGroup = {
 }
 
 const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
-  { name: 'Dasbor', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   {
     name: 'Perencanaan Konten',
     children: [
