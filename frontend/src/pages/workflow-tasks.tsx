@@ -5,17 +5,6 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from '@/compat/next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   Loader2,
   Eye,
@@ -23,12 +12,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Send,
   ExternalLink,
   CheckSquare,
   Wrench,
   Globe,
-  XCircle,
   RotateCcw,
   Layers,
 } from 'lucide-react'
@@ -36,7 +23,7 @@ import { formatDate } from '@/lib/utils'
 import { WorkflowActionButton } from '@/components/workflow/workflow-action-button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Badge } from '@/components/ui/badge'
-import type { Content, Publication } from '@/types'
+import type { Content } from '@/types'
 
 interface TaskGroups {
   revisions: Content[]
@@ -54,22 +41,6 @@ export default function MyTasksPage() {
   const [tasks, setTasks] = useState<TaskGroups | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TaskTab>('ALL')
-
-  // Record publication dialog state
-  const [recordPub, setRecordPub] = useState<{
-    open: boolean
-    content: Content | null
-    pub: Publication | null
-  }>({
-    open: false,
-    content: null,
-    pub: null,
-  })
-  const [actualDate, setActualDate] = useState(new Date().toISOString().split('T')[0])
-  const [pubUrl, setPubUrl] = useState('')
-  const [pubNotes, setPubNotes] = useState('')
-  const [savingPub, setSavingPub] = useState(false)
-  const [pubError, setPubError] = useState<string | null>(null)
 
   const loadTasks = useCallback(async () => {
     try {
@@ -96,40 +67,6 @@ export default function MyTasksPage() {
   useEffect(() => {
     loadTasks()
   }, [loadTasks])
-
-  async function handleSavePublication() {
-    if (!recordPub.pub) return
-    setSavingPub(true)
-    setPubError(null)
-
-    try {
-      const res = await apiFetch(`/api/publications/${recordPub.pub.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actual_publish_date: actualDate,
-          url: pubUrl ? pubUrl.trim() : null,
-          status: 'PUBLISHED',
-          notes: pubNotes ? pubNotes.trim() : null,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        setPubError(data.error || 'Gagal menyimpan rekam publikasi')
-        return
-      }
-
-      setRecordPub({ open: false, content: null, pub: null })
-      setPubUrl('')
-      setPubNotes('')
-      loadTasks()
-    } catch {
-      setPubError('Terjadi kesalahan jaringan.')
-    } finally {
-      setSavingPub(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -158,12 +95,14 @@ export default function MyTasksPage() {
     tasks.readyToPublish.length +
     tasks.published.length
 
+  // Prioritas Tampilan: Revisi -> Draft -> Produksi -> Menunggu -> Siap Tayang -> Selesai
   const groups = [
     {
       key: 'revisions' as const,
       tab: 'REVISION' as const,
       title: 'Perlu Revisi',
-      description: 'Konten memerlukan perbaikan sesuai arahan dan catatan evaluasi dari Reviewer/Admin.',
+      description: 'Konten berikut membutuhkan perbaikan sebelum dapat dilanjutkan.',
+      emptyState: '✓ Tidak ada konten yang perlu direvisi.',
       icon: RotateCcw,
       iconColor: 'text-rose-600',
       badgeColor: 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300',
@@ -172,14 +111,14 @@ export default function MyTasksPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/content/${c.id}`}>
             <Button variant="ghost" size="sm" className="h-8 text-xs">
-              <Eye className="mr-1 h-3.5 w-3.5" />
-              Detail
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
+              Lihat Detail
             </Button>
           </Link>
           <Link href={`/content/${c.id}/edit`}>
             <Button variant="outline" size="sm" className="h-8 text-xs">
-              <FileEdit className="mr-1 h-3.5 w-3.5" />
-              Perbaiki Konten
+              <FileEdit className="mr-1.5 h-3.5 w-3.5" />
+              Edit & Ajukan Ulang
             </Button>
           </Link>
           {c.production_link || c.latest_action === 'PRODUCTION_REVISION_REQUESTED' ? (
@@ -205,7 +144,8 @@ export default function MyTasksPage() {
       key: 'drafts' as const,
       tab: 'DRAFT' as const,
       title: 'Draft Konsep',
-      description: 'Konten dalam tahap awal pembuatan naskah/brief yang belum diajukan ke reviewer.',
+      description: 'Konten dalam tahap konsep awal yang belum diajukan.',
+      emptyState: 'Tidak ada draft konsep.',
       icon: FileEdit,
       iconColor: 'text-primary',
       badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
@@ -214,13 +154,13 @@ export default function MyTasksPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/content/${c.id}`}>
             <Button variant="ghost" size="sm" className="h-8 text-xs">
-              <Eye className="mr-1 h-3.5 w-3.5" />
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
               Lihat
             </Button>
           </Link>
           <Link href={`/content/${c.id}/edit`}>
             <Button variant="outline" size="sm" className="h-8 text-xs">
-              <FileEdit className="mr-1 h-3.5 w-3.5" />
+              <FileEdit className="mr-1.5 h-3.5 w-3.5" />
               Edit
             </Button>
           </Link>
@@ -234,28 +174,11 @@ export default function MyTasksPage() {
       ),
     },
     {
-      key: 'pendingApproval' as const,
-      tab: 'PENDING' as const,
-      title: 'Menunggu Persetujuan',
-      description: 'Konten sedang dalam proses review oleh Admin (persetujuan konsep atau review produksi).',
-      icon: Clock,
-      iconColor: 'text-purple-600',
-      badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
-      items: tasks.pendingApproval,
-      actions: (c: Content) => (
-        <Link href={`/content/${c.id}`}>
-          <Button variant="ghost" size="sm" className="h-8 text-xs">
-            <Eye className="mr-1 h-3.5 w-3.5" />
-            Lihat Status
-          </Button>
-        </Link>
-      ),
-    },
-    {
       key: 'production' as const,
       tab: 'PRODUCTION' as const,
       title: 'Produksi Konten',
-      description: 'Konsep telah disetujui. Buat materi visual/media dan setor tautan hasil produksi.',
+      description: 'Konsep disetujui. Siapkan media dan setor hasil produksi.',
+      emptyState: 'Tidak ada konten yang sedang dalam tahap produksi.',
       icon: Wrench,
       iconColor: 'text-amber-600',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
@@ -264,7 +187,7 @@ export default function MyTasksPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/content/${c.id}`}>
             <Button variant="ghost" size="sm" className="h-8 text-xs">
-              <Eye className="mr-1 h-3.5 w-3.5" />
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
               Detail
             </Button>
           </Link>
@@ -289,55 +212,57 @@ export default function MyTasksPage() {
       ),
     },
     {
+      key: 'pendingApproval' as const,
+      tab: 'PENDING' as const,
+      title: 'Menunggu Persetujuan',
+      description: 'Konten sedang dalam peninjauan oleh Admin/Reviewer.',
+      emptyState: 'Tidak ada konten yang sedang menunggu persetujuan.',
+      icon: Clock,
+      iconColor: 'text-purple-600',
+      badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+      items: tasks.pendingApproval,
+      actions: (c: Content) => (
+        <Link href={`/content/${c.id}`}>
+          <Button variant="ghost" size="sm" className="h-8 text-xs">
+            <Eye className="mr-1.5 h-3.5 w-3.5" />
+            Lihat Status
+          </Button>
+        </Link>
+      ),
+    },
+    {
       key: 'readyToPublish' as const,
       tab: 'READY' as const,
-      title: 'Siap Tayang & Rekam Publikasi',
-      description: 'Konten telah disetujui penuh. Rekam tanggal publikasi dan tautan postingan.',
+      title: 'Siap Tayang',
+      description: 'Konten telah disetujui dan siap dijadwalkan / ditayangkan.',
+      emptyState: 'Tidak ada konten yang siap dipublikasikan.',
       icon: CheckCircle2,
-      iconColor: 'text-success',
+      iconColor: 'text-emerald-600',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
       items: tasks.readyToPublish,
       actions: (c: Content) => (
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/content/${c.id}`}>
             <Button variant="ghost" size="sm" className="h-8 text-xs">
-              <Eye className="mr-1 h-3.5 w-3.5" />
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
               Detail
             </Button>
           </Link>
-          {c.publications && c.publications.length > 0 ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                setRecordPub({
-                  open: true,
-                  content: c,
-                  pub: c.publications![0],
-                })
-                setActualDate(new Date().toISOString().split('T')[0])
-                setPubUrl(c.publications![0].url || '')
-                setPubNotes(c.publications![0].notes || '')
-              }}
-              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <Send className="mr-1 h-3.5 w-3.5" />
-              Rekam Publikasi
+          <Link href="/publishing">
+            <Button size="sm" className="h-8 text-xs bg-[#1A3A6B] hover:bg-[#15305B] text-white">
+              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+              Antrean Publikasi
             </Button>
-          ) : (
-            <Link href="/publishing">
-              <Button size="sm" className="h-8 text-xs">
-                Antrean Publikasi
-              </Button>
-            </Link>
-          )}
+          </Link>
         </div>
       ),
     },
     {
       key: 'published' as const,
       tab: 'PUBLISHED' as const,
-      title: 'Dipublikasikan',
-      description: 'Konten yang sudah berhasil ditayangkan pada platform sasaran.',
+      title: 'Selesai',
+      description: 'Konten yang sudah selesai ditayangkan pada platform sasaran.',
+      emptyState: 'Belum ada konten yang selesai dipublikasikan.',
       icon: Globe,
       iconColor: 'text-teal-600',
       badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
@@ -345,7 +270,7 @@ export default function MyTasksPage() {
       actions: (c: Content) => (
         <Link href={`/content/${c.id}`}>
           <Button variant="ghost" size="sm" className="h-8 text-xs">
-            <Eye className="mr-1 h-3.5 w-3.5" />
+            <Eye className="mr-1.5 h-3.5 w-3.5" />
             Detail Post
           </Button>
         </Link>
@@ -353,43 +278,43 @@ export default function MyTasksPage() {
     },
   ]
 
-  // Filter groups according to activeTab
+  // Filter groups sesuai activeTab
   const visibleGroups = activeTab === 'ALL'
     ? groups
     : groups.filter((g) => g.tab === activeTab)
 
   return (
     <div className="space-y-6">
-      {/* Banner Penjelasan Modul Konsisten */}
-      <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 p-4.5 shadow-xs dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/20">
+      {/* Header Banner */}
+      <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/80 p-4.5 shadow-xs dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/20">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1A3A6B] text-white shadow-xs">
             <CheckSquare className="h-5 w-5" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <h2 className="text-base font-semibold text-[#1A3A6B] dark:text-blue-300">
               Tugas Saya
             </h2>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Modul ini menampilkan daftar tugas penyusunan konten, perbaikan revisi, tahap produksi aset, dan pencatatan publikasi Anda.
+              Kelola dan pantau konten yang menjadi tanggung jawab Anda.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigasi Horizontal */}
+      {/* Status Navigation (Compact Tabs) */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <button
           type="button"
           onClick={() => setActiveTab('ALL')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'ALL'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
-          Semua Tugas
+          Semua
           <span
             className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
               activeTab === 'ALL'
@@ -401,11 +326,11 @@ export default function MyTasksPage() {
           </span>
         </button>
 
-        {/* Tab Perlu Revisi (Standout dengan badge merah/oranye) */}
+        {/* Tab Perlu Revisi */}
         <button
           type="button"
           onClick={() => setActiveTab('REVISION')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'REVISION'
               ? 'bg-rose-600 text-white shadow-xs'
               : tasks.revisions.length > 0
@@ -431,14 +356,14 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('DRAFT')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'DRAFT'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
           }`}
         >
           <FileEdit className="h-3.5 w-3.5" />
-          Draft Konsep
+          Draft
           <span
             className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
               activeTab === 'DRAFT'
@@ -453,7 +378,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PENDING')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'PENDING'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
@@ -475,14 +400,14 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PRODUCTION')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'PRODUCTION'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
           }`}
         >
           <Wrench className="h-3.5 w-3.5" />
-          Produksi Konten
+          Produksi
           <span
             className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
               activeTab === 'PRODUCTION'
@@ -497,7 +422,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('READY')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'READY'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
@@ -519,7 +444,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PUBLISHED')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
             activeTab === 'PUBLISHED'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
@@ -539,44 +464,55 @@ export default function MyTasksPage() {
         </button>
       </div>
 
-      {/* Render Groups Berdasarkan Tab Aktif */}
+      {/* Render Groups Berdasarkan Priority & Active Tab */}
       <div className="space-y-6">
         {visibleGroups.map((group) => {
-          // Jika tab ALL dan group kosong, sembunyikan agar rapi
+          // Jika tab ALL dan group kosong, sembunyikan section tersebut agar UI tetap ringkas
           if (activeTab === 'ALL' && group.items.length === 0) return null
 
+          const isRevisionGroup = group.key === 'revisions'
+
           return (
-            <Card key={group.key} className={group.key === 'revisions' ? 'border-rose-300 dark:border-rose-900/60 shadow-xs' : ''}>
+            <Card
+              key={group.key}
+              className={`transition-all ${
+                isRevisionGroup && group.items.length > 0
+                  ? 'border-2 border-rose-300 dark:border-rose-900/80 shadow-sm'
+                  : ''
+              }`}
+            >
               <CardHeader className="border-b py-3 px-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <group.icon className={`h-5 w-5 ${group.iconColor}`} />
+                    <group.icon className={`h-4.5 w-4.5 ${group.iconColor}`} />
                     <CardTitle className="text-sm font-semibold">
                       {group.title}
                     </CardTitle>
-                    <Badge variant="secondary" className={`text-xs ${group.badgeColor}`}>
+                    <Badge variant="secondary" className={`text-xs px-2 py-0.5 ${group.badgeColor}`}>
                       {group.items.length}
                     </Badge>
                   </div>
                 </div>
                 <p className="text-xs text-ink-secondary mt-0.5">{group.description}</p>
               </CardHeader>
+
               <CardContent className="p-0">
                 {group.items.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-ink-muted">
-                    Tidak ada tugas di kategori ini.
-                  </p>
+                  <div className="py-6 text-center text-xs text-ink-muted">
+                    {group.emptyState}
+                  </div>
                 ) : (
                   <div className="divide-y divide-border">
                     {group.items.map((content) => (
                       <div
                         key={content.id}
                         className={`flex flex-col gap-3 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors ${
-                          group.key === 'revisions' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
+                          isRevisionGroup ? 'bg-rose-50/15 dark:bg-rose-950/10' : ''
                         }`}
                       >
+                        {/* Baris 1 & 2: Header Konten, Metadata & Action CTA */}
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="space-y-1 min-w-0">
+                          <div className="space-y-1.5 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <Link
                                 href={`/content/${content.id}`}
@@ -587,37 +523,67 @@ export default function MyTasksPage() {
                               <StatusBadge status={content.status} />
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-secondary">
+                            {/* Baris Metadata Compact: Pilar • Format • Target • PIC */}
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-ink-secondary">
                               {content.pillar?.name && (
-                                <span>Pilar: <strong>{content.pillar.name}</strong></span>
+                                <>
+                                  <span>Pilar: <strong className="text-slate-700 dark:text-slate-300">{content.pillar.name}</strong></span>
+                                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                                </>
                               )}
-                              <span>Format: <strong>{content.format}</strong></span>
+                              <span>Format: <strong className="text-slate-700 dark:text-slate-300">{content.format}</strong></span>
                               {content.planned_date && (
-                                <span>Target: <strong>{formatDate(content.planned_date)}</strong></span>
+                                <>
+                                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                                  <span>Target: <strong className="text-slate-700 dark:text-slate-300">{formatDate(content.planned_date)}</strong></span>
+                                </>
                               )}
                               {content.pic && (
-                                <span>PIC: <strong>{content.pic}</strong></span>
+                                <>
+                                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                                  <span>PIC: <strong className="text-slate-700 dark:text-slate-300">{content.pic}</strong></span>
+                                </>
                               )}
                             </div>
                           </div>
 
-                          <div className="shrink-0">{group.actions(content)}</div>
+                          {/* Action CTA Buttons */}
+                          <div className="shrink-0 pt-1 sm:pt-0">{group.actions(content)}</div>
                         </div>
 
-                        {/* Catatan Revisi jika ada / jika status REVISION_REQUIRED */}
-                        {(content.status === 'REVISION_REQUIRED' || content.latest_comment) && (
-                          <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-950 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+                        {/* CATATAN REVISI: HANYA TAMPIL UNTUK KONTEN STATUS REVISION_REQUIRED */}
+                        {content.status === 'REVISION_REQUIRED' && (
+                          <div className="mt-1 rounded-lg border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-950 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
                             <div className="flex items-start gap-2.5">
                               <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
-                              <div className="space-y-0.5 min-w-0">
-                                <p className="font-bold text-rose-800 dark:text-rose-300">
-                                  Catatan Revisi dari Reviewer / Admin:
+                              <div className="space-y-1 min-w-0">
+                                <p className="font-bold tracking-tight text-rose-800 dark:text-rose-300">
+                                  CATATAN REVISI
                                 </p>
-                                <p className="font-medium text-xs leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-line">
+                                <p className="font-medium leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-line">
                                   {content.latest_comment || 'Konten ini memerlukan perbaikan. Silakan periksa naskah/aset dan ajukan kembali.'}
                                 </p>
                               </div>
                             </div>
+                          </div>
+                        )}
+
+                        {/* HELPER TEXT UNTUK PENDING APPROVAL */}
+                        {group.key === 'pendingApproval' && (
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <Clock className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                            <span>Konten sedang menunggu review Admin.</span>
+                          </div>
+                        )}
+
+                        {/* INFORMASI KONTEN SUDAH DIPUBLIKASIKAN (JIKA ADA) */}
+                        {group.key === 'published' && content.publications && content.publications.length > 0 && (
+                          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>
+                              Dipublikasikan pada {formatDate(content.publications[0].actual_publish_date || content.publications[0].scheduled_date)}
+                              {content.publications[0].channel?.name ? ` via ${content.publications[0].channel.name}` : ''}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -629,80 +595,6 @@ export default function MyTasksPage() {
           )
         })}
       </div>
-
-      {/* Dialog Rekam Publikasi */}
-      <Dialog
-        open={recordPub.open}
-        onOpenChange={(open) => !open && setRecordPub({ open: false, content: null, pub: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rekam Hasil Publikasi</DialogTitle>
-            <DialogDescription>
-              Catat tanggal penayangan aktual dan tautan postingan yang telah terbit.
-            </DialogDescription>
-          </DialogHeader>
-
-          {recordPub.content && (
-            <div className="space-y-4 py-2">
-              <div>
-                <Label className="text-xs text-ink-secondary">Judul Konten</Label>
-                <p className="font-semibold text-sm text-ink">{recordPub.content.title}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="actual-date">Tanggal Publikasi Aktual *</Label>
-                <Input
-                  id="actual-date"
-                  type="date"
-                  value={actualDate}
-                  onChange={(e) => setActualDate(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pub-url">Tautan Postingan (URL)</Label>
-                <Input
-                  id="pub-url"
-                  type="url"
-                  placeholder="https://instagram.com/p/..."
-                  value={pubUrl}
-                  onChange={(e) => setPubUrl(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pub-notes">Catatan / Keterangan Tambahan</Label>
-                <Textarea
-                  id="pub-notes"
-                  placeholder="Keterangan mengenai postingan..."
-                  value={pubNotes}
-                  onChange={(e) => setPubNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              {pubError && (
-                <p className="text-sm font-medium text-danger">{pubError}</p>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRecordPub({ open: false, content: null, pub: null })}
-              disabled={savingPub}
-            >
-              Batal
-            </Button>
-            <Button onClick={handleSavePublication} disabled={savingPub}>
-              {savingPub && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Simpan Rekam Publikasi
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
