@@ -1315,7 +1315,7 @@ export default function PublishingPage() {
                                   group.plannedDate
                                 )
                               }
-                              className="text-xs font-medium h-8.5 rounded-lg px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                              className="text-xs font-medium h-8.5 rounded-md px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
                               title="Pindahkan ke Bank Konten (Tabungan Konten)"
                             >
                               <BookmarkCheck className="h-4 w-4" />
@@ -1325,7 +1325,7 @@ export default function PublishingPage() {
                             size="sm"
                             onClick={() => setManageModalContentId(group.contentId)}
                             className={cn(
-                              'text-xs font-semibold h-8.5 rounded-lg px-3.5 shadow-2xs transition-all',
+                              'text-xs font-semibold h-8.5 rounded-md px-3.5 shadow-2xs transition-all',
                               group.status === 'FULLY_PUBLISHED'
                                 ? 'bg-surface border border-border text-ink hover:bg-surface-muted'
                                 : group.status === 'CANCELLED'
