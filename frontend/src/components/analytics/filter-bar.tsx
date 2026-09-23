@@ -86,7 +86,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           {masterData.platforms
             .filter(
               (p) =>
-                !['linkedin', 'website', 'twitter/x', 'twitter', 'x'].includes(
+                !['linkedin', 'website'].includes(
                   p.name.toLowerCase().trim()
                 )
             )
