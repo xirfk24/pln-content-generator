@@ -196,15 +196,14 @@ export default function ContentPlanningList() {
       list = list.filter((c) => c.planned_date && c.planned_date < todayStr && c.status !== 'PUBLISHED')
     }
 
-    // 1. Search (Title, Topic, PIC, Pillar)
+    // 1. Search (Title, Topic, Pillar)
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       list = list.filter((item) => {
         const matchTitle = item.title?.toLowerCase().includes(q)
         const matchTopic = item.topic?.toLowerCase().includes(q)
-        const matchPic = item.pic?.toLowerCase().includes(q)
         const matchPillar = item.pillar?.name?.toLowerCase().includes(q)
-        return matchTitle || matchTopic || matchPic || matchPillar
+        return matchTitle || matchTopic || matchPillar
       })
     }
 
@@ -420,18 +419,18 @@ export default function ContentPlanningList() {
       {/* 3. SEKSI FILTER & PENCARIAN 2 BARIS */}
       <Card className="shadow-xs border-border">
         <div className="p-4 space-y-3">
-          {/* BARIS 1: Pencarian berdasarkan judul, topik, atau PIC */}
+          {/* BARIS 1: Pencarian berdasarkan judul, topik, atau pilar */}
           <div className="relative w-full">
             <Search
               className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
               aria-hidden="true"
             />
             <Input
-              placeholder="Pencarian berdasarkan judul, topik, atau PIC..."
+              placeholder="Pencarian berdasarkan judul, topik, atau pilar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-10 w-full bg-white dark:bg-slate-900"
-              aria-label="Cari konten berdasarkan judul, topik, atau PIC"
+              aria-label="Cari konten berdasarkan judul, topik, atau pilar"
             />
             {search && (
               <button
@@ -662,9 +661,6 @@ export default function ContentPlanningList() {
                   <th scope="col" className={TH_BASE}>
                     Topik
                   </th>
-                  <th scope="col" className={`hidden md:table-cell ${TH_BASE}`}>
-                    PIC
-                  </th>
                   <th scope="col" className={TH_BASE}>
                     Status
                   </th>
@@ -785,11 +781,6 @@ export default function ContentPlanningList() {
                             </span>
                           </div>
                         )}
-                      </td>
-
-                      {/* 6. PIC */}
-                      <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-ink-secondary md:table-cell">
-                        {content.pic || '-'}
                       </td>
 
                       {/* 7. STATUS */}
