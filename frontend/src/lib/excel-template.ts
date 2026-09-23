@@ -136,7 +136,7 @@ function styleWorksheet(
         cell.numFmt = '#,##0'
       } else {
         const strVal = String(cell.value || '').trim()
-        if (/^\d{4}-\d{2}-\d{2}$/.test(strVal) || strVal === 'UID' || strVal === 'EDUCATION') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(strVal) || /^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}$/.test(strVal) || strVal === 'UID' || strVal === 'EDUCATION') {
           cell.alignment = { vertical: 'middle', horizontal: 'center' }
         } else {
           cell.alignment = { vertical: 'middle', horizontal: 'left' }
@@ -147,7 +147,90 @@ function styleWorksheet(
 }
 
 /**
- * Generate dan download file Template Excel (.xlsx) dengan styling warna & border yang rapi:
+ * Normalisasi format tanggal input Excel yang fleksibel:
+ * Mendukung "13/07/2026", "13-07-2026", "2026-07-13", "2026/07/13", Date object, maupun Excel Serial Number.
+ * Menghasilkan output standar "YYYY-MM-DD".
+ */
+
+export function normalizeDateValue(rawVal: any): string {
+  if (rawVal == null) return ''
+
+  // 1. Jika rawVal adalah JavaScript Date Object
+  if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+    const y = rawVal.getFullYear()
+    const m = String(rawVal.getMonth() + 1).padStart(2, '0')
+    const d = String(rawVal.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  // 2. Jika rawVal adalah Cell Value Object dari ExcelJS
+  if (typeof rawVal === 'object') {
+    if (rawVal.result instanceof Date && !isNaN(rawVal.result.getTime())) {
+      const y = rawVal.result.getFullYear()
+      const m = String(rawVal.result.getMonth() + 1).padStart(2, '0')
+      const d = String(rawVal.result.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+    if (rawVal.text != null) rawVal = rawVal.text
+    else if (rawVal.result != null) rawVal = rawVal.result
+    else rawVal = String(rawVal)
+  }
+
+  let str = String(rawVal).trim()
+  if (!str) return ''
+
+  // 3. Hapus waktu ISO jika ada (2026-07-13T00:00:00Z)
+  if (str.includes('T')) {
+    str = str.split('T')[0]
+  }
+
+  // 4. Format DD/MM/YYYY, DD-MM-YYYY, atau DD.MM.YYYY (Contoh: 13/07/2026 atau 13-07-2026)
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  if (dmyMatch) {
+    const p1 = parseInt(dmyMatch[1], 10)
+    const p2 = parseInt(dmyMatch[2], 10)
+    const year = dmyMatch[3]
+
+    let day = p1
+    let month = p2
+    // Jika angka kedua > 12 (contoh: 07/13/2026), berarti format MM/DD/YYYY
+    if (p2 > 12) {
+      day = p2
+      month = p1
+    }
+
+    const mm = String(month).padStart(2, '0')
+    const dd = String(day).padStart(2, '0')
+    return `${year}-${mm}-${dd}`
+  }
+
+  // 5. Format YYYY/MM/DD, YYYY-MM-DD, atau YYYY.MM.DD (Contoh: 2026/07/13 atau 2026-07-13)
+  const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/)
+  if (ymdMatch) {
+    const year = ymdMatch[1]
+    const mm = String(parseInt(ymdMatch[2], 10)).padStart(2, '0')
+    const dd = String(parseInt(ymdMatch[3], 10)).padStart(2, '0')
+    return `${year}-${mm}-${dd}`
+  }
+
+  // 6. Format Excel Serial Date Number (Contoh: 46216 -> 2026-07-13)
+  if (!isNaN(Number(str)) && Number(str) > 30000 && Number(str) < 70000) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+    const days = Number(str)
+    const dateObj = new Date(excelEpoch.getTime() + days * 86400000)
+    if (!isNaN(dateObj.getTime())) {
+      const y = dateObj.getUTCFullYear()
+      const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0')
+      const d = String(dateObj.getUTCDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+  }
+
+  return str
+}
+
+/**
+ * Generate dan download file Template Excel (.xlsx) dengan pilihan mode:
  * - PLAN: Rencana Konten Baru
  * - LEGACY_PUBLISHED: Arsip Pemindahan Data Lama
  */
@@ -167,7 +250,7 @@ export async function downloadExcelTemplate(
     const wsTemplate = wb.addWorksheet('Template Arsip Data Lama')
 
     const headers = [
-      'Tanggal Publikasi (YYYY-MM-DD)',
+      'Tanggal Publikasi (DD/MM/YYYY atau YYYY-MM-DD)',
       'Judul Konten (Wajib)',
       'Topik Konten (Wajib)',
       'Content Pillar (Pilihan Sistem)',
@@ -200,7 +283,7 @@ export async function downloadExcelTemplate(
 
     const sampleRows = [
       [
-        '2026-08-15',
+        '15/08/2026',
         '[CONTOH - HAPUS SEBELUM IMPORT] Peluncuran Fitur Baru PLN Mobile Jabar',
         'Layanan & Digitalisasi',
         pillar1,
@@ -215,7 +298,7 @@ export async function downloadExcelTemplate(
         'Arsip dokumentasi penayangan konten edukasi fitur transaksi token.',
       ],
       [
-        '2026-08-20',
+        '20/08/2026',
         '[CONTOH - HAPUS SEBELUM IMPORT] Peringatan Hari Listrik Nasional ke-81',
         'Event & Momentum',
         pillar2,
@@ -233,7 +316,7 @@ export async function downloadExcelTemplate(
 
     addAoA(wsTemplate, [headers, ...sampleRows])
 
-    const colWidths = [28, 38, 28, 44, 20, 28, 38, 22, 18, 20, 18, 24, 40]
+    const colWidths = [32, 38, 28, 44, 20, 28, 38, 22, 18, 20, 18, 24, 40]
     colWidths.forEach((w, i) => {
       wsTemplate.getColumn(i + 1).width = w
     })
@@ -244,7 +327,7 @@ export async function downloadExcelTemplate(
     const wsGuide = wb.addWorksheet('Panduan Pemindahan Data')
     const guideHeaders = ['No', 'Nama Kolom', 'Status', 'Format', 'Contoh', 'Keterangan']
     const guideRows = [
-      [1, 'Tanggal Publikasi', 'Wajib (Biru)', 'YYYY-MM-DD', '2026-08-15', 'Tanggal saat konten tersebut pernah ditayangkan'],
+      [1, 'Tanggal Publikasi', 'Wajib (Biru)', 'DD/MM/YYYY atau YYYY-MM-DD', '13/07/2026 atau 2026-07-13', 'Tanggal saat konten terbit. Boleh gunakan separator / atau - (misal: 13/07/2026)'],
       [2, 'Judul Konten', 'Wajib (Biru)', 'Teks', 'Tips Token Listrik', 'Judul resmi konten lama'],
       [3, 'Topik Konten', 'Wajib (Biru)', 'Teks', 'PLN Mobile', 'Topik bahasan'],
       [4, 'Content Pillar', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi', pillar1, 'Gunakan nama pilar resmi di Sheet Referensi'],
@@ -259,7 +342,7 @@ export async function downloadExcelTemplate(
       [13, 'Brief / Keterangan', 'Opsional (Abu)', 'Teks', 'Catatan penayangan', 'Deskripsi tambahan'],
     ]
     addAoA(wsGuide, [guideHeaders, ...guideRows])
-    const guideWidths = [6, 24, 20, 18, 32, 46]
+    const guideWidths = [6, 24, 20, 24, 32, 48]
     guideWidths.forEach((w, i) => {
       wsGuide.getColumn(i + 1).width = w
     })
@@ -303,7 +386,7 @@ export async function downloadExcelTemplate(
       'Target Platform (Pilihan Sistem)',
       'Content Purpose (Pilihan Sistem)',
       'Posting Category (Pilihan Sistem)',
-      'Tanggal Rencana Publikasi (YYYY-MM-DD)',
+      'Tanggal Rencana Publikasi (DD/MM/YYYY atau YYYY-MM-DD)',
       'PIC (Opsional)',
       'Brief / Keterangan (Opsional)',
       'Target Audience (Opsional)',
@@ -334,7 +417,7 @@ export async function downloadExcelTemplate(
         'Instagram, TikTok',
         'EDUCATION',
         'UID',
-        '2026-09-20',
+        '20/09/2026',
         'Tim Media Sosial',
         'Edukasi tips hemat listrik bagi pelanggan rumah tangga di wilayah Jawa Barat.',
         'Pelanggan Rumah Tangga',
@@ -348,7 +431,7 @@ export async function downloadExcelTemplate(
         'Instagram, YouTube, TikTok',
         'INFORMATION',
         'UID',
-        '2026-09-25',
+        '25/09/2026',
         'Tim Humas & Komunikasi',
         'Highlight komitmen EBT PLN UID Jawa Barat menyongsong Net Zero Emission.',
         'Masyarakat Umum & Stakeholder',
@@ -358,7 +441,7 @@ export async function downloadExcelTemplate(
 
     addAoA(wsTemplate, [headers, ...sampleRows])
 
-    const colWidths = [38, 28, 44, 20, 28, 22, 22, 28, 22, 40, 30, 28]
+    const colWidths = [38, 28, 44, 20, 28, 22, 22, 34, 22, 40, 30, 28]
     colWidths.forEach((w, i) => {
       wsTemplate.getColumn(i + 1).width = w
     })
@@ -385,7 +468,7 @@ export async function downloadExcelTemplate(
       [5, 'Target Platform', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Bisa Multi)', 'Instagram, TikTok, YouTube', 'Pisahkan dengan tanda koma (,) jika konten tayang di lebih dari 1 platform', 'Nama platform tidak sesuai.'],
       [6, 'Content Purpose', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
       [7, 'Posting Category', 'Pilihan Sistem (Hijau)', 'Pilihan Resmi (Opsional)', 'UID', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
-      [8, 'Tanggal Rencana Publikasi', 'Wajib (Biru)', 'Tanggal (YYYY-MM-DD)', '2026-09-20', 'Format YYYY-MM-DD (contoh: 2026-09-20)', 'Format DD/MM/YYYY tidak didukung.'],
+      [8, 'Tanggal Rencana Publikasi', 'Wajib (Biru)', 'DD/MM/YYYY atau YYYY-MM-DD', '20/09/2026 atau 2026-09-20', 'Bisa menggunakan format DD/MM/YYYY (20/09/2026), DD-MM-YYYY (20-09-2026), atau YYYY-MM-DD.', 'Bebas gunakan separator / atau -.'],
       [9, 'PIC', 'Opsional (Abu)', 'Teks', 'Tim Media Sosial / Adit', 'Person in charge atau nama tim pelaksana', 'Boleh dikosongkan.'],
       [10, 'Brief / Keterangan', 'Opsional (Abu)', 'Teks Paragraf', 'Penjelasan narasi slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
       [11, 'Target Audience', 'Opsional (Abu)', 'Teks', 'Pelanggan Rumah Tangga', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
@@ -393,7 +476,7 @@ export async function downloadExcelTemplate(
     ]
 
     addAoA(wsGuide, [guideHeaders, ...guideRows])
-    const guideWidths = [6, 24, 20, 20, 32, 44, 38]
+    const guideWidths = [6, 24, 20, 24, 32, 44, 38]
     guideWidths.forEach((w, i) => {
       wsGuide.getColumn(i + 1).width = w
     })
@@ -472,17 +555,17 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     throw new Error('Sheet data tidak ditemukan di dalam file Excel.')
   }
 
-  const rawData: string[][] = []
+  const rawData: any[][] = []
   ws.eachRow((row) => {
     const values = (row.values as any[]).slice(1)
-    rawData.push(values.map((v) => (v != null ? String(v) : '')))
+    rawData.push(values)
   })
 
   if (rawData.length < 2) {
     throw new Error('File tidak memiliki baris data (minimal 1 baris header + 1 baris data).')
   }
 
-  const headerRow = rawData[0].map((h) => h.trim().toLowerCase())
+  const headerRow = rawData[0].map((h) => String(h != null ? h : '').trim().toLowerCase())
 
   const findColIdx = (keywords: string[]): number => {
     return headerRow.findIndex((col) => keywords.some((kw) => col.includes(kw.toLowerCase())))
@@ -515,9 +598,17 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     )
   }
 
-  const parseNum = (valStr: string): number | undefined => {
-    if (!valStr || !valStr.trim()) return undefined
-    const clean = valStr.replace(/[^0-9]/g, '')
+  const parseStr = (val: any): string => {
+    if (val == null) return ''
+    if (typeof val === 'object' && val.text) return String(val.text).trim()
+    return String(val).trim()
+  }
+
+  const parseNum = (valStr: any): number | undefined => {
+    if (valStr == null) return undefined
+    const str = parseStr(valStr)
+    if (!str) return undefined
+    const clean = str.replace(/[^0-9]/g, '')
     if (!clean) return undefined
     const n = parseInt(clean, 10)
     return isNaN(n) ? undefined : n
@@ -527,37 +618,34 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
 
   for (let i = 1; i < rawData.length; i++) {
     const r = rawData[i]
-    if (!r || r.every((cell) => cell.trim() === '')) {
+    if (!r || r.every((cell) => parseStr(cell) === '')) {
       continue
     }
 
-    const titleVal = (r[idxTitle] || '').trim()
+    const titleVal = parseStr(r[idxTitle])
     if (titleVal.toUpperCase().startsWith('[CONTOH')) {
       continue
     }
 
-    let dateVal = idxDate !== -1 ? (r[idxDate] || '').trim() : ''
-    if (dateVal.includes('T')) {
-      dateVal = dateVal.split('T')[0]
-    }
+    const dateVal = idxDate !== -1 ? normalizeDateValue(r[idxDate]) : ''
 
     parsedRows.push({
       row_number: i + 1,
       title: titleVal,
-      topic: idxTopic !== -1 ? (r[idxTopic] || '').trim() : '',
-      pillar: idxPillar !== -1 ? (r[idxPillar] || '').trim() : '',
-      format: idxFormat !== -1 ? (r[idxFormat] || '').trim() : '',
-      platform: idxPlatform !== -1 ? (r[idxPlatform] || '').trim() : '',
-      content_purpose: idxPurpose !== -1 ? (r[idxPurpose] || '').trim() : '',
-      category: idxCategory !== -1 ? (r[idxCategory] || '').trim() : '',
-      posting_category: idxPostCat !== -1 ? (r[idxPostCat] || '').trim() : '',
+      topic: idxTopic !== -1 ? parseStr(r[idxTopic]) : '',
+      pillar: idxPillar !== -1 ? parseStr(r[idxPillar]) : '',
+      format: idxFormat !== -1 ? parseStr(r[idxFormat]) : '',
+      platform: idxPlatform !== -1 ? parseStr(r[idxPlatform]) : '',
+      content_purpose: idxPurpose !== -1 ? parseStr(r[idxPurpose]) : '',
+      category: idxCategory !== -1 ? parseStr(r[idxCategory]) : '',
+      posting_category: idxPostCat !== -1 ? parseStr(r[idxPostCat]) : '',
       planned_date: dateVal,
-      pic: idxPic !== -1 ? (r[idxPic] || '').trim() : '',
-      brief: idxBrief !== -1 ? (r[idxBrief] || '').trim() : '',
-      target_audience: idxAudience !== -1 ? (r[idxAudience] || '').trim() : '',
-      reference: idxRef !== -1 ? (r[idxRef] || '').trim() : '',
+      pic: idxPic !== -1 ? parseStr(r[idxPic]) : '',
+      brief: idxBrief !== -1 ? parseStr(r[idxBrief]) : '',
+      target_audience: idxAudience !== -1 ? parseStr(r[idxAudience]) : '',
+      reference: idxRef !== -1 ? parseStr(r[idxRef]) : '',
       // Legacy Published data
-      post_url: idxPostUrl !== -1 ? (r[idxPostUrl] || '').trim() : undefined,
+      post_url: idxPostUrl !== -1 ? parseStr(r[idxPostUrl]) : undefined,
       views: idxViews !== -1 ? parseNum(r[idxViews]) : undefined,
       likes: idxLikes !== -1 ? parseNum(r[idxLikes]) : undefined,
       comments: idxComments !== -1 ? parseNum(r[idxComments]) : undefined,

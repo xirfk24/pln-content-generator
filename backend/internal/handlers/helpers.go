@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,13 +24,33 @@ var statusLabels = map[string]string{
 	"NOT_REALIZED":              "Tidak Direalisasikan",
 }
 
-// parseDateStr parses "YYYY-MM-DD" or RFC3339, mirroring JS new Date(str).
+// parseDateStr parses flexible date strings: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, YYYY/MM/DD, or RFC3339.
 func parseDateStr(s string) (time.Time, bool) {
-	if t, err := time.Parse("2006-01-02", s); err == nil {
-		return t, true
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, false
 	}
-	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return t, true
+	// Remove ISO time part if present (e.g. 2026-07-13T00:00:00)
+	if idx := strings.Index(s, "T"); idx != -1 {
+		s = s[:idx]
+	}
+
+	formats := []string{
+		"2006-01-02",
+		"02/01/2006",
+		"02-01-2006",
+		"02.01.2006",
+		"2006/01/02",
+		"2/1/2006",
+		"2-1-2006",
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+	}
+
+	for _, fmtStr := range formats {
+		if t, err := time.Parse(fmtStr, s); err == nil {
+			return t, true
+		}
 	}
 	return time.Time{}, false
 }
@@ -62,7 +83,6 @@ func monthKey(dateStr string) string {
 }
 
 func monthLabel(key string) string {
-	// key = "YYYY-MM"
 	if len(key) < 7 {
 		return key
 	}
@@ -74,8 +94,6 @@ func monthLabel(key string) string {
 	return monthLabels[m-1] + " " + year[2:]
 }
 
-// semesterKey returns "YYYY-S1" or "YYYY-S2" from an ISO date string.
-// Semester 1 = January–June, Semester 2 = July–December.
 func semesterKey(dateStr string) string {
 	if len(dateStr) < 7 {
 		return dateStr
@@ -92,9 +110,7 @@ func semesterKey(dateStr string) string {
 	return year + "-" + s
 }
 
-// semesterLabel returns "Semester 1 YYYY" or "Semester 2 YYYY" from a "YYYY-Sn" key.
 func semesterLabel(key string) string {
-	// key = "YYYY-Sn"
 	if len(key) < 7 {
 		return key
 	}
@@ -105,24 +121,12 @@ func semesterLabel(key string) string {
 	return "Semester 2 " + year
 }
 
-// --- Period Date Range helpers (Monthly & Semester Recap) ---
-
-// getPeriodDateRange returns (start, end) as ISO date strings (YYYY-MM-DD)
-// for the given year, period mode, and period index.
-//
-// Modes:
-//   - "monthly": period = month 1-12. Start = 1st day, End = last day of month.
-//   - "semester": period = 1 or 2. S1 = Jan 1 – Jun 30, S2 = Jul 1 – Dec 31.
-//
-// All dates use ISO calendar (no timezone shift). Uses time.UTC to ensure
-// deterministic output regardless of server timezone.
 func getPeriodDateRange(year int, mode string, period int) (string, string) {
 	switch mode {
 	case "semester":
 		if period == 1 {
 			return fmt.Sprintf("%04d-01-01", year), fmt.Sprintf("%04d-06-30", year)
 		}
-		// semester 2 (or fallback)
 		return fmt.Sprintf("%04d-07-01", year), fmt.Sprintf("%04d-12-31", year)
 	default: // "monthly"
 		if period < 1 {
@@ -137,7 +141,6 @@ func getPeriodDateRange(year int, mode string, period int) (string, string) {
 	}
 }
 
-// periodLabel returns a human-readable label for the period.
 func periodLabel(year int, mode string, period int) string {
 	switch mode {
 	case "semester":
