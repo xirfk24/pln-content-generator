@@ -949,7 +949,6 @@ export default function AdminPeriodsPage() {
                             <th className="px-3.5 py-2.5">Pilar</th>
                             <th className="px-3.5 py-2.5">Tgl Rencana</th>
                             <th className="px-3.5 py-2.5">Status</th>
-                            <th className="px-3.5 py-2.5">PIC</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -974,7 +973,6 @@ export default function AdminPeriodsPage() {
                                   {c.status}
                                 </span>
                               </td>
-                              <td className="px-3.5 py-2.5 text-slate-500">{c.pic || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
