@@ -580,9 +580,6 @@ export default function MyTasksPage() {
                               {content.planned_date && (
                                 <span>Target: <strong>{formatDate(content.planned_date)}</strong></span>
                               )}
-                              {content.pic && (
-                                <span>PIC: <strong>{content.pic}</strong></span>
-                              )}
                             </div>
                           </div>
 
