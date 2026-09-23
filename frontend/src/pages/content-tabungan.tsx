@@ -312,7 +312,6 @@ export default function ContentTabunganPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Tanggal Rencana</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Target Platform</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Alasan Bank Konten</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">PIC</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Aksi</th>
                 </tr>
               </thead>
@@ -367,9 +366,6 @@ export default function ContentTabunganPage() {
                         <span className="italic text-slate-600 dark:text-slate-400">
                           {content.savings_reason || 'Disimpan tanpa catatan khusus'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap text-ink-secondary">
-                        {content.pic || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
