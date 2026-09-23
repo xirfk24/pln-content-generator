@@ -871,59 +871,96 @@ export default function ContentImportPage() {
                           </td>
                           {importMode === 'LEGACY_PUBLISHED' && (
                             <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                              {pData?.post_url ? (
-                                <a
-                                  href={pData.post_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px] truncate max-w-[160px]"
-                                >
-                                  <ExternalLink className="h-3 w-3 shrink-0" />
-                                  Link Post
-                                </a>
-                              ) : (
-                                <span className="text-slate-400 italic text-[11px]">Tanpa URL</span>
-                              )}
-
-                              {(pData?.reach > 0 || pData?.views > 0 || pData?.likes > 0 || pData?.comments > 0 || pData?.saves > 0 || pData?.shares > 0) && (
-                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
-                                  {pData.reach > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200/60 dark:border-purple-800/40">
-                                      <Users className="h-2.5 w-2.5 text-purple-600" />
-                                      Reach: {pData.reach.toLocaleString()}
-                                    </span>
-                                  )}
-                                  {pData.views > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40">
-                                      <Eye className="h-2.5 w-2.5 text-blue-600" />
-                                      Views: {pData.views.toLocaleString()}
-                                    </span>
-                                  )}
-                                  {pData.likes > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200/60 dark:border-rose-800/40">
-                                      <Heart className="h-2.5 w-2.5 text-rose-600" />
-                                      Likes: {pData.likes.toLocaleString()}
-                                    </span>
-                                  )}
-                                  {pData.comments > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/40">
-                                      <MessageSquare className="h-2.5 w-2.5 text-emerald-600" />
-                                      Komen: {pData.comments.toLocaleString()}
-                                    </span>
-                                  )}
-                                  {pData.saves > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/40">
-                                      <Bookmark className="h-2.5 w-2.5 text-amber-600" />
-                                      Saves: {pData.saves.toLocaleString()}
-                                    </span>
-                                  )}
-                                  {pData.shares > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/40">
-                                      <Share2 className="h-2.5 w-2.5 text-indigo-600" />
-                                      Shares: {pData.shares.toLocaleString()}
-                                    </span>
-                                  )}
+                              {pData?.platform_publications && Object.keys(pData.platform_publications).length > 0 ? (
+                                <div className="space-y-1.5">
+                                  {Object.entries(pData.platform_publications as Record<string, any>).map(([pName, pm]) => (
+                                    <div key={pName} className="rounded border border-slate-200/80 bg-slate-50/80 p-1.5 dark:border-slate-800 dark:bg-slate-900/80 space-y-1">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="font-semibold text-ink text-[11px]">{pName}</span>
+                                        {pm.url ? (
+                                          <a
+                                            href={pm.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[10px] truncate max-w-[130px]"
+                                          >
+                                            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                            Link
+                                          </a>
+                                        ) : (
+                                          <span className="text-slate-400 italic text-[10px]">Tanpa Link</span>
+                                        )}
+                                      </div>
+                                      {(pm.reach > 0 || pm.views > 0 || pm.likes > 0 || pm.comments > 0 || pm.saves > 0 || pm.shares > 0) && (
+                                        <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                                          {pm.reach > 0 && <span className="bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 px-1 py-0.5 rounded border border-purple-200/50">R: {pm.reach.toLocaleString()}</span>}
+                                          {pm.views > 0 && <span className="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 px-1 py-0.5 rounded border border-blue-200/50">V: {pm.views.toLocaleString()}</span>}
+                                          {pm.likes > 0 && <span className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 px-1 py-0.5 rounded border border-rose-200/50">L: {pm.likes.toLocaleString()}</span>}
+                                          {pm.comments > 0 && <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 px-1 py-0.5 rounded border border-emerald-200/50">K: {pm.comments.toLocaleString()}</span>}
+                                          {pm.saves > 0 && <span className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 px-1 py-0.5 rounded border border-amber-200/50">S: {pm.saves.toLocaleString()}</span>}
+                                          {pm.shares > 0 && <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 px-1 py-0.5 rounded border border-indigo-200/50">Sh: {pm.shares.toLocaleString()}</span>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
+                              ) : (
+                                <>
+                                  {pData?.post_url ? (
+                                    <a
+                                      href={pData.post_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px] truncate max-w-[160px]"
+                                    >
+                                      <ExternalLink className="h-3 w-3 shrink-0" />
+                                      Link Post
+                                    </a>
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">Tanpa URL</span>
+                                  )}
+
+                                  {(pData?.reach > 0 || pData?.views > 0 || pData?.likes > 0 || pData?.comments > 0 || pData?.saves > 0 || pData?.shares > 0) && (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-700 dark:text-slate-300">
+                                      {pData.reach > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200/60 dark:border-purple-800/40">
+                                          <Users className="h-2.5 w-2.5 text-purple-600" />
+                                          Reach: {pData.reach.toLocaleString()}
+                                        </span>
+                                      )}
+                                      {pData.views > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40">
+                                          <Eye className="h-2.5 w-2.5 text-blue-600" />
+                                          Views: {pData.views.toLocaleString()}
+                                        </span>
+                                      )}
+                                      {pData.likes > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200/60 dark:border-rose-800/40">
+                                          <Heart className="h-2.5 w-2.5 text-rose-600" />
+                                          Likes: {pData.likes.toLocaleString()}
+                                        </span>
+                                      )}
+                                      {pData.comments > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/40">
+                                          <MessageSquare className="h-2.5 w-2.5 text-emerald-600" />
+                                          Komen: {pData.comments.toLocaleString()}
+                                        </span>
+                                      )}
+                                      {pData.saves > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/40">
+                                          <Bookmark className="h-2.5 w-2.5 text-amber-600" />
+                                          Saves: {pData.saves.toLocaleString()}
+                                        </span>
+                                      )}
+                                      {pData.shares > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/40">
+                                          <Share2 className="h-2.5 w-2.5 text-indigo-600" />
+                                          Shares: {pData.shares.toLocaleString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </td>
                           )}

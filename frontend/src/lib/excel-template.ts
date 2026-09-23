@@ -12,6 +12,24 @@ export interface MasterDataInfo {
   categories?: Array<{ id: string; name: string }>
 }
 
+export interface PlatformMetricInput {
+  url: string
+  reach: number
+  views: number
+  likes: number
+  comments: number
+  saves: number
+  shares: number
+}
+
+export const MASTER_PLATFORMS = [
+  'Instagram',
+  'Facebook',
+  'TikTok',
+  'YouTube',
+  'Twitter/X',
+]
+
 export interface ParsedImportRow {
   row_number: number
   title: string
@@ -34,6 +52,7 @@ export interface ParsedImportRow {
   comments?: number
   saves?: number
   shares?: number
+  platform_publications?: Record<string, PlatformMetricInput>
 }
 
 /** Trigger a browser download from a Blob. */
@@ -188,26 +207,56 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
   if (isLegacy) {
     // ==========================================
     // SHEET 1: TEMPLATE IMPORT DATA LAMA (LEGACY)
-    // Tanggal Terbit diletakkan di Kolom 1 (Paling Kiri)
+    // Struktur Kolom disamakan persis dengan Hasil Ekspor Excel
     // ==========================================
     const wsTemplate = wb.addWorksheet('Template Data Lama')
 
     const headers = [
       'Tanggal Terbit (Flexible: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY)',
       'Judul Konten (Wajib)',
-      'Topik Konten (Wajib)',
+      'Topik / Subtema (Wajib)',
       'Content Pillar (Pilihan Sistem)',
-      'Format Konten (Pilihan Sistem)',
-      'Target Platform (Pilihan Sistem)',
-      'Link Post / Tautan Platform',
-      'Reach / Jangkauan',
-      'Views / Tayangan',
-      'Likes / Suka',
-      'Comments / Komentar',
-      'Saves / Disimpan',
-      'Shares / Bagikan',
-      'Brief / Keterangan (Opsional)',
+      'Format (Pilihan Sistem)',
+      'Tujuan Konten (Pilihan Sistem)',
+      'Kategori Posting (Pilihan Sistem)',
+      'Status Konten (PUBLISHED)',
     ]
+
+    const headerFills = [
+      'FF1E40AF', // Tanggal: Dark Blue
+      'FF00A2B9', // Judul: Cyan
+      'FF00A2B9', // Topik: Cyan
+      'FF00A2B9', // Pillar: Cyan
+      'FF00A2B9', // Format: Cyan
+      'FF00A2B9', // Tujuan: Cyan
+      'FF00A2B9', // Kategori: Cyan
+      'FF005B6E', // Status: Dark Cyan
+    ]
+
+    const colWidths = [28, 38, 28, 32, 18, 20, 20, 20]
+
+    MASTER_PLATFORMS.forEach((pName) => {
+      headers.push(`Link ${pName}`)
+      headerFills.push('FF047857') // Emerald for Link
+      headers.push(`Reach ${pName}`)
+      headerFills.push('FF5B21B6') // Violet for Insight
+      headers.push(`Views ${pName}`)
+      headerFills.push('FF5B21B6')
+      headers.push(`Likes ${pName}`)
+      headerFills.push('FF5B21B6')
+      headers.push(`Komen ${pName}`)
+      headerFills.push('FF5B21B6')
+      headers.push(`Saves ${pName}`)
+      headerFills.push('FF5B21B6')
+      headers.push(`Shares ${pName}`)
+      headerFills.push('FF5B21B6')
+
+      colWidths.push(32, 14, 14, 12, 14, 12, 12)
+    })
+
+    headers.push('Brief / Keterangan (Opsional)')
+    headerFills.push('FF334155')
+    colWidths.push(40)
 
     const sampleRows = [
       [
@@ -216,7 +265,10 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         'PLN Mobile & Edukasi Tarif',
         pillar1,
         'Carousel',
-        'Instagram, TikTok',
+        'EDUCATION',
+        'ORIGINAL',
+        'PUBLISHED',
+        // Instagram
         'https://www.instagram.com/p/C123456789/',
         12500,
         15400,
@@ -224,6 +276,20 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         95,
         320,
         145,
+        // Facebook
+        '', 0, 0, 0, 0, 0, 0,
+        // TikTok
+        'https://www.tiktok.com/@pln/video/78912345',
+        8500,
+        11200,
+        940,
+        42,
+        180,
+        95,
+        // YouTube
+        '', 0, 0, 0, 0, 0, 0,
+        // Twitter/X
+        '', 0, 0, 0, 0, 0, 0,
         'Arsip konten edukasi tips hemat listrik bagi pelanggan rumah tangga di wilayah Jawa Barat.',
       ],
       [
@@ -232,7 +298,10 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         'Transisi Energi Bersih',
         pillar2,
         'Vid/Reels/Shorts',
-        'Instagram, YouTube, TikTok',
+        'INFORMATION',
+        'ORIGINAL',
+        'PUBLISHED',
+        // Instagram
         'https://www.instagram.com/reel/C987654321/',
         45000,
         52300,
@@ -240,36 +309,37 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         310,
         890,
         640,
+        // Facebook
+        'https://www.facebook.com/pln/videos/123456',
+        18000,
+        21000,
+        1500,
+        110,
+        230,
+        140,
+        // TikTok
+        'https://www.tiktok.com/@pln/video/98765432',
+        62000,
+        78000,
+        5400,
+        420,
+        1100,
+        850,
+        // YouTube
+        'https://www.youtube.com/watch?v=abc123xyz',
+        12000,
+        14500,
+        980,
+        65,
+        150,
+        80,
+        // Twitter/X
+        '', 0, 0, 0, 0, 0, 0,
         'Highlight komitmen EBT PLN UID Jawa Barat menyongsong Net Zero Emission.',
       ],
     ]
 
     addAoA(wsTemplate, [headers, ...sampleRows])
-
-    // Warna per grup kolom:
-    // Kolom 1 (Tanggal Terbit): Dark Blue (1E40AF)
-    // Kolom 2-5 (Judul, Topik, Pillar, Format): Navy Blue (1E3A8A)
-    // Kolom 6-7 (Platform & Link): Emerald Green (065F46)
-    // Kolom 8-13 (Insight Metrics): Dark Royal Violet (5B21B6)
-    // Kolom 14 (Brief): Dark Slate (334155)
-    const headerFills = [
-      'FF1E40AF',
-      'FF1E3A8A',
-      'FF1E3A8A',
-      'FF1E3A8A',
-      'FF1E3A8A',
-      'FF065F46',
-      'FF065F46',
-      'FF5B21B6',
-      'FF5B21B6',
-      'FF5B21B6',
-      'FF5B21B6',
-      'FF5B21B6',
-      'FF5B21B6',
-      'FF334155',
-    ]
-
-    const colWidths = [28, 38, 28, 44, 20, 26, 38, 16, 16, 14, 16, 14, 14, 40]
     applyColorfulWorksheetStyles(wsTemplate, headerFills, colWidths)
 
     // ==========================================
@@ -289,19 +359,16 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
 
     const guideRows = [
       [1, 'Tanggal Terbit (Kolom 1)', 'Wajib (Biru)', 'Tanggal Fleksibel', '2026-09-20 atau 20/09/2026', 'Diletakkan di Kolom 1. Mendukung pemisah strip (-), garis miring (/), titik (.), atau koma (,)', 'Tahun tidak 4 digit.'],
-      [2, 'Judul Konten', 'Wajib (Biru Navy)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul resmi konten yang telah terbit', 'Jangan dikosongkan.'],
-      [3, 'Topik Konten', 'Wajib (Biru Navy)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
-      [4, 'Content Pillar', 'Pilihan Sistem (Biru Navy)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
-      [5, 'Format Konten', 'Pilihan Sistem (Biru Navy)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
-      [6, 'Target Platform', 'Pilihan Sistem (Hijau Emerald)', 'Pilihan Resmi (Multi)', 'Instagram, TikTok, YouTube', 'Pisahkan dengan tanda koma (,) jika tayang di lebih dari 1 platform', 'Nama platform tidak sesuai (misal: "IG" tanpa keterangan).'],
-      [7, 'Link Post / Tautan Platform', 'Opsional (Hijau Emerald)', 'URL Web', 'https://www.instagram.com/p/C123456789/', 'URL postingan resmi media sosial', 'Penulisan URL tidak lengkap (tanpa https://).'],
-      [8, 'Reach / Jangkauan', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '12500', 'Jumlah akun unik yang dijangkau', 'Menggunakan huruf/koma.'],
-      [9, 'Views / Tayangan', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '15400', 'Total tayangan/penayangan video atau postingan', 'Menggunakan huruf/koma.'],
-      [10, 'Likes / Suka', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '1280', 'Jumlah suka/likes', 'Menggunakan huruf/koma.'],
-      [11, 'Comments / Komentar', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '95', 'Jumlah komentar', 'Menggunakan huruf/koma.'],
-      [12, 'Saves / Disimpan', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '320', 'Jumlah postingan disimpan pengguna', 'Menggunakan huruf/koma.'],
-      [13, 'Shares / Bagikan', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '145', 'Jumlah postingan dibagikan', 'Menggunakan huruf/koma.'],
-      [14, 'Brief / Keterangan', 'Opsional (Slate)', 'Teks Paragraf', 'Arsip postingan penanganan gangguan', 'Catatan tambahan terkait arsip konten', 'Boleh dikosongkan.'],
+      [2, 'Judul Konten', 'Wajib (Cyan)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul resmi konten yang telah terbit', 'Jangan dikosongkan.'],
+      [3, 'Topik / Subtema', 'Wajib (Cyan)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
+      [4, 'Content Pillar', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
+      [5, 'Format', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
+      [6, 'Tujuan Konten', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
+      [7, 'Kategori Posting', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'ORIGINAL', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
+      [8, 'Status Konten', 'Otomatis (Dark Cyan)', 'Teks', 'PUBLISHED', 'Otomatis berstatus PUBLISHED untuk arsip data lama', 'Tidak perlu diubah.'],
+      [9, 'Link [Platform] (Instagram, Facebook, TikTok, YouTube, Twitter/X)', 'Opsional (Hijau Emerald)', 'URL Web', 'https://www.instagram.com/p/C123456789/', 'Tautan resmi postingan pada platform bersangkutan', 'Penulisan URL tidak lengkap.'],
+      [10, 'Insight Per Platform (Reach, Views, Likes, Komen, Saves, Shares)', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '12500', 'Statistik performa konten per platform', 'Menggunakan huruf/koma.'],
+      [11, 'Brief / Keterangan', 'Opsional (Slate)', 'Teks Paragraf', 'Arsip postingan penanganan gangguan', 'Catatan tambahan terkait arsip konten', 'Boleh dikosongkan.'],
     ]
 
     addAoA(wsGuide, [guideHeaders, ...guideRows])
@@ -546,10 +613,10 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   }
 
   const idxTitle = findColIdx(['judul', 'title'])
-  const idxTopic = findColIdx(['topik', 'topic'])
+  const idxTopic = findColIdx(['topik', 'topic', 'subtema'])
   const idxPillar = findColIdx(['pillar', 'pilar', 'tema'])
   const idxFormat = findColIdx(['format'])
-  const idxPlatform = findColIdx(['platform'])
+  const idxPlatform = findColIdx(['target platform', 'platform'])
   const idxPurpose = findColIdx(['purpose', 'tujuan'])
   const idxCategory = findColIdx(['category', 'kategori'])
   const idxPostCat = findColIdx(['posting category', 'kategori posting'])
@@ -558,15 +625,12 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   const idxAudience = findColIdx(['audience', 'audiens', 'sasaran'])
   const idxRef = findColIdx(['link referensi', 'referensi', 'reference'])
 
-  // Additional fields for LEGACY_PUBLISHED
+  // Single column fallbacks for LEGACY_PUBLISHED
   const idxPostURL = findColIdx([
     'link post',
     'link platform',
     'url post',
     'tautan post',
-    'link instagram',
-    'link tiktok',
-    'link youtube',
     'post_url',
     'link',
     'url',
@@ -578,6 +642,40 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
   const idxComments = findColIdx(['comment', 'comments', 'komentar', 'komen'])
   const idxSaves = findColIdx(['save', 'saves', 'disimpan', 'simpan'])
   const idxShares = findColIdx(['share', 'shares', 'bagikan'])
+
+  // Detect per-platform columns (matching Excel Export format)
+  const platformColIndices: Record<string, {
+    url: number
+    reach: number
+    views: number
+    likes: number
+    comments: number
+    saves: number
+    shares: number
+  }> = {}
+
+  MASTER_PLATFORMS.forEach((pName) => {
+    const pLower = pName.toLowerCase()
+    const urlIdx = findColIdx([`link ${pLower}`, `tautan ${pLower}`, `url ${pLower}`])
+    const reachIdx = findColIdx([`reach ${pLower}`, `jangkauan ${pLower}`])
+    const viewsIdx = findColIdx([`views ${pLower}`, `view ${pLower}`, `tayangan ${pLower}`])
+    const likesIdx = findColIdx([`likes ${pLower}`, `like ${pLower}`, `suka ${pLower}`])
+    const commentsIdx = findColIdx([`komen ${pLower}`, `komentar ${pLower}`, `comments ${pLower}`])
+    const savesIdx = findColIdx([`saves ${pLower}`, `save ${pLower}`, `disimpan ${pLower}`])
+    const sharesIdx = findColIdx([`shares ${pLower}`, `share ${pLower}`, `bagikan ${pLower}`])
+
+    if (urlIdx !== -1 || reachIdx !== -1 || viewsIdx !== -1 || likesIdx !== -1 || commentsIdx !== -1 || savesIdx !== -1 || sharesIdx !== -1) {
+      platformColIndices[pName] = {
+        url: urlIdx,
+        reach: reachIdx,
+        views: viewsIdx,
+        likes: likesIdx,
+        comments: commentsIdx,
+        saves: savesIdx,
+        shares: sharesIdx,
+      }
+    }
+  })
 
   if (idxTitle === -1 || idxTopic === -1) {
     throw new Error(
@@ -602,13 +700,66 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     const rawDateStr = idxDate !== -1 ? (r[idxDate] || '').trim() : ''
     const dateVal = parseFlexibleDate(rawDateStr)
 
+    // Build per-platform publications map if per-platform columns exist
+    const platformPublications: Record<string, PlatformMetricInput> = {}
+    const detectedPlatforms: string[] = []
+
+    Object.entries(platformColIndices).forEach(([pName, cols]) => {
+      const urlVal = cols.url !== -1 ? (r[cols.url] || '').trim() : ''
+      const reachVal = cols.reach !== -1 ? parseIntValue(r[cols.reach]) : 0
+      const viewsVal = cols.views !== -1 ? parseIntValue(r[cols.views]) : 0
+      const likesVal = cols.likes !== -1 ? parseIntValue(r[cols.likes]) : 0
+      const commentsVal = cols.comments !== -1 ? parseIntValue(r[cols.comments]) : 0
+      const savesVal = cols.saves !== -1 ? parseIntValue(r[cols.saves]) : 0
+      const sharesVal = cols.shares !== -1 ? parseIntValue(r[cols.shares]) : 0
+
+      if (urlVal !== '' || reachVal > 0 || viewsVal > 0 || likesVal > 0 || commentsVal > 0 || savesVal > 0 || sharesVal > 0) {
+        platformPublications[pName] = {
+          url: urlVal,
+          reach: reachVal,
+          views: viewsVal,
+          likes: likesVal,
+          comments: commentsVal,
+          saves: savesVal,
+          shares: sharesVal,
+        }
+        detectedPlatforms.push(pName)
+      }
+    })
+
+    let platformVal = idxPlatform !== -1 ? (r[idxPlatform] || '').trim() : ''
+    if (!platformVal && detectedPlatforms.length > 0) {
+      platformVal = detectedPlatforms.join(', ')
+    }
+
+    // Totals for single fields
+    let aggregatedPostURL = idxPostURL !== -1 ? (r[idxPostURL] || '').trim() : ''
+    let aggregatedReach = idxReach !== -1 ? parseIntValue(r[idxReach]) : 0
+    let aggregatedViews = idxViews !== -1 ? parseIntValue(r[idxViews]) : 0
+    let aggregatedLikes = idxLikes !== -1 ? parseIntValue(r[idxLikes]) : 0
+    let aggregatedComments = idxComments !== -1 ? parseIntValue(r[idxComments]) : 0
+    let aggregatedSaves = idxSaves !== -1 ? parseIntValue(r[idxSaves]) : 0
+    let aggregatedShares = idxShares !== -1 ? parseIntValue(r[idxShares]) : 0
+
+    if (Object.keys(platformPublications).length > 0) {
+      Object.values(platformPublications).forEach((pm) => {
+        if (!aggregatedPostURL && pm.url) aggregatedPostURL = pm.url
+        aggregatedReach += pm.reach
+        aggregatedViews += pm.views
+        aggregatedLikes += pm.likes
+        aggregatedComments += pm.comments
+        aggregatedSaves += pm.saves
+        aggregatedShares += pm.shares
+      })
+    }
+
     parsedRows.push({
       row_number: i + 1, // Baris 1-indexed di Excel
       title: titleVal,
       topic: idxTopic !== -1 ? (r[idxTopic] || '').trim() : '',
       pillar: idxPillar !== -1 ? (r[idxPillar] || '').trim() : '',
       format: idxFormat !== -1 ? (r[idxFormat] || '').trim() : '',
-      platform: idxPlatform !== -1 ? (r[idxPlatform] || '').trim() : '',
+      platform: platformVal,
       content_purpose: idxPurpose !== -1 ? (r[idxPurpose] || '').trim() : '',
       category: idxCategory !== -1 ? (r[idxCategory] || '').trim() : '',
       posting_category: idxPostCat !== -1 ? (r[idxPostCat] || '').trim() : '',
@@ -616,13 +767,14 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
       brief: idxBrief !== -1 ? (r[idxBrief] || '').trim() : '',
       target_audience: idxAudience !== -1 ? (r[idxAudience] || '').trim() : '',
       reference: idxRef !== -1 ? (r[idxRef] || '').trim() : '',
-      post_url: idxPostURL !== -1 ? (r[idxPostURL] || '').trim() : undefined,
-      reach: idxReach !== -1 ? parseIntValue(r[idxReach]) : 0,
-      views: idxViews !== -1 ? parseIntValue(r[idxViews]) : 0,
-      likes: idxLikes !== -1 ? parseIntValue(r[idxLikes]) : 0,
-      comments: idxComments !== -1 ? parseIntValue(r[idxComments]) : 0,
-      saves: idxSaves !== -1 ? parseIntValue(r[idxSaves]) : 0,
-      shares: idxShares !== -1 ? parseIntValue(r[idxShares]) : 0,
+      post_url: aggregatedPostURL || undefined,
+      reach: aggregatedReach,
+      views: aggregatedViews,
+      likes: aggregatedLikes,
+      comments: aggregatedComments,
+      saves: aggregatedSaves,
+      shares: aggregatedShares,
+      platform_publications: Object.keys(platformPublications).length > 0 ? platformPublications : undefined,
     })
   }
 

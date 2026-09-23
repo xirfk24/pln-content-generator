@@ -51,29 +51,40 @@ var validPostingCats = map[string]string{
 	"LAINN":             "LAINNYA",
 }
 
+type PlatformMetricInput struct {
+	URL      string `json:"url"`
+	Reach    int    `json:"reach"`
+	Views    int    `json:"views"`
+	Likes    int    `json:"likes"`
+	Comments int    `json:"comments"`
+	Saves    int    `json:"saves"`
+	Shares   int    `json:"shares"`
+}
+
 type ImportRowInput struct {
-	RowNumber       int    `json:"row_number"`
-	Title           string `json:"title"`
-	Topic           string `json:"topic"`
-	PlannedDate     string `json:"planned_date"`
-	Platform        string `json:"platform"`
-	Format          string `json:"format"`
-	Category        string `json:"category"`
-	Pillar          string `json:"pillar"`
-	ContentPurpose  string `json:"content_purpose"`
-	PostingCategory string `json:"posting_category"`
-	PIC             string `json:"pic"`
-	Brief           string `json:"brief"`
-	TargetAudience  string `json:"target_audience"`
-	Reference       string `json:"reference"`
+	RowNumber            int                            `json:"row_number"`
+	Title                string                         `json:"title"`
+	Topic                string                         `json:"topic"`
+	PlannedDate          string                         `json:"planned_date"`
+	Platform             string                         `json:"platform"`
+	Format               string                         `json:"format"`
+	Category             string                         `json:"category"`
+	Pillar               string                         `json:"pillar"`
+	ContentPurpose       string                         `json:"content_purpose"`
+	PostingCategory      string                         `json:"posting_category"`
+	PIC                  string                         `json:"pic"`
+	Brief                string                         `json:"brief"`
+	TargetAudience       string                         `json:"target_audience"`
+	Reference            string                         `json:"reference"`
 	// Additional fields for LEGACY_PUBLISHED mode
-	PostURL  string `json:"post_url"`
-	Reach    *int   `json:"reach"`
-	Views    *int   `json:"views"`
-	Likes    *int   `json:"likes"`
-	Comments *int   `json:"comments"`
-	Saves    *int   `json:"saves"`
-	Shares   *int   `json:"shares"`
+	PostURL              string                         `json:"post_url"`
+	Reach                *int                           `json:"reach"`
+	Views                *int                           `json:"views"`
+	Likes                *int                           `json:"likes"`
+	Comments             *int                           `json:"comments"`
+	Saves                *int                           `json:"saves"`
+	Shares               *int                           `json:"shares"`
+	PlatformPublications map[string]PlatformMetricInput `json:"platform_publications"`
 }
 
 type importError struct {
@@ -88,34 +99,35 @@ type ValidateImportInput struct {
 }
 
 type ParsedRowData struct {
-	Title             string   `json:"title"`
-	Topic             string   `json:"topic"`
-	PlannedDate       string   `json:"planned_date"`
-	PlannedWeek       int      `json:"planned_week"`
-	Day               string   `json:"day"`
-	PillarID          *string  `json:"pillar_id"`
-	PillarName        string   `json:"pillar_name"`
-	CategoryID        *string  `json:"category_id"`
-	PrimaryPlatformID *string  `json:"primary_platform_id"`
-	PlatformIDs       []string `json:"platform_ids"`
-	PlatformNames     []string `json:"platform_names"`
-	Format            string   `json:"format"`
-	ContentPurpose    *string  `json:"content_purpose"`
-	ContentPurposes   []string `json:"content_purposes"`
-	PostingCategory   *string  `json:"posting_category"`
-	PIC               *string  `json:"pic"`
-	Brief             *string  `json:"brief"`
-	TargetAudience    *string  `json:"target_audience"`
-	Reference         *string  `json:"reference"`
+	Title                string                         `json:"title"`
+	Topic                string                         `json:"topic"`
+	PlannedDate          string                         `json:"planned_date"`
+	PlannedWeek          int                            `json:"planned_week"`
+	Day                  string                         `json:"day"`
+	PillarID             *string                        `json:"pillar_id"`
+	PillarName           string                         `json:"pillar_name"`
+	CategoryID           *string                        `json:"category_id"`
+	PrimaryPlatformID    *string                        `json:"primary_platform_id"`
+	PlatformIDs          []string                       `json:"platform_ids"`
+	PlatformNames        []string                       `json:"platform_names"`
+	Format               string                         `json:"format"`
+	ContentPurpose       *string                        `json:"content_purpose"`
+	ContentPurposes      []string                       `json:"content_purposes"`
+	PostingCategory      *string                        `json:"posting_category"`
+	PIC                  *string                        `json:"pic"`
+	Brief                *string                        `json:"brief"`
+	TargetAudience       *string                        `json:"target_audience"`
+	Reference            *string                        `json:"reference"`
 	// Additional fields for LEGACY_PUBLISHED mode
-	ImportMode string  `json:"import_mode"`
-	PostURL    *string `json:"post_url"`
-	Reach      int     `json:"reach"`
-	Views      int     `json:"views"`
-	Likes      int     `json:"likes"`
-	Comments   int     `json:"comments"`
-	Saves      int     `json:"saves"`
-	Shares     int     `json:"shares"`
+	ImportMode           string                         `json:"import_mode"`
+	PostURL              *string                        `json:"post_url"`
+	Reach                int                            `json:"reach"`
+	Views                int                            `json:"views"`
+	Likes                int                            `json:"likes"`
+	Comments             int                            `json:"comments"`
+	Saves                int                            `json:"saves"`
+	Shares               int                            `json:"shares"`
+	PlatformPublications map[string]PlatformMetricInput `json:"platform_publications"`
 }
 
 type RowValidationResult struct {
@@ -263,6 +275,14 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 		var platformNames []string
 		var primaryPlatformID *string
 		platInput := strings.TrimSpace(row.Platform)
+		if platInput == "" && len(row.PlatformPublications) > 0 {
+			var keys []string
+			for k := range row.PlatformPublications {
+				keys = append(keys, k)
+			}
+			platInput = strings.Join(keys, ", ")
+		}
+
 		if platInput == "" {
 			res.Errors = append(res.Errors, fmt.Sprintf("Target Platform wajib diisi. Pilihan tersedia: %s.", strings.Join(platformNamesList, ", ")))
 		} else {
@@ -419,33 +439,34 @@ func (h *Handler) ValidateImportContents(c *gin.Context) {
 			}
 
 			res.ParsedData = &ParsedRowData{
-				Title:             res.Title,
-				Topic:             res.Topic,
-				PlannedDate:       formattedDate,
-				PlannedWeek:       pWeek,
-				Day:               pDay,
-				PillarID:          pillarID,
-				PillarName:        matchedPillarName,
-				CategoryID:        categoryID,
-				PrimaryPlatformID: primaryPlatformID,
-				PlatformIDs:       platformIDs,
-				PlatformNames:     platformNames,
-				Format:            format,
-				ContentPurpose:    primaryPurpose,
-				ContentPurposes:   purposeList,
-				PostingCategory:   postCategory,
-				PIC:               picPtr,
-				Brief:             briefPtr,
-				TargetAudience:    taPtr,
-				Reference:         refPtr,
-				ImportMode:        importMode,
-				PostURL:           postURLPtr,
-				Reach:             reachVal,
-				Views:             viewsVal,
-				Likes:             likesVal,
-				Comments:          commentsVal,
-				Saves:             savesVal,
-				Shares:            sharesVal,
+				Title:                res.Title,
+				Topic:                res.Topic,
+				PlannedDate:          formattedDate,
+				PlannedWeek:          pWeek,
+				Day:                  pDay,
+				PillarID:             pillarID,
+				PillarName:           matchedPillarName,
+				CategoryID:           categoryID,
+				PrimaryPlatformID:    primaryPlatformID,
+				PlatformIDs:          platformIDs,
+				PlatformNames:        platformNames,
+				Format:               format,
+				ContentPurpose:       primaryPurpose,
+				ContentPurposes:      purposeList,
+				PostingCategory:      postCategory,
+				PIC:                  picPtr,
+				Brief:                briefPtr,
+				TargetAudience:       taPtr,
+				Reference:            refPtr,
+				ImportMode:           importMode,
+				PostURL:              postURLPtr,
+				Reach:                reachVal,
+				Views:                viewsVal,
+				Likes:                likesVal,
+				Comments:             commentsVal,
+				Saves:                savesVal,
+				Shares:               sharesVal,
+				PlatformPublications: row.PlatformPublications,
 			}
 		}
 
@@ -655,23 +676,15 @@ func (h *Handler) ImportContents(c *gin.Context) {
 		`, insertedID, historyAction, initialStatus, historyComment, user.ID)
 
 		// Buat record di publications (dan performance_metrics jika ada)
-		targetPlatforms := resolvedPlatformIDs
-		if len(targetPlatforms) == 0 && resolvedPrimaryPlatform != nil {
-			targetPlatforms = []string{*resolvedPrimaryPlatform}
-		}
-		if len(targetPlatforms) == 0 {
-			targetPlatforms = []string{""}
-		}
+		if rowMode == "LEGACY_PUBLISHED" && len(row.PlatformPublications) > 0 {
+			platformMap, _ := h.loadPlatformMap(c.Request.Context())
+			for pName, pm := range row.PlatformPublications {
+				var pID *string
+				if pMatch, _, ok := matchPlatform(pName, platformMap); ok {
+					pID = &pMatch
+				}
 
-		for _, platID := range targetPlatforms {
-			var pID *string
-			if platID != "" {
-				pID = &platID
-			}
-
-			if rowMode == "LEGACY_PUBLISHED" {
-				postURL := cleanStrPtr(row.PostURL)
-
+				postURL := cleanStrPtr(&pm.URL)
 				var pubID string
 				errPub := h.Pool.QueryRow(c.Request.Context(), `
 					INSERT INTO publications (
@@ -681,18 +694,18 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				`, insertedID, pID, plannedDate, plannedDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
 
 				if errPub != nil {
-					log.Printf("Import row %d publication insert error: %v", rowNum, errPub)
+					log.Printf("Import row %d publication insert error (%s): %v", rowNum, pName, errPub)
 					continue
 				}
 
-				if row.Reach > 0 || row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Saves > 0 || row.Shares > 0 {
+				if pm.Reach > 0 || pm.Views > 0 || pm.Likes > 0 || pm.Comments > 0 || pm.Saves > 0 || pm.Shares > 0 {
 					recDate := row.PlannedDate
 					if recDate == "" {
 						recDate = time.Now().Format("2006-01-02")
 					}
-					reachVal := row.Reach
+					reachVal := pm.Reach
 					if reachVal == 0 {
-						reachVal = row.Views
+						reachVal = pm.Views
 					}
 					_, errMet := h.Pool.Exec(c.Request.Context(), `
 						INSERT INTO performance_metrics (
@@ -705,24 +718,82 @@ func (h *Handler) ImportContents(c *gin.Context) {
 							shares = EXCLUDED.shares,
 							saves = EXCLUDED.saves,
 							reach = EXCLUDED.reach
-					`, pubID, row.Views, row.Likes, row.Comments, row.Shares, row.Saves, reachVal, recDate)
+					`, pubID, pm.Views, pm.Likes, pm.Comments, pm.Shares, pm.Saves, reachVal, recDate)
 					if errMet != nil {
-						log.Printf("Import row %d metric insert error: %v", rowNum, errMet)
+						log.Printf("Import row %d metric insert error (%s): %v", rowNum, pName, errMet)
 					}
 				}
-			} else {
-				// Mode PLAN: Buat record publikasi dengan status PLANNED agar langsung muncul di Antrean Publikasi (/publishing)
-				pubStatus := "PLANNED"
-				if initialStatus == "PUBLISHED" {
-					pubStatus = "PUBLISHED"
+			}
+		} else {
+			targetPlatforms := resolvedPlatformIDs
+			if len(targetPlatforms) == 0 && resolvedPrimaryPlatform != nil {
+				targetPlatforms = []string{*resolvedPrimaryPlatform}
+			}
+			if len(targetPlatforms) == 0 {
+				targetPlatforms = []string{""}
+			}
+
+			for _, platID := range targetPlatforms {
+				var pID *string
+				if platID != "" {
+					pID = &platID
 				}
-				_, errPub := h.Pool.Exec(c.Request.Context(), `
-					INSERT INTO publications (
-						content_id, platform_id, planned_publish_date, status, notes
-					) VALUES ($1, $2, $3, $4, 'Diimpor dari rencana konten')
-				`, insertedID, pID, plannedDate, pubStatus)
-				if errPub != nil {
-					log.Printf("Import row %d plan publication insert error: %v", rowNum, errPub)
+
+				if rowMode == "LEGACY_PUBLISHED" {
+					postURL := cleanStrPtr(row.PostURL)
+
+					var pubID string
+					errPub := h.Pool.QueryRow(c.Request.Context(), `
+						INSERT INTO publications (
+							content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes
+						) VALUES ($1, $2, $3, $4, $5, 'PUBLISHED', $6)
+						RETURNING id
+					`, insertedID, pID, plannedDate, plannedDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
+
+					if errPub != nil {
+						log.Printf("Import row %d publication insert error: %v", rowNum, errPub)
+						continue
+					}
+
+					if row.Reach > 0 || row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Saves > 0 || row.Shares > 0 {
+						recDate := row.PlannedDate
+						if recDate == "" {
+							recDate = time.Now().Format("2006-01-02")
+						}
+						reachVal := row.Reach
+						if reachVal == 0 {
+							reachVal = row.Views
+						}
+						_, errMet := h.Pool.Exec(c.Request.Context(), `
+							INSERT INTO performance_metrics (
+								publication_id, views, likes, comments, shares, saves, reach, recorded_at
+							) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+							ON CONFLICT (publication_id, recorded_at) DO UPDATE SET
+								views = EXCLUDED.views,
+								likes = EXCLUDED.likes,
+								comments = EXCLUDED.comments,
+								shares = EXCLUDED.shares,
+								saves = EXCLUDED.saves,
+								reach = EXCLUDED.reach
+						`, pubID, row.Views, row.Likes, row.Comments, row.Shares, row.Saves, reachVal, recDate)
+						if errMet != nil {
+							log.Printf("Import row %d metric insert error: %v", rowNum, errMet)
+						}
+					}
+				} else {
+					// Mode PLAN: Buat record publikasi dengan status PLANNED agar langsung muncul di Antrean Publikasi (/publishing)
+					pubStatus := "PLANNED"
+					if initialStatus == "PUBLISHED" {
+						pubStatus = "PUBLISHED"
+					}
+					_, errPub := h.Pool.Exec(c.Request.Context(), `
+						INSERT INTO publications (
+							content_id, platform_id, planned_publish_date, status, notes
+						) VALUES ($1, $2, $3, $4, 'Diimpor dari rencana konten')
+					`, insertedID, pID, plannedDate, pubStatus)
+					if errPub != nil {
+						log.Printf("Import row %d plan publication insert error: %v", rowNum, errPub)
+					}
 				}
 			}
 		}
