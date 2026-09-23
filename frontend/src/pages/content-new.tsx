@@ -55,7 +55,6 @@ function NewContentForm() {
     target_audience: '',
     planned_date: '',
     brief_link: '',
-    pic: '',
     priority: '',
     posting_category: '',
   })
@@ -138,7 +137,6 @@ function NewContentForm() {
       target_audience: form.target_audience.trim() || null,
       planned_date: form.planned_date || null,
       brief_link: form.brief_link.trim() || null,
-      pic: form.pic.trim() || null,
       priority: form.priority || 'MEDIUM',
       posting_category: form.posting_category || null,
     }
@@ -408,7 +406,7 @@ function NewContentForm() {
 
               <PlatformSelector
                 platforms={platforms.filter(
-                  (p) => !['website', 'linkedin', 'twitter/x', 'twitter', 'x'].includes(p.name.toLowerCase())
+                  (p) => !['website', 'linkedin'].includes(p.name.toLowerCase())
                 )}
                 selectedIds={form.platform_ids}
                 onChange={(newIds) => setForm({ ...form, platform_ids: newIds })}
@@ -516,4 +514,3 @@ function NewContentForm() {
     </div>
   )
 }
-
