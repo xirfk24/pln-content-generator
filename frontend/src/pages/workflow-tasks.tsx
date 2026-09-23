@@ -34,7 +34,6 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { WorkflowActionButton } from '@/components/workflow/workflow-action-button'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { Badge } from '@/components/ui/badge'
 import type { Content, Publication } from '@/types'
 
@@ -166,6 +165,7 @@ export default function MyTasksPage() {
       description: 'Konten memerlukan perbaikan sesuai arahan dan catatan evaluasi dari Reviewer/Admin.',
       icon: RotateCcw,
       iconColor: 'text-rose-600',
+      chip: 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/50 dark:border-rose-900/60 dark:text-rose-300',
       badgeColor: 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300',
       items: tasks.revisions,
       actions: (c: Content) => (
@@ -208,6 +208,7 @@ export default function MyTasksPage() {
       description: 'Konten dalam tahap awal pembuatan naskah/brief yang belum diajukan ke reviewer.',
       icon: FileEdit,
       iconColor: 'text-primary',
+      chip: 'bg-primary-soft text-primary border-primary/20 dark:bg-primary/10 dark:border-primary/20',
       badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
       items: tasks.drafts,
       actions: (c: Content) => (
@@ -240,6 +241,7 @@ export default function MyTasksPage() {
       description: 'Konten sedang dalam proses review oleh Admin (persetujuan konsep atau review produksi).',
       icon: Clock,
       iconColor: 'text-purple-600',
+      chip: 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-950/50 dark:border-purple-900/60 dark:text-purple-300',
       badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
       items: tasks.pendingApproval,
       actions: (c: Content) => (
@@ -258,6 +260,7 @@ export default function MyTasksPage() {
       description: 'Konsep telah disetujui. Buat materi visual/media dan setor tautan hasil produksi.',
       icon: Wrench,
       iconColor: 'text-amber-600',
+      chip: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50 dark:border-amber-900/60 dark:text-amber-300',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
       items: tasks.production,
       actions: (c: Content) => (
@@ -295,6 +298,7 @@ export default function MyTasksPage() {
       description: 'Konten telah disetujui penuh. Rekam tanggal publikasi dan tautan postingan.',
       icon: CheckCircle2,
       iconColor: 'text-success',
+      chip: 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-900/60 dark:text-emerald-300',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
       items: tasks.readyToPublish,
       actions: (c: Content) => (
@@ -340,6 +344,7 @@ export default function MyTasksPage() {
       description: 'Konten yang sudah berhasil ditayangkan pada platform sasaran.',
       icon: Globe,
       iconColor: 'text-teal-600',
+      chip: 'bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-950/50 dark:border-teal-900/60 dark:text-teal-300',
       badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
       items: tasks.published,
       actions: (c: Content) => (
@@ -533,19 +538,23 @@ export default function MyTasksPage() {
 
           return (
             <Card key={group.key} className={group.key === 'revisions' ? 'border-rose-300 dark:border-rose-900/60 shadow-xs' : ''}>
-              <CardHeader className="border-b py-3 px-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <group.icon className={`h-5 w-5 ${group.iconColor}`} />
-                    <CardTitle className="text-sm font-semibold">
-                      {group.title}
-                    </CardTitle>
-                    <Badge variant="secondary" className={`text-xs ${group.badgeColor}`}>
-                      {group.items.length}
-                    </Badge>
+              <CardHeader className="border-b py-3.5 px-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${group.chip}`} aria-hidden="true">
+                      <group.icon className="h-4 w-4" />
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                      <CardTitle className={`text-base font-bold tracking-tight rounded-md px-2.5 py-1 ${group.badgeColor}`}>
+                        {group.title}
+                      </CardTitle>
+                      <Badge variant="secondary" className={`text-[11px] font-semibold px-2 ${group.badgeColor}`}>
+                        {group.items.length}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-ink-secondary mt-0.5">{group.description}</p>
+                <p className="text-xs text-ink-muted mt-1.5 leading-relaxed">{group.description}</p>
               </CardHeader>
               <CardContent className="p-0">
                 {group.items.length === 0 ? (
@@ -557,28 +566,31 @@ export default function MyTasksPage() {
                     {group.items.map((content) => (
                       <div
                         key={content.id}
-                        className={`flex flex-col gap-3 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors ${group.key === 'revisions' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
+                        className={`flex flex-col gap-3 p-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors ${group.key === 'revisions' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
                           }`}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
-                                href={`/content/${content.id}`}
-                                className="font-semibold text-sm text-ink hover:text-primary transition-colors"
-                              >
-                                {content.title}
-                              </Link>
-                              <StatusBadge status={content.status} />
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-secondary">
+                          <div className="space-y-1.5 min-w-0">
+                            <Link
+                              href={`/content/${content.id}`}
+                              className="block text-sm font-semibold leading-snug text-ink hover:text-primary transition-colors"
+                            >
+                              {content.title}
+                            </Link>
+                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
                               {content.pillar?.name && (
-                                <span>Pilar: <strong>{content.pillar.name}</strong></span>
+                                <span>
+                                  Pilar: <strong className="font-semibold text-ink-secondary">{content.pillar.name}</strong>
+                                </span>
                               )}
-                              <span>Format: <strong>{content.format}</strong></span>
+                              <span>
+                                Format: <strong className="font-semibold text-ink-secondary">{content.format}</strong>
+                              </span>
                               {content.planned_date && (
-                                <span>Target: <strong>{formatDate(content.planned_date)}</strong></span>
+                                <span className="inline-flex items-center gap-x-2.5">
+                                  <span aria-hidden="true" className="h-0.5 w-0.5 rounded-full bg-ink-muted/60" />
+                                  Target: <strong className="font-semibold text-ink-secondary">{formatDate(content.planned_date)}</strong>
+                                </span>
                               )}
                             </div>
                           </div>
