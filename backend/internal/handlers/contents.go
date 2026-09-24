@@ -79,19 +79,17 @@ func (h *Handler) requireContentAccess(c *gin.Context, user *models.Profile, id 
 
 // GET /api/contents
 func (h *Handler) ListContents(c *gin.Context) {
-	user := requireUser(c)
-	if user == nil {
+	if requireUser(c) == nil {
 		return
 	}
 
 	where := []string{"TRUE"}
 	args := []any{}
 
-	// Data privacy: STAFF users only see their own content
-	if user.Role != "ADMIN" {
-		args = append(args, user.ID)
-		where = append(where, "c.created_by = $"+itoa(len(args)))
-	}
+	// Catatan: list sengaja tidak difilter per-user. Dashboard, kalender,
+	// detail konten, dan analytics sudah menampilkan semua konten ke STAFF,
+	// jadi filter di sini hanya membuat list kosong tanpa memberi privasi
+	// sungguhan. Batas hak akses tetap ada di aksi mutasi (canModifyContent).
 
 	// Tabungan filter
 	if c.Query("is_savings") == "true" || c.Query("tabungan") == "true" {

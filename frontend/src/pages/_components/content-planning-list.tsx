@@ -46,7 +46,7 @@ import type { Content, Publication, PlanningPeriod } from '@/types'
 import { PlatformCluster } from '@/components/ui/platform-icon'
 import { ContentPlanningKpi } from './content-planning-kpi'
 import { ContentPlanningCharts } from './content-planning-charts'
-import { PLN_TOPIC_OPTIONS } from '@/constants'
+import { useTopics } from '@/lib/use-topics'
 
 /** Ambil URL publikasi pertama yang published (kalau ada) */
 function getPublishedUrl(content: Content): string | null {
@@ -61,6 +61,7 @@ const TH_BASE =
   'whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary'
 
 export default function ContentPlanningList() {
+  const topics = useTopics()
   const [contents, setContents] = useState<Content[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -480,7 +481,7 @@ export default function ContentPlanningList() {
                 aria-label="Filter topik konten"
               >
                 <option value="">Semua Topik Konten</option>
-                {PLN_TOPIC_OPTIONS.map((t) => (
+                {topics.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>

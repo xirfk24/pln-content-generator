@@ -11,19 +11,16 @@ import (
 
 // GET /api/tabungan — Ambil daftar konten tabungan
 func (h *Handler) ListTabungan(c *gin.Context) {
-	user := requireUser(c)
-	if user == nil {
+	if requireUser(c) == nil {
 		return
 	}
 
 	where := []string{"COALESCE(c.is_savings, FALSE) = TRUE"}
 	args := []any{}
 
-	// Pastikan hanya yang dibuat atau ditambahkan oleh user itu sendiri (khususnya untuk user role STAFF)
-	if user.Role != "ADMIN" {
-		args = append(args, user.ID)
-		where = append(where, "c.created_by = $"+itoa(len(args)))
-	}
+	// Tanpa filter per-user — konsisten dengan ListContents: dashboard &
+	// detail sudah menampilkan semua konten ke STAFF, batas hak akses ada
+	// di aksi mutasi (canModifyContent), bukan di list.
 
 	if search := c.Query("search"); search != "" {
 		args = append(args, "%"+strings.ToLower(search)+"%")

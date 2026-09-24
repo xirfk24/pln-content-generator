@@ -15,9 +15,9 @@ import {
   CONTENT_PRIORITY_LABELS,
   POSTING_CATEGORIES,
   POSTING_CATEGORY_LABELS,
-  PLN_TOPIC_OPTIONS,
   CONTENT_PILLAR_OPTIONS,
 } from '@/constants'
+import { useTopics } from '@/lib/use-topics'
 import { PlatformSelector } from '@/components/ui/platform-icon'
 import type { Pillar, Category, Platform } from '@/types'
 
@@ -37,6 +37,7 @@ export default function NewContentPage() {
 
 function NewContentForm() {
   const router = useRouter()
+  const topics = useTopics()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
@@ -206,14 +207,14 @@ function NewContentForm() {
   // Normalizer topik untuk pencocokan dropdown
   const normalizedTopicValue = useMemo(() => {
     if (!form.topic) return ''
-    const match = PLN_TOPIC_OPTIONS.find(
+    const match = topics.find(
       (t) =>
         t.toLowerCase() === form.topic.toLowerCase() ||
         t.replace(/^[A-Z]\s*-\s*/, '').toLowerCase() === form.topic.toLowerCase()
     )
     if (match) return match
     return 'Z - Lain-Lain'
-  }, [form.topic])
+  }, [form.topic, topics])
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -293,7 +294,7 @@ function NewContentForm() {
                   onChange={(e) => {
                     const val = e.target.value
                     if (val === 'Z - Lain-Lain') {
-                      if (PLN_TOPIC_OPTIONS.includes(form.topic as any) && form.topic !== 'Z - Lain-Lain') {
+                      if (topics.includes(form.topic) && form.topic !== 'Z - Lain-Lain') {
                         setForm((prev) => ({ ...prev, topic: '' }))
                       } else {
                         setForm((prev) => ({ ...prev, topic: 'Z - Lain-Lain' }))
@@ -306,7 +307,7 @@ function NewContentForm() {
                   required
                 >
                   <option value="">Pilih Topik Konten</option>
-                  {PLN_TOPIC_OPTIONS.map((t) => (
+                  {topics.map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>
@@ -314,7 +315,7 @@ function NewContentForm() {
                 </Select>
 
                 {/* Input tambahan jika topik tidak ada di daftar atau memilih Z - Lain-Lain */}
-                {((normalizedTopicValue === 'Z - Lain-Lain' && (!PLN_TOPIC_OPTIONS.includes(form.topic as any) || form.topic === 'Z - Lain-Lain' || form.topic === 'Lain-lain'))) && (
+                {((normalizedTopicValue === 'Z - Lain-Lain' && (!topics.includes(form.topic) || form.topic === 'Z - Lain-Lain' || form.topic === 'Lain-lain'))) && (
                   <div className="pt-1">
                     <Input
                       id="custom_topic"

@@ -22,6 +22,8 @@ import { Loader2, Plus, Pencil, Trash2, ClipboardList, CheckCircle, AlertCircle 
 interface MasterItem {
   id: string
   name: string
+  code?: string
+  label?: string
   description?: string | null
   icon?: string | null
 }
@@ -31,6 +33,8 @@ interface MasterDataManagerProps {
   description: string
   apiPath: string
   hasDescription?: boolean
+  /** Tampilkan kolom "Kode" terpisah (khusus Topik Konten). */
+  hasCode?: boolean
 }
 
 interface BulkResult {
@@ -62,11 +66,21 @@ function parseBulkLines(text: string): Array<{ name: string; description: string
     .filter((item) => item.name.length > 0)
 }
 
+/** Parse one bulk line into { code, name } — khusus Topik Konten.
+ *  Format yang dipahami: "R - PLN Mobile" (kode 1-3 huruf + " - " + nama)
+ *  atau nama polos. Baris "A | Deskripsi" tetap dipakai format umum. */
+function parseBulkTopicLine(line: string): { code: string; name: string } {
+  const m = line.match(/^([A-Za-z]{1,3})\s+-\s+(.+)$/)
+  if (m) return { code: m[1].toUpperCase(), name: m[2].trim() }
+  return { code: '', name: line }
+}
+
 export function MasterDataManager({
   title,
   description,
   apiPath,
   hasDescription = true,
+  hasCode = false,
 }: MasterDataManagerProps) {
   const [items, setItems] = useState<MasterItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,7 +90,7 @@ export function MasterDataManager({
   // Single add
   const [addOpen, setAddOpen] = useState(false)
   const [editItem, setEditItem] = useState<MasterItem | null>(null)
-  const [form, setForm] = useState({ name: '', description: '' })
+  const [form, setForm] = useState({ code: '', name: '', description: '' })
 
   // Bulk add
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -117,7 +131,7 @@ export function MasterDataManager({
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Failed to create'); return }
       setAddOpen(false)
-      setForm({ name: '', description: '' })
+      setForm({ code: '', name: '', description: '' })
       load()
     } catch {
       setError('Network error')
@@ -180,7 +194,7 @@ export function MasterDataManager({
 
   function openEdit(item: MasterItem) {
     setEditItem(item)
-    setForm({ name: item.name, description: item.description || '' })
+    setForm({ code: item.code || '', name: item.name, description: item.description || '' })
   }
 
   // ── Bulk add ────────────────────────────────────────────────────────────────
@@ -202,10 +216,11 @@ export function MasterDataManager({
         continue
       }
       try {
+        const body = hasCode ? { ...parseBulkTopicLine(name), description: desc } : { name, description: desc }
         const res = await apiFetch(`/api/admin/${apiPath}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, description: desc }),
+          body: JSON.stringify(body),
         })
         if (res.ok) {
           result.added++
@@ -273,6 +288,9 @@ export function MasterDataManager({
                 <caption className="sr-only">{title} list</caption>
                 <thead className="border-b border-border bg-surface-muted">
                   <tr>
+                    {hasCode && (
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Kode</th>
+                    )}
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Name</th>
                     {hasDescription && (
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">Description</th>
@@ -283,6 +301,11 @@ export function MasterDataManager({
                 <tbody className="divide-y divide-border">
                   {items.map((item) => (
                     <tr key={item.id} className="transition-colors hover:bg-surface-muted/60">
+                      {hasCode && (
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className="font-mono">{item.code || '-'}</Badge>
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <Badge variant="outline">{item.name}</Badge>
                       </td>
@@ -318,6 +341,18 @@ export function MasterDataManager({
             <DialogDescription>Create a new item.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4">
+            {hasCode && (
+              <div className="space-y-2">
+                <Label>Kode (1-3 huruf, opsional)</Label>
+                <Input
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                  placeholder="R"
+                  maxLength={3}
+                  className="font-mono uppercase"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Name *</Label>
               <Input
@@ -354,6 +389,18 @@ export function MasterDataManager({
             <DialogDescription>Update this item.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            {hasCode && (
+              <div className="space-y-2">
+                <Label>Kode (1-3 huruf, opsional)</Label>
+                <Input
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                  placeholder="R"
+                  maxLength={3}
+                  className="font-mono uppercase"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Name *</Label>
               <Input

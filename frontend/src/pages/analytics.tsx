@@ -22,9 +22,9 @@ import { SkeletonCard, SkeletonKPI } from '@/components/ui/skeleton'
 import {
   ENGAGEMENT_FORMULA,
   CONTENT_STATUS_LABELS,
-  PLN_TOPIC_OPTIONS,
   CONTENT_PILLAR_OPTIONS,
 } from '@/constants'
+import { useTopics } from '@/lib/use-topics'
 import {
   AXIS_PROPS,
   GRID_PROPS,
@@ -154,6 +154,7 @@ interface TopicRecapRow {
 }
 
 export default function AnalyticsOverviewPage() {
+  const topics = useTopics()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [recap, setRecap] = useState<{ recap: TopicRecapRow[]; total: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -518,7 +519,7 @@ export default function AnalyticsOverviewPage() {
                 className="text-xs font-normal"
               >
                 <option value="">Semua Topik Konten</option>
-                {PLN_TOPIC_OPTIONS.map((t) => (
+                {topics.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>

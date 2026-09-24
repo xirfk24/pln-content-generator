@@ -51,5 +51,21 @@ func (h *Handler) MasterData(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"pillars": pillars, "categories": categories, "platforms": platforms})
+	topics := []map[string]any{}
+	topicRows, err := h.Pool.Query(h.ctx(), "SELECT id, COALESCE(code, ''), name FROM topics ORDER BY NULLIF(code, '') NULLS LAST, name")
+	if err == nil {
+		defer topicRows.Close()
+		for topicRows.Next() {
+			var id, code, name string
+			if topicRows.Scan(&id, &code, &name) == nil {
+				label := name
+				if code != "" {
+					label = code + " - " + name
+				}
+				topics = append(topics, map[string]any{"id": id, "code": code, "name": name, "label": label})
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"pillars": pillars, "categories": categories, "platforms": platforms, "topics": topics})
 }

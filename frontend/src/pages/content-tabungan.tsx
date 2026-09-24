@@ -34,11 +34,12 @@ import {
 } from 'lucide-react'
 import Link from '@/compat/next'
 import { formatDate } from '@/lib/utils'
-import { PLN_TOPIC_OPTIONS } from '@/constants'
+import { useTopics } from '@/lib/use-topics'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import type { Content, Pillar, Category, Platform } from '@/types'
 
 export default function ContentTabunganPage() {
+  const topics = useTopics()
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null)
   const [contents, setContents] = useState<Content[]>([])
   const [loading, setLoading] = useState(true)
@@ -262,7 +263,7 @@ export default function ContentTabunganPage() {
                 className="w-full sm:w-48 font-normal text-slate-700 dark:text-slate-200"
               >
                 <option value="">Semua Topik Konten</option>
-                {PLN_TOPIC_OPTIONS.map((t) => (
+                {topics.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </Select>

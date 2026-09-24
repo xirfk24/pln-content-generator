@@ -124,6 +124,53 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 		SELECT 'Semester 2 2024', '2024-07-01'::DATE, '2024-12-31'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 2 Tahun 2024'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2024')`,
 
+		// Topics (Topik Konten resmi A-Z, dikelola dari halaman admin).
+		// Kode dipisah dari nama supaya analitik menampilkan kode tanpa
+		// bergantung pada parsing prefix "A - Nama" di teks topik.
+		`CREATE TABLE IF NOT EXISTS topics (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			code VARCHAR(10),
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			created_at TIMESTAMPTZ DEFAULT now(),
+			updated_at TIMESTAMPTZ DEFAULT now()
+		)`,
+		`ALTER TABLE topics ADD COLUMN IF NOT EXISTS code VARCHAR(10)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_topics_name ON topics(name)`,
+		// Backfill satu kali: topik lama yang namanya masih "A - Nama"
+		// dipecah jadi kode terpisah; nama polos dibiarkan tanpa kode.
+		`UPDATE topics SET code = left(name, 1), name = regexp_replace(name, '^[A-Z] - ', '') WHERE (code IS NULL OR code = '') AND name ~ '^[A-Z] - '`,
+		// Seed hanya mengisi yang belum ada (DO NOTHING) supaya perubahan
+		// yang dilakukan admin dari UI tidak ditimpa ulang saat restart.
+		`INSERT INTO topics (code, name) VALUES
+			('A', 'Bencana & Pemulihan'),
+			('B', 'TJSL'),
+			('C', 'EV/SPKLU'),
+			('D', 'Energi Baru terbarukan/REC'),
+			('E', 'Jabar Smile'),
+			('F', 'Instalasi Listrik'),
+			('G', 'K3L'),
+			('H', 'Kerja Sama'),
+			('I', 'Electrifying Lifestyle'),
+			('J', 'Lisdes/Elektrifikasi'),
+			('K', 'Pasang Baru/Tambah Daya'),
+			('L', 'Pembangkit'),
+			('N', 'Penghargaan'),
+			('O', 'Pengumuman/Transformasi/HSH'),
+			('P', 'Penjualan/Konsumsi Listrik'),
+			('Q', 'Penokohan'),
+			('R', 'PLN Mobile'),
+			('S', 'Promo PLN'),
+			('T', 'Rekening/Tagihan Listrik'),
+			('U', 'Subsidi Listrik'),
+			('V', 'Surat Pembaca'),
+			('W', 'Tarif Tenaga Listrik'),
+			('X', 'Tingkat Mutu Pelayanan'),
+			('Y', 'YBM'),
+			('Z', 'Lain-Lain')
+		ON CONFLICT (name) DO NOTHING`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_topics_code ON topics(code) WHERE code IS NOT NULL AND code != ''`,
+
 		// Important Events (Calendar of Events / Hari Peringatan & Hari Besar)
 		`CREATE TABLE IF NOT EXISTS important_events (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

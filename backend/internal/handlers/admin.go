@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +17,7 @@ var masterTables = map[string]bool{
 	"categories": true,
 	"pillars":    true,
 	"platforms":  true,
+	"topics":     true,
 }
 
 func validMasterTable(table string) bool {
@@ -175,6 +178,114 @@ func (h *Handler) DeleteMaster(table string) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	}
+}
+
+// topicUpdateInput adalah body PUT /admin/topics: kode & nama terpisah,
+// keduanya opsional agar kompatibel dengan payload {name, description}
+// dari komponen MasterDataManager.
+type topicUpdateInput struct {
+	Code        *string `json:"code"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
+// UpdateTopic mengubah kode/nama topik dan menyebarkan perubahan ke contents:
+// kolom contents.topic menyimpan label lengkap dari dropdown topik
+// (mis. "A - Bencana & Pemulihan"), jadi baris berlabel lama diperbarui ke
+// label baru agar analitik/rekap tidak terpecah dua nama.
+func (h *Handler) UpdateTopic(c *gin.Context) {
+	id := c.Param("id")
+	var in topicUpdateInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if in.Name == nil || strings.TrimSpace(*in.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	var oldCode, oldName string
+	err := h.Pool.QueryRow(h.ctx(), "SELECT COALESCE(code, ''), name FROM topics WHERE id = $1", id).Scan(&oldCode, &oldName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Topik tidak ditemukan"})
+		return
+	}
+
+	newName := strings.TrimSpace(*in.Name)
+	newCode := strings.ToUpper(strings.TrimSpace(deref(in.Code)))
+	if _, err := h.Pool.Exec(h.ctx(),
+		"UPDATE topics SET name = $1, code = NULLIF($2, ''), description = COALESCE($3, description), updated_at = now() WHERE id = $4",
+		newName, newCode, in.Description, id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal memperbarui topik (nama/kode mungkin sudah dipakai topik lain)"})
+		return
+	}
+
+	oldLabel, newLabel := labelTopic(oldCode, oldName), labelTopic(newCode, newName)
+	if oldLabel != newLabel {
+		if res, err := h.Pool.Exec(h.ctx(),
+			"UPDATE contents SET topic = $1, updated_at = now() WHERE topic = $2",
+			newLabel, oldLabel); err == nil {
+			log.Printf("topic rename propagated: %d contents updated (%s -> %s)", res.RowsAffected(), oldLabel, newLabel)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": map[string]any{"id": id, "code": newCode, "name": newName}})
+}
+
+// topicInput mendukung kode terpisah dari nama: admin mengisi "R" dan
+// "PLN Mobile", bukan satu string "R - PLN Mobile".
+type topicInput struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// labelTopic menggabungkan kode + nama menjadi label dropdown
+// ("R" + "PLN Mobile" → "R - PLN Mobile"); tanpa kode → nama polos.
+func labelTopic(code, name string) string {
+	if code == "" {
+		return name
+	}
+	return code + " - " + name
+}
+
+// GET /api/admin/topics
+func (h *Handler) ListTopics(c *gin.Context) {
+	rows, err := h.Pool.Query(h.ctx(), "SELECT id, COALESCE(code, ''), name FROM topics ORDER BY NULLIF(code, '') NULLS LAST, name")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch topics"})
+		return
+	}
+	defer rows.Close()
+
+	items := []map[string]any{}
+	for rows.Next() {
+		var id, code, name string
+		if err := rows.Scan(&id, &code, &name); err != nil {
+			continue
+		}
+		items = append(items, map[string]any{"id": id, "code": code, "name": name, "label": labelTopic(code, name)})
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+// POST /api/admin/topics
+func (h *Handler) CreateTopic(c *gin.Context) {
+	var in topicInput
+	if err := c.ShouldBindJSON(&in); err != nil || strings.TrimSpace(in.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(in.Code))
+	var id string
+	err := h.Pool.QueryRow(h.ctx(),
+		"INSERT INTO topics (code, name) VALUES (NULLIF($1, ''), $2) RETURNING id",
+		code, strings.TrimSpace(in.Name)).Scan(&id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal menambah topik (nama/kode mungkin sudah dipakai topik lain)"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"item": map[string]any{"id": id, "code": code, "name": strings.TrimSpace(in.Name)}})
 }
 
 // GET /api/admin/users

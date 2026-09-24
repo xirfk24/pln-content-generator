@@ -82,9 +82,9 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     children: [
       { name: 'Kelola Pengguna', href: '/admin/users', icon: Users },
       { name: 'Periode Perencanaan', href: '/admin/periods', icon: CalendarRange },
-      { name: 'Pilar Konten', href: '/admin/pillars', icon: Settings },
-      { name: 'Kategori Konten', href: '/admin/categories', icon: Settings },
-      { name: 'Platform Media', href: '/admin/platforms', icon: Settings },
+          { name: 'Pilar Konten', href: '/admin/pillars', icon: Settings },
+          { name: 'Topik Konten', href: '/admin/topics', icon: FileText },
+          { name: 'Platform Media', href: '/admin/platforms', icon: Settings },
     ],
   },
 ]

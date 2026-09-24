@@ -68,7 +68,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/admin/periods': 'Periode Perencanaan',
   '/periode-perencanaan': 'Periode Perencanaan',
   '/admin/pillars': 'Pilar Konten',
-  '/admin/categories': 'Kategori Konten',
+  '/admin/topics': 'Topik Konten',
   '/admin/platforms': 'Platform Media',
 }
 
@@ -93,7 +93,7 @@ const ROUTE_SUBTITLES: Record<string, string> = {
   '/admin/periods': 'Kelola periode perencanaan konten berdasarkan semester.',
   '/periode-perencanaan': 'Kelola periode perencanaan konten berdasarkan semester.',
   '/admin/pillars': 'Kelola daftar pilar komunikasi Humas PLN (A-Z).',
-  '/admin/categories': 'Kelola jenis dan format konten.',
+  '/admin/topics': 'Kelola daftar Topik Konten resmi (A-Z); rename ikut memperbarui konten terkait.',
   '/admin/platforms': 'Kelola platform media sosial tujuan publikasi.',
 }
 

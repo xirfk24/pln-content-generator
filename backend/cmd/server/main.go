@@ -130,11 +130,6 @@ func main() {
 
 		admin := authed.Group("/admin", auth.RequireRole("ADMIN"))
 		{
-			admin.GET("/categories", h.ListMaster("categories", false))
-			admin.POST("/categories", h.CreateMaster("categories", false))
-			admin.PUT("/categories/:id", h.UpdateMaster("categories", false))
-			admin.DELETE("/categories/:id", h.DeleteMaster("categories"))
-
 			admin.GET("/pillars", h.ListMaster("pillars", false))
 			admin.POST("/pillars", h.CreateMaster("pillars", false))
 			admin.PUT("/pillars/:id", h.UpdateMaster("pillars", false))
@@ -144,6 +139,13 @@ func main() {
 			admin.POST("/platforms", h.CreateMaster("platforms", true))
 			admin.PUT("/platforms/:id", h.UpdateMaster("platforms", true))
 			admin.DELETE("/platforms/:id", h.DeleteMaster("platforms"))
+
+			// Topik: handler khusus karena punya kolom code terpisah dan
+			// rename harus ikut memperbarui kolom topic di contents.
+			admin.GET("/topics", h.ListTopics)
+			admin.POST("/topics", h.CreateTopic)
+			admin.PUT("/topics/:id", h.UpdateTopic)
+			admin.DELETE("/topics/:id", h.DeleteMaster("topics"))
 
 			admin.GET("/users", h.ListUsers)
 			admin.PUT("/users", h.UpdateUser)

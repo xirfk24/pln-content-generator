@@ -11,7 +11,8 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Loader2, Download, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart, FileSpreadsheet } from 'lucide-react'
 import { formatDate, getPeriodDateRange, type PeriodMode } from '@/lib/utils'
 import { exportContentReportToExcel } from '@/lib/excel-export'
-import { PLN_TOPIC_OPTIONS, CONTENT_PILLAR_OPTIONS, isPlatformActive } from '@/constants'
+import { CONTENT_PILLAR_OPTIONS, isPlatformActive } from '@/constants'
+import { useTopics } from '@/lib/use-topics'
 
 // --- Types ---
 
@@ -110,6 +111,7 @@ const currentMonth = new Date().getMonth() + 1
 // --- Component ---
 
 export default function RecapPage() {
+  const topics = useTopics()
   const [data, setData] = useState<RecapData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -362,7 +364,7 @@ export default function RecapPage() {
                 className="w-full sm:w-48"
               >
                 <option value="">Semua Topik</option>
-                {PLN_TOPIC_OPTIONS.map((t) => (
+                {topics.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </Select>

@@ -26,8 +26,8 @@ import RecapPage from './pages/recap'
 import ContentImportPage from './pages/content-import'
 import ContentTabunganPage from './pages/content-tabungan'
 import AdminUsersPage from './pages/admin-users'
-import AdminCategoriesPage from './pages/admin-categories'
 import AdminPillarsPage from './pages/admin-pillars'
+import AdminTopicsPage from './pages/admin-topics'
 import AdminPlatformsPage from './pages/admin-platforms'
 import AdminPeriodsPage from './pages/admin-periods'
 import NotificationsPage from './pages/notifications'
@@ -150,8 +150,8 @@ export default function App() {
 
         <Route element={<AdminLayout />}>
           <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/pillars" element={<AdminPillarsPage />} />
+          <Route path="/admin/topics" element={<AdminTopicsPage />} />
           <Route path="/admin/platforms" element={<AdminPlatformsPage />} />
           <Route path="/admin/periods" element={<AdminPeriodsPage />} />
           <Route path="/periode-perencanaan" element={<AdminPeriodsPage />} />
