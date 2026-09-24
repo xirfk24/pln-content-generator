@@ -368,6 +368,9 @@ func (h *Handler) UpsertMetric(c *gin.Context) {
 	views, likes := toInt(in.Views), toInt(in.Likes)
 	comments, shares := toInt(in.Comments), toInt(in.Shares)
 	saves, reach := toInt(in.Saves), toInt(in.Reach)
+	if reach == 0 && views > 0 {
+		reach = views
+	}
 
 	for _, v := range []float64{float64(views), float64(likes), float64(comments), float64(shares), float64(saves), float64(reach)} {
 		if v < 0 || isInf(v) {

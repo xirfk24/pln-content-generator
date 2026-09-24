@@ -61,20 +61,24 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 		`CREATE INDEX IF NOT EXISTS idx_contents_is_savings ON contents(is_savings)`,
 		`CREATE INDEX IF NOT EXISTS idx_contents_savings_month ON contents(savings_month)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_pillars_name ON pillars(name)`,
+		`DELETE FROM performance_metrics pm1 USING performance_metrics pm2 WHERE pm1.id < pm2.id AND pm1.publication_id = pm2.publication_id AND pm1.recorded_at = pm2.recorded_at`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_performance_metrics_pub_date ON performance_metrics(publication_id, recorded_at)`,
 
-		// Seed standard Content Pillars
+		// Seed standard Content Pillars (5 Official Pillars) & Remap Old Data
 		`INSERT INTO pillars (name, description) VALUES
-			('Edukasi (Educational)', 'Konten edukasi, tips, dan pemahaman teknis kelistrikan'),
-			('Hiburan (Entertainment)', 'Konten hiburan, humor, meme, dan gaya hidup santai'),
-			('Inspirasi (Inspirational)', 'Konten inspirasi, kisah human interest, dan tokoh inspiratif'),
-			('Interaksi & Komunitas (Engagement)', 'Konten tanya-jawab, kuis, polling, dan interaksi audiens'),
-			('Promosi / Penjualan (Promotional)', 'Promosi program tambah daya, pasang baru, dan promo PLN Mobile'),
-			('Di Balik Layar (Behind the Scenes)', 'Dokumentasi lapangan yantek dan operasional di balik layar'),
-			('Bukti Sosial & Ulasan (Social Proof / Testimonials)', 'Ulasan pelanggan, testimoni, apresiasi, dan penghargaan'),
-			('Tren & Relevansi Terkini (Trending / Relatable)', 'Topik tren media sosial yang dikaitkan dengan kelistrikan'),
-			('Berita & Wawasan Industri (Industry News & Insights)', 'Berita transisi energi, EBT, kebijakan industri, dan korporat'),
-			('Solusi Masalah & FAQ (Problem Solving / Help)', 'Panduan penyelesaian kendala, FAQ kelistrikan, dan kanal pengaduan')
+			('Kinerja & Capaian', 'Penjualan listrik naik, pelanggan nambah, transaksi PLN Mobile, keandalan pasokan. Jantungnya agenda setting.'),
+			('Prestasi & Penghargaan', 'Bangun kepercayaan lewat pengakuan dari luar. Award CSR/inovasi, penghargaan layanan, apresiasi buat petugas.'),
+			('Program & Dampak', 'Perlihatin listrik yang mengubah hidup orang. Jabar Caang, listrik desa, BPBL, SPKLU/mobil listrik, TJSL, elektrifikasi 100%.'),
+			('Layanan & Edukasi', 'Bikin brand kepakai sehari-hari dan ngasih manfaat nyata. Fitur PLN Mobile, cara lapor gangguan, tips hemat & aman listrik.'),
+			('Ngobrol & Momen', 'Naikin interaksi dan kedekatan. Sapaan Electrizen, kuis/polling, cerita followers, ucapan hari besar.')
 		ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Layanan & Edukasi' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name IN ('Edukasi (Educational)', 'Solusi Masalah & FAQ (Problem Solving / Help)', 'Promosi / Penjualan (Promotional)', 'Di Balik Layar (Behind the Scenes)')`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Kinerja & Capaian' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name IN ('Berita & Wawasan Industri (Industry News & Insights)')`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Prestasi & Penghargaan' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name IN ('Bukti Sosial & Ulasan (Social Proof / Testimonials)')`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Program & Dampak' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name IN ('Inspirasi (Inspirational)', 'Tren & Relevansi Terkini (Trending / Relatable)')`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Ngobrol & Momen' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name IN ('Hiburan (Entertainment)', 'Interaksi & Komunitas (Engagement)')`,
+		`UPDATE contents c SET pillar_id = (SELECT id FROM pillars WHERE name = 'Kinerja & Capaian' LIMIT 1) FROM pillars p WHERE c.pillar_id = p.id AND p.name NOT IN ('Kinerja & Capaian', 'Prestasi & Penghargaan', 'Program & Dampak', 'Layanan & Edukasi', 'Ngobrol & Momen')`,
+		`DELETE FROM pillars WHERE name NOT IN ('Kinerja & Capaian', 'Prestasi & Penghargaan', 'Program & Dampak', 'Layanan & Edukasi', 'Ngobrol & Momen')`,
 
 		// Seed standard official Platforms (Website & LinkedIn removed)
 		`DELETE FROM platforms WHERE LOWER(name) IN ('website', 'linkedin')`,

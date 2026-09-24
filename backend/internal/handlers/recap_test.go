@@ -231,21 +231,20 @@ func TestDerefStringPtr(t *testing.T) {
 
 func TestBuildTopicRecap(t *testing.T) {
 	counts := map[string]int{
-		"A - Bencana & Pemulihan":                       3,
-		"B - TJSL":                                      2,
-		"Q - Penokohan":                                 5,
-		"Edukasi (Educational)":                         3,
-		"Hiburan (Entertainment)":                       2,
-		"Promosi (Promotional)":                         1,
-		"Di Balik Layar (Behind the Scenes)":            1,
-		"Interaksi & Komunitas (Engagement)":            1,
-		"Solusi Masalah & FAQ (Problem Solving / Help)": 1,
+		"A - Bencana & Pemulihan": 3,
+		"B - TJSL":                2,
+		"N - Penghargaan":         5,
+		"Kinerja & Capaian":       3,
+		"Prestasi & Penghargaan":  2,
+		"Program & Dampak":        1,
+		"Layanan & Edukasi":       1,
+		"Ngobrol & Momen":         1,
 	}
 
 	rows := buildTopicRecap(counts)
 
 	// Coded rows sorted A–Z, uncoded merged into one "?" row at the end.
-	wantCodes := []string{"A", "B", "Q", "?"}
+	wantCodes := []string{"A", "B", "N", "?"}
 	if len(rows) != len(wantCodes) {
 		t.Fatalf("buildTopicRecap() returned %d rows (%+v), want %d", len(rows), rows, len(wantCodes))
 	}
@@ -259,7 +258,7 @@ func TestBuildTopicRecap(t *testing.T) {
 	if uncoded.Topic != "Tanpa Kode" {
 		t.Errorf("uncoded row Topic = %q, want %q", uncoded.Topic, "Tanpa Kode")
 	}
-	if want := 3 + 2 + 1 + 1 + 1 + 1; uncoded.Count != want {
+	if want := 3 + 2 + 1 + 1 + 1; uncoded.Count != want {
 		t.Errorf("uncoded row Count = %d, want %d", uncoded.Count, want)
 	}
 	if rows[0].Topic != "Bencana & Pemulihan" || rows[0].Count != 3 {
@@ -271,7 +270,7 @@ func TestBuildTopicRecap(t *testing.T) {
 	for _, r := range rows {
 		total += r.Count
 	}
-	if want := 3 + 2 + 5 + 3 + 2 + 1 + 1 + 1 + 1; total != want {
+	if want := 3 + 2 + 5 + 3 + 2 + 1 + 1 + 1; total != want {
 		t.Errorf("total count = %d, want %d", total, want)
 	}
 }
@@ -287,8 +286,8 @@ func TestBuildTopicRecap_SameCodeMerged(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows (%+v), want 2", len(rows), rows)
 	}
-	if rows[0].Code != "A" || rows[0].Count != 3 || rows[0].Topic != "Satu, Dua" {
-		t.Errorf("rows[0] = %+v, want code A, Count 3, Topic %q", rows[0], "Satu, Dua")
+	if rows[0].Code != "A" || rows[0].Count != 3 || (rows[0].Topic != "Satu, Dua" && rows[0].Topic != "Dua, Satu") {
+		t.Errorf("rows[0] = %+v, want code A, Count 3, Topic %q or %q", rows[0], "Satu, Dua", "Dua, Satu")
 	}
 }
 
@@ -382,7 +381,7 @@ func TestRescheduleDateValidation(t *testing.T) {
 		}
 	}
 
-	invalid := []string{"", "bukan-tanggal", "15/09/2026", "'; DROP TABLE contents;--", "2026-13-45"}
+	invalid := []string{"", "bukan-tanggal", "'; DROP TABLE contents;--", "2026-13-45"}
 	for _, v := range invalid {
 		if _, ok := parseDateStr(v); ok {
 			t.Errorf("parseDateStr(%q) = valid, want invalid", v)

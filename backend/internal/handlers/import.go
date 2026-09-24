@@ -685,13 +685,19 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				}
 
 				postURL := cleanStrPtr(&pm.URL)
+				actualPubDate := plannedDate
+				todayStr := time.Now().Format("2006-01-02")
+				if actualPubDate == nil || *actualPubDate == "" {
+					actualPubDate = &todayStr
+				}
+
 				var pubID string
 				errPub := h.Pool.QueryRow(c.Request.Context(), `
 					INSERT INTO publications (
 						content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes
 					) VALUES ($1, $2, $3, $4, $5, 'PUBLISHED', $6)
 					RETURNING id
-				`, insertedID, pID, plannedDate, plannedDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
+				`, insertedID, pID, plannedDate, actualPubDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
 
 				if errPub != nil {
 					log.Printf("Import row %d publication insert error (%s): %v", rowNum, pName, errPub)
@@ -699,9 +705,9 @@ func (h *Handler) ImportContents(c *gin.Context) {
 				}
 
 				if pm.Reach > 0 || pm.Views > 0 || pm.Likes > 0 || pm.Comments > 0 || pm.Saves > 0 || pm.Shares > 0 {
-					recDate := row.PlannedDate
-					if recDate == "" {
-						recDate = time.Now().Format("2006-01-02")
+					recDate := todayStr
+					if plannedDate != nil && *plannedDate != "" {
+						recDate = *plannedDate
 					}
 					reachVal := pm.Reach
 					if reachVal == 0 {
@@ -741,6 +747,11 @@ func (h *Handler) ImportContents(c *gin.Context) {
 
 				if rowMode == "LEGACY_PUBLISHED" {
 					postURL := cleanStrPtr(row.PostURL)
+					todayStr := time.Now().Format("2006-01-02")
+					actualPubDate := plannedDate
+					if actualPubDate == nil || *actualPubDate == "" {
+						actualPubDate = &todayStr
+					}
 
 					var pubID string
 					errPub := h.Pool.QueryRow(c.Request.Context(), `
@@ -748,7 +759,7 @@ func (h *Handler) ImportContents(c *gin.Context) {
 							content_id, platform_id, planned_publish_date, actual_publish_date, url, status, notes
 						) VALUES ($1, $2, $3, $4, $5, 'PUBLISHED', $6)
 						RETURNING id
-					`, insertedID, pID, plannedDate, plannedDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
+					`, insertedID, pID, plannedDate, actualPubDate, postURL, "Arsip data lama diimpor").Scan(&pubID)
 
 					if errPub != nil {
 						log.Printf("Import row %d publication insert error: %v", rowNum, errPub)
@@ -756,9 +767,9 @@ func (h *Handler) ImportContents(c *gin.Context) {
 					}
 
 					if row.Reach > 0 || row.Views > 0 || row.Likes > 0 || row.Comments > 0 || row.Saves > 0 || row.Shares > 0 {
-						recDate := row.PlannedDate
-						if recDate == "" {
-							recDate = time.Now().Format("2006-01-02")
+						recDate := todayStr
+						if plannedDate != nil && *plannedDate != "" {
+							recDate = *plannedDate
 						}
 						reachVal := row.Reach
 						if reachVal == 0 {
@@ -884,13 +895,31 @@ func matchPillar(input string, m map[string]struct{ ID, Name string }) (string, 
 		if strings.Contains(k, inLower) || strings.Contains(inLower, k) {
 			return res.ID, res.Name, true
 		}
-		if idx := strings.Index(k, "("); idx != -1 {
-			short := strings.TrimSpace(k[:idx])
-			if strings.Contains(inLower, short) || strings.Contains(short, inLower) {
-				return res.ID, res.Name, true
+	}
+
+	// Smart keyword mapping for 5 official pillars
+	type rule struct {
+		target   string
+		keywords []string
+	}
+	rules := []rule{
+		{target: "kinerja & capaian", keywords: []string{"kinerja", "capaian", "penjualan", "keandalan"}},
+		{target: "prestasi & penghargaan", keywords: []string{"prestasi", "penghargaan", "award", "apresiasi"}},
+		{target: "program & dampak", keywords: []string{"program", "dampak", "caang", "lisdes", "bpbl"}},
+		{target: "layanan & edukasi", keywords: []string{"layanan", "edukasi", "educational", "gangguan", "tips", "solusi"}},
+		{target: "ngobrol & momen", keywords: []string{"ngobrol", "momen", "interaksi", "komunitas", "engagement", "electrizen", "kuis", "polling", "ucapan", "hiburan"}},
+	}
+
+	for _, r := range rules {
+		for _, kw := range r.keywords {
+			if strings.Contains(inLower, kw) {
+				if res, ok := m[r.target]; ok {
+					return res.ID, res.Name, true
+				}
 			}
 		}
 	}
+
 	return "", "", false
 }
 

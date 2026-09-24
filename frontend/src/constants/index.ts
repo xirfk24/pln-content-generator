@@ -134,24 +134,17 @@ export const POSTING_CATEGORY_LABELS: Record<string, string> = {
 export const ENGAGEMENT_FORMULA =
   'Rumus Engagement Rate = (Likes + Comments + Shares + Saves) / Reach × 100%'
 
-/** Daftar Pilihan Resmi Topik Konten PLN UID Jawa Barat (Sesuai Kode & Nama Resmi A - Z) */
+/** Daftar Pilihan Resmi Topik Konten PLN UID Jawa Barat (Sesuai Kode & Nama Resmi) */
 export const PLN_TOPIC_OPTIONS = [
   'A - Bencana & Pemulihan',
   'B - TJSL',
   'C - EV/SPKLU',
-  'D - Energi Baru terbarukan/REC',
+  'D - Energi Baru Terbarukan/REC',
   'E - Jabar Smile',
   'F - Instalasi Listrik',
   'G - K3L',
-  'H - Kerja Sama',
   'I - Electrifying Lifestyle',
-  'J - Lisdes/Elektrifikasi',
-  'K - Pasang Baru/Tambah Daya',
-  'L - Pembangkit',
   'N - Penghargaan',
-  'O - Pengumuman/Transformasi/HSH',
-  'P - Penjualan/Konsumsi Listrik',
-  'Q - Penokohan',
   'R - PLN Mobile',
   'S - Promo PLN',
   'T - Rekening/Tagihan Listrik',
@@ -159,17 +152,16 @@ export const PLN_TOPIC_OPTIONS = [
   'V - Surat Pembaca',
   'W - Tarif Tenaga Listrik',
   'X - Tingkat Mutu Pelayanan',
-  'Y - YBM',
   'Z - Lain-Lain',
 ] as const
 
 /** Daftar Standar Content Pillar */
 export const CONTENT_PILLAR_OPTIONS = [
-  'Edukasi (Educational)',
-  'Hiburan (Entertainment)',
-  'Inspirasi (Inspirational)',
-  'Interaksi & Komunitas (Engagement)',
-  'Promosi / Penjualan (Promotional)',
+  'Kinerja & Capaian',
+  'Prestasi & Penghargaan',
+  'Program & Dampak',
+  'Layanan & Edukasi',
+  'Ngobrol & Momen',
 ] as const
 
 /** Platform yang tidak diaktifkan pada modul antrean, analisis, performa, dan rekap */

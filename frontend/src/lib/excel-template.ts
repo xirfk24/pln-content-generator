@@ -198,11 +198,11 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
   const pillar1 =
     masterData?.pillars?.[0]?.name ||
     CONTENT_PILLAR_OPTIONS[0] ||
-    'Inovasi Layanan & Digitalisasi (PLN Mobile)'
+    'Kinerja & Capaian'
   const pillar2 =
     masterData?.pillars?.[1]?.name ||
     CONTENT_PILLAR_OPTIONS[1] ||
-    'Transisi Energi & Keberlanjutan (Green Energy)'
+    'Prestasi & Penghargaan'
 
   if (isLegacy) {
     // ==========================================
@@ -261,8 +261,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     const sampleRows = [
       [
         '2026-09-20',
-        '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Efisiensi Energi di Rumah',
-        'PLN Mobile & Edukasi Tarif',
+        '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Transaksi Mudah di PLN Mobile',
+        'R - PLN Mobile',
         pillar1,
         'Carousel',
         'EDUCATION',
@@ -295,7 +295,7 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
       [
         '25/09/2026',
         '[CONTOH - HAPUS SEBELUM IMPORT] Green Energy Transition: PLTS Terapung Cirata',
-        'Transisi Energi Bersih',
+        'D - Energi Baru Terbarukan/REC',
         pillar2,
         'Vid/Reels/Shorts',
         'INFORMATION',
@@ -400,8 +400,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     const sampleRows = [
       [
         '2026-09-20',
-        '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Efisiensi Energi di Rumah',
-        'PLN Mobile & Edukasi Tarif',
+        '[CONTOH - HAPUS SEBELUM IMPORT] 5 Langkah Transaksi Mudah di PLN Mobile',
+        'R - PLN Mobile',
         pillar1,
         'Carousel',
         'Instagram, TikTok',
@@ -414,7 +414,7 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
       [
         '25/09/2026',
         '[CONTOH - HAPUS SEBELUM IMPORT] Green Energy Transition: PLTS Terapung Cirata',
-        'Transisi Energi Bersih',
+        'D - Energi Baru Terbarukan/REC',
         pillar2,
         'Vid/Reels/Shorts',
         'Instagram, YouTube, TikTok',
@@ -527,6 +527,80 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
   const refWidths = [46, 30, 22, 22, 22]
   applyColorfulWorksheetStyles(wsRef, refFills, refWidths)
 
+  // ==========================================
+  // SHEET 4: INFORMASI PILAR & TOPIK KONTEN RESMI
+  // ==========================================
+  const wsInfo = wb.addWorksheet('Informasi Pilar & Topik')
+
+  const infoRows: (string | number)[][] = [
+    ['INFORMASI 5 PILAR KONTEN RESMI PLN', '', '', ''],
+    ['No', 'Nama Pilar Konten', 'Deskripsi Utama & Strategi Agenda Setting', 'Contoh Materi / Subjek Konten'],
+    [1, 'Kinerja & Capaian', 'Jantungnya agenda setting. Tunjukin pertumbuhan, tapi bingkai sebagai untung buat warga.', 'Penjualan listrik naik, pelanggan nambah, transaksi PLN Mobile, keandalan pasokan.'],
+    [2, 'Prestasi & Penghargaan', 'Bangun kepercayaan lewat pengakuan dari luar.', 'Award CSR/inovasi, penghargaan layanan, apresiasi buat petugas.'],
+    [3, 'Program & Dampak', 'Perlihatin listrik yang mengubah hidup orang.', 'Jabar Caang, listrik desa, BPBL, SPKLU/mobil listrik, TJSL, elektrifikasi 100%.'],
+    [4, 'Layanan & Edukasi', 'Bikin brand kepakai sehari-hari dan ngasih manfaat nyata.', 'Fitur PLN Mobile, cara lapor gangguan, tips hemat & aman listrik.'],
+    [5, 'Ngobrol & Momen', 'Naikin interaksi dan kedekatan.', 'Sapaan Electrizen, kuis/polling, cerita followers, ucapan hari besar.'],
+    ['', '', '', ''],
+    ['INFORMASI 17 TOPIK KONTEN RESMI (KODE A - Z)', '', '', ''],
+    ['Kode', 'Nama Topik Konten', 'Fokus Subtema / Keterangan Pembahasan', ''],
+    ['A', 'Bencana & Pemulihan', 'Penanganan bencana dan pemulihan pasca bencana', ''],
+    ['B', 'TJSL', 'Tanggung Jawab Sosial dan Lingkungan / CSR', ''],
+    ['C', 'EV/SPKLU', 'Kendaraan Listrik & Stasiun Pengisian Kendaraan Listrik Umum', ''],
+    ['D', 'Energi Baru Terbarukan/REC', 'EBT, Solar Panel, Renewable Energy Certificate', ''],
+    ['E', 'Jabar Smile', 'Program Jabar Smile & kemudahan layanan', ''],
+    ['F', 'Instalasi Listrik', 'Edukasi instalasi & keamanan listrik rumah/bangunan', ''],
+    ['G', 'K3L', 'Keselamatan, Kesehatan Kerja & Lingkungan', ''],
+    ['I', 'Electrifying Lifestyle', 'Gaya hidup serba listrik & kompor induksi', ''],
+    ['N', 'Penghargaan', 'Apresiasi & penghargaan korporat/layanan', ''],
+    ['R', 'PLN Mobile', 'Aplikasi PLN Mobile, fitur & kemudahan transaksi', ''],
+    ['S', 'Promo PLN', 'Diskon & promo tambah daya/pasang baru', ''],
+    ['T', 'Rekening/Tagihan Listrik', 'Informasi tagihan, cek rekening & pembayaran listrik', ''],
+    ['U', 'Subsidi Listrik', 'Informasi subsidi listrik & kriteria penerima', ''],
+    ['V', 'Surat Pembaca', 'Tanggapan keluhan & surat pembaca', ''],
+    ['W', 'Tarif Tenaga Listrik', 'Informasi struktur tarif & penyesuaian tarif', ''],
+    ['X', 'Tingkat Mutu Pelayanan', 'Komitmen standar pelayanan & keandalan', ''],
+    ['Z', 'Lain-Lain', 'Topik pendukung & seputar kelistrikan lainnya', ''],
+  ]
+
+  addAoA(wsInfo, infoRows)
+  wsInfo.getColumn(1).width = 10
+  wsInfo.getColumn(2).width = 32
+  wsInfo.getColumn(3).width = 65
+  wsInfo.getColumn(4).width = 65
+
+  // Style headers & section titles
+  wsInfo.getRow(1).font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: 'FF1E3A8A' } }
+  wsInfo.getRow(9).font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: 'FF1E3A8A' } }
+
+  const styleSubHeader = (rowNum: number) => {
+    const row = wsInfo.getRow(rowNum)
+    row.height = 26
+    row.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } }
+      cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFF' } }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+  }
+
+  styleSubHeader(2)
+  styleSubHeader(10)
+
+  // Style data rows for info sheet
+  wsInfo.eachRow((row, rowNumber) => {
+    if (rowNumber === 1 || rowNumber === 2 || rowNumber === 8 || rowNumber === 9 || rowNumber === 10) return
+    row.height = 22
+    row.eachCell((cell) => {
+      cell.font = { name: 'Segoe UI', size: 10 }
+      cell.alignment = { vertical: 'middle', wrapText: true }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      }
+    })
+  })
+
   // Trigger download file .xlsx
   const buffer = await wb.xlsx.writeBuffer()
   const filename = isLegacy
@@ -607,23 +681,33 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
 
   const headerRow = rawData[0].map((h) => h.trim().toLowerCase())
 
-  // Helper untuk mencari index kolom berdasarkan kata kunci
+  // Helper untuk mencari index kolom berdasarkan kata kunci (utamakan exact match / kata kunci spesifik)
   const findColIdx = (keywords: string[]): number => {
-    return headerRow.findIndex((col) => keywords.some((kw) => col.includes(kw.toLowerCase())))
+    for (const kw of keywords) {
+      const kwLower = kw.toLowerCase()
+      const exactIdx = headerRow.findIndex((col) => col === kwLower)
+      if (exactIdx !== -1) return exactIdx
+    }
+    for (const kw of keywords) {
+      const kwLower = kw.toLowerCase()
+      const incIdx = headerRow.findIndex((col) => col.includes(kwLower))
+      if (incIdx !== -1) return incIdx
+    }
+    return -1
   }
 
-  const idxTitle = findColIdx(['judul', 'title'])
-  const idxTopic = findColIdx(['topik', 'topic', 'subtema'])
-  const idxPillar = findColIdx(['pillar', 'pilar', 'tema'])
-  const idxFormat = findColIdx(['format'])
-  const idxPlatform = findColIdx(['target platform', 'platform'])
-  const idxPurpose = findColIdx(['purpose', 'tujuan'])
-  const idxCategory = findColIdx(['category', 'kategori'])
-  const idxPostCat = findColIdx(['posting category', 'kategori posting'])
-  const idxDate = findColIdx(['tanggal', 'date', 'tgl', 'jadwal', 'terbit'])
-  const idxBrief = findColIdx(['brief', 'keterangan', 'deskripsi'])
-  const idxAudience = findColIdx(['audience', 'audiens', 'sasaran'])
-  const idxRef = findColIdx(['link referensi', 'referensi', 'reference'])
+  const idxTitle = findColIdx(['judul konten (wajib)', 'judul konten', 'judul', 'title'])
+  const idxTopic = findColIdx(['topik / subtema (wajib)', 'topik / subtema', 'topik konten (wajib)', 'topik konten', 'subtema', 'topik', 'topic'])
+  const idxPillar = findColIdx(['content pillar (pilihan sistem)', 'content pillar', 'pilar konten', 'pillar', 'pilar'])
+  const idxFormat = findColIdx(['format (pilihan sistem)', 'format konten (pilihan sistem)', 'format konten', 'format'])
+  const idxPlatform = findColIdx(['target platform (pilihan sistem)', 'target platform', 'platform'])
+  const idxPurpose = findColIdx(['tujuan konten (pilihan sistem)', 'content purpose (pilihan sistem)', 'content purpose', 'tujuan konten', 'purpose', 'tujuan'])
+  const idxCategory = findColIdx(['kategori posting (pilihan sistem)', 'posting category (pilihan sistem)', 'kategori posting', 'posting category', 'category', 'kategori'])
+  const idxPostCat = findColIdx(['kategori posting (pilihan sistem)', 'posting category (pilihan sistem)', 'kategori posting', 'posting category'])
+  const idxDate = findColIdx(['tanggal terbit', 'tanggal rencana publikasi', 'tanggal rencana', 'tanggal', 'date', 'tgl', 'jadwal', 'terbit'])
+  const idxBrief = findColIdx(['brief / keterangan (opsional)', 'brief / keterangan', 'brief', 'keterangan', 'deskripsi'])
+  const idxAudience = findColIdx(['target audience (opsional)', 'target audience', 'audience', 'audiens', 'sasaran'])
+  const idxRef = findColIdx(['link referensi (opsional)', 'link referensi', 'referensi', 'reference'])
 
   // Single column fallbacks for LEGACY_PUBLISHED
   const idxPostURL = findColIdx([

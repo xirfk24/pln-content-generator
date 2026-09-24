@@ -73,7 +73,7 @@ func (h *Handler) loadFilteredContents(f analyticsFilters, needTitle bool) []ana
 	}
 	if f.platformID != "" {
 		args = append(args, f.platformID)
-		where = append(where, "c.platform_id = $"+itoa(len(args)))
+		where = append(where, "(c.platform_id = $"+itoa(len(args))+" OR $"+itoa(len(args))+" = ANY(c.platform_ids) OR EXISTS (SELECT 1 FROM publications p_sub WHERE p_sub.content_id = c.id AND p_sub.platform_id = $"+itoa(len(args))+"))")
 	}
 	if f.status != "" {
 		args = append(args, f.status)
@@ -124,6 +124,7 @@ type pubInfo struct {
 	id                string
 	contentID         string
 	platformID        *string
+	platformName      *string
 	actualPublishDate *string
 }
 
@@ -131,11 +132,15 @@ func (h *Handler) loadPublicationsForContents(contentIDs []string, filterPlatfor
 	if len(contentIDs) == 0 {
 		return nil
 	}
-	query := `SELECT id, content_id, platform_id, actual_publish_date::TEXT FROM publications WHERE content_id = ANY($1)`
+	query := `
+		SELECT p.id, p.content_id, p.platform_id, pl.name, p.actual_publish_date::TEXT
+		FROM publications p
+		LEFT JOIN platforms pl ON pl.id = p.platform_id
+		WHERE p.content_id = ANY($1)`
 	args := []any{contentIDs}
 	if filterPlatformID != "" {
 		args = append(args, filterPlatformID)
-		query += ` AND platform_id = $2`
+		query += ` AND p.platform_id = $2`
 	}
 	rows, err := h.Pool.Query(h.ctx(), query, args...)
 	if err != nil {
@@ -146,7 +151,7 @@ func (h *Handler) loadPublicationsForContents(contentIDs []string, filterPlatfor
 	out := []pubInfo{}
 	for rows.Next() {
 		var p pubInfo
-		if err := rows.Scan(&p.id, &p.contentID, &p.platformID, &p.actualPublishDate); err != nil {
+		if err := rows.Scan(&p.id, &p.contentID, &p.platformID, &p.platformName, &p.actualPublishDate); err != nil {
 			log.Printf("loadPublicationsForContents scan error: %v", err)
 			continue
 		}
@@ -352,40 +357,56 @@ type platformPerfRow struct {
 
 func (h *Handler) platformPerformance(f analyticsFilters) []platformPerfRow {
 	all := h.loadFilteredContents(f, false)
-	platformCount := map[string]int{}
-	contentPlatform := map[string]string{}
-	for _, r := range all {
-		name := "Unknown"
-		if r.PlatformName != nil && *r.PlatformName != "" {
-			name = *r.PlatformName
-		}
-		platformCount[name]++
-		contentPlatform[r.ID] = name
-	}
-
-	rows := map[string]*platformPerfRow{}
-	order := []string{}
-	for name, count := range platformCount {
-		rows[name] = &platformPerfRow{Platform: name, ContentCount: count}
-		order = append(order, name)
-	}
-
 	contentIDs := make([]string, len(all))
 	for i, r := range all {
 		contentIDs[i] = r.ID
 	}
-	pubs := h.loadPublicationsForContents(contentIDs, "")
+
+	pubs := h.loadPublicationsForContents(contentIDs, f.platformID)
+
+	rows := map[string]*platformPerfRow{}
+	platformContents := map[string]map[string]bool{}
+
+	platRows, err := h.Pool.Query(h.ctx(), "SELECT name FROM platforms WHERE is_active = true ORDER BY name")
+	if err == nil {
+		for platRows.Next() {
+			var pName string
+			if err := platRows.Scan(&pName); err == nil && pName != "" {
+				rows[pName] = &platformPerfRow{Platform: pName, ContentCount: 0}
+				platformContents[pName] = map[string]bool{}
+			}
+		}
+		platRows.Close()
+	}
+
 	pubIDs := make([]string, len(pubs))
+	pubPlatformName := map[string]string{}
+
 	for i, p := range pubs {
 		pubIDs[i] = p.id
+		pName := "Unknown"
+		if p.platformName != nil && *p.platformName != "" {
+			pName = *p.platformName
+		}
+		pubPlatformName[p.id] = pName
+
+		if _, ok := rows[pName]; !ok {
+			rows[pName] = &platformPerfRow{Platform: pName, ContentCount: 0}
+			platformContents[pName] = map[string]bool{}
+		}
+		platformContents[pName][p.contentID] = true
 	}
+
+	for pName, contentMap := range platformContents {
+		if r, ok := rows[pName]; ok {
+			r.ContentCount = len(contentMap)
+		}
+	}
+
 	byPub := h.loadMetricsForPubs(pubIDs)
 	for _, p := range pubs {
-		name := contentPlatform[p.contentID]
-		if name == "" {
-			name = "Unknown"
-		}
-		row := rows[name]
+		pName := pubPlatformName[p.id]
+		row := rows[pName]
 		if row == nil {
 			continue
 		}
@@ -400,11 +421,10 @@ func (h *Handler) platformPerformance(f analyticsFilters) []platformPerfRow {
 	}
 
 	out := make([]platformPerfRow, 0, len(rows))
-	for _, name := range order {
-		if name == "Unknown" {
+	for name, row := range rows {
+		if name == "Unknown" && row.ContentCount == 0 && row.Views == 0 {
 			continue
 		}
-		row := rows[name]
 		row.EngagementRate = 0
 		if row.Reach > 0 {
 			row.EngagementRate = float64(row.Likes+row.Comments+row.Shares+row.Saves) / float64(row.Reach) * 100
@@ -944,7 +964,7 @@ func (h *Handler) TopicRecap(c *gin.Context) {
 	}
 	if f.platformID != "" {
 		args = append(args, f.platformID)
-		where = append(where, "c.platform_id = $"+itoa(len(args)))
+		where = append(where, "(c.platform_id = $"+itoa(len(args))+" OR $"+itoa(len(args))+" = ANY(c.platform_ids) OR EXISTS (SELECT 1 FROM publications p_sub WHERE p_sub.content_id = c.id AND p_sub.platform_id = $"+itoa(len(args))+"))")
 	}
 	if f.status != "" {
 		args = append(args, f.status)

@@ -706,7 +706,7 @@ export default function PublishingPage() {
       shares: String(latest?.shares ?? 0),
       saves: String(latest?.saves ?? 0),
       reach: String(latest?.reach ?? 0),
-      recorded_at: latest?.recorded_at || new Date().toISOString().split('T')[0],
+      recorded_at: latest?.recorded_at ? latest.recorded_at.slice(0, 10) : new Date().toISOString().split('T')[0],
     })
   }
 
