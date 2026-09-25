@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api'
+import { buildPublicationNotifications } from '@/lib/pub-notifs'
 import { formatDate } from '@/lib/utils'
 import type { UserRole } from '@/types'
 
@@ -138,117 +139,31 @@ export async function fetchNotifications(
       })
     })
 
-    // 2. Process Publication Schedules & Deadlines
-    publications.forEach((pub) => {
-      const contentId = pub.content_id || pub.id
-      const contentTitle = pub.content?.title || 'Konten Publikasi'
-      const plannedDate = pub.content?.planned_date || pub.planned_publish_date || null
-      const updatedAt = pub.updated_at || pub.created_at || new Date().toISOString()
-      const status = pub.status
-
-      if (status === 'CANCELLED' || status === 'CANCEL') {
-        const id = `notif-pub-cancel-${pub.id}`
-        if (!seenIds.has(id)) {
-          seenIds.add(id)
-          notifications.push({
-            id,
-            contentId,
-            type: 'CANCELLED',
-            priority: 'LOW',
-            title: 'Konten dibatalkan',
-            contentTitle,
-            description: pub.cancel_reason ? `Alasan: ${pub.cancel_reason}` : 'Publikasi konten dibatalkan',
-            timestamp: updatedAt,
-            actionUrl: `/publishing`,
-            needsAction: false,
-            read: readIds.has(id),
-          })
-        }
-        return
-      }
-
-      if (status === 'PUBLISHED') {
-        const id = `notif-pub-done-${pub.id}`
-        if (!seenIds.has(id)) {
-          seenIds.add(id)
-          notifications.push({
-            id,
-            contentId,
-            type: 'PUBLISHED',
-            priority: 'LOW',
-            title: 'Konten berhasil dipublikasikan',
-            contentTitle,
-            description: pub.actual_publish_date ? `Ditayangkan pada ${formatDate(pub.actual_publish_date)}` : 'Konten telah ditayangkan',
-            timestamp: pub.actual_publish_date || updatedAt,
-            actionUrl: `/publishing`,
-            needsAction: false,
-            read: readIds.has(id),
-          })
-        }
-        return
-      }
-
-      // If PLANNED or DELAYED
-      if (plannedDate) {
-        if (plannedDate < todayStr || status === 'DELAYED') {
-          // Overdue
-          const id = `notif-pub-overdue-${pub.id}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId,
-              type: 'OVERDUE',
-              priority: 'HIGH',
-              title: isAdmin ? 'Konten melewati jadwal publikasi' : 'Konten belum dipublikasikan sesuai jadwal',
-              contentTitle,
-              description: `Jadwal (${formatDate(plannedDate)}) telah terlewati`,
-              timestamp: updatedAt,
-              actionUrl: `/publishing`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        } else if (plannedDate === todayStr) {
-          // Hari H
-          const id = `notif-pub-today-${pub.id}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId,
-              type: 'SCHEDULE',
-              priority: 'HIGH',
-              title: 'Jadwal publikasi hari ini',
-              contentTitle,
-              description: 'Dijadwalkan tayang hari ini, pastikan siap publikasi',
-              timestamp: updatedAt,
-              actionUrl: `/publishing`,
-              needsAction: true,
-              read: readIds.has(id),
-            })
-          }
-        } else if (plannedDate === tomorrowStr) {
-          // H-1
-          const id = `notif-pub-tomorrow-${pub.id}`
-          if (!seenIds.has(id)) {
-            seenIds.add(id)
-            notifications.push({
-              id,
-              contentId,
-              type: 'SCHEDULE',
-              priority: 'MEDIUM',
-              title: 'Jadwal publikasi besok',
-              contentTitle,
-              description: `Dijadwalkan ${formatDate(plannedDate)}`,
-              timestamp: updatedAt,
-              actionUrl: `/publishing`,
-              needsAction: false,
-              read: readIds.has(id),
-            })
-          }
-        }
-      }
+    // 2. Notifikasi publikasi — dikelompokkan per konten (satu konten
+    // multi-platform = satu notif per jenis), bukan per baris publication.
+    // Lihat lib/pub-notifs.ts.
+    buildPublicationNotifications(publications, {
+      todayStr,
+      tomorrowStr,
+      isAdmin,
+      formatDate,
+    }).forEach((n) => {
+      const id = `notif-pub-${n.kind}-${n.contentId}`
+      if (seenIds.has(id)) return
+      seenIds.add(id)
+      notifications.push({
+        id,
+        contentId: n.contentId,
+        type: n.type,
+        priority: n.priority,
+        title: n.title,
+        contentTitle: n.contentTitle,
+        description: n.description,
+        timestamp: n.timestamp,
+        actionUrl: '/publishing',
+        needsAction: n.needsAction,
+        read: readIds.has(id),
+      })
     })
 
     // Sort: unread first, then most recent on top.
