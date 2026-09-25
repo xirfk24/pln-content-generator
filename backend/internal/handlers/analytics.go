@@ -971,7 +971,7 @@ func buildTopicRecap(counts map[string]int) []topicRecapRow {
 func (h *Handler) TopicRecap(c *gin.Context) {
 	f := readFilters(c)
 
-	where := []string{"c.pillar_id IS NOT NULL"}
+	where := []string{"1=1"}
 	args := []any{}
 	if f.dateFrom != "" {
 		args = append(args, f.dateFrom)
@@ -995,7 +995,9 @@ func (h *Handler) TopicRecap(c *gin.Context) {
 	}
 
 	rows, err := h.Pool.Query(h.ctx(), `
-		SELECT pi.name FROM contents c JOIN pillars pi ON pi.id = c.pillar_id
+		SELECT COALESCE(NULLIF(TRIM(c.topic), ''), pi.name, 'Tanpa Kode')
+		FROM contents c
+		LEFT JOIN pillars pi ON pi.id = c.pillar_id
 		WHERE `+strings.Join(where, " AND "), args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recap"})
