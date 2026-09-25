@@ -11,7 +11,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
@@ -448,7 +447,7 @@ export default function ReportsPage() {
           </div>
 
           {/* Controls Grid */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {/* 1. Periode / Semester */}
             <div className="space-y-1">
               <label htmlFor="report-period" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
@@ -460,7 +459,7 @@ export default function ReportsPage() {
                 onChange={(e) => handlePeriodChange(e.target.value)}
                 className="text-xs font-medium"
               >
-                <option value="ALL">Semua Periode / Kustom</option>
+                <option value="ALL">Semua Periode</option>
                 {periods.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
@@ -490,41 +489,7 @@ export default function ReportsPage() {
               </Select>
             </div>
 
-            {/* 3. Dari Tanggal */}
-            <div className="space-y-1">
-              <label htmlFor="report-date-from" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Dari Tanggal
-              </label>
-              <Input
-                id="report-date-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value)
-                  setSelectedMonthKey('ALL')
-                }}
-                className="text-xs"
-              />
-            </div>
-
-            {/* 4. Sampai Tanggal */}
-            <div className="space-y-1">
-              <label htmlFor="report-date-to" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Sampai Tanggal
-              </label>
-              <Input
-                id="report-date-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value)
-                  setSelectedMonthKey('ALL')
-                }}
-                className="text-xs"
-              />
-            </div>
-
-            {/* 5. Platform */}
+            {/* 3. Platform */}
             <div className="space-y-1">
               <label htmlFor="report-platform" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 Platform Media

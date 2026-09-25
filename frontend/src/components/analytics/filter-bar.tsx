@@ -1,10 +1,14 @@
-import { Input } from '@/components/ui/input'
+import { useState, useEffect, useMemo } from 'react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Filter, X } from 'lucide-react'
 import { PLN_TOPIC_OPTIONS, CONTENT_PILLAR_OPTIONS } from '@/constants'
+import { apiFetch } from '@/lib/api'
+import type { PlanningPeriod } from '@/types'
 
 export interface FilterValues {
+  period_id?: string
+  month?: string
   date_from: string
   date_to: string
   platform_id: string
@@ -14,6 +18,8 @@ export interface FilterValues {
 }
 
 export const EMPTY_FILTERS: FilterValues = {
+  period_id: '',
+  month: '',
   date_from: '',
   date_to: '',
   platform_id: '',
@@ -32,8 +38,120 @@ interface FilterBarProps {
   }
 }
 
+const MONTH_NAMES = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+]
+
 export function FilterBar({ filters, onChange, showStatus = true, masterData }: FilterBarProps) {
-  const hasActiveFilters = Object.values(filters).some((v) => v !== '')
+  const [periods, setPeriods] = useState<PlanningPeriod[]>([])
+
+  useEffect(() => {
+    apiFetch('/api/planning-periods')
+      .then((r) => (r.ok ? r.json() : { periods: [] }))
+      .then((data) => {
+        setPeriods(data.periods || [])
+      })
+      .catch((err) => console.error('Failed to load planning periods in FilterBar:', err))
+  }, [])
+
+  const currentPeriod = useMemo(() => {
+    return periods.find((p) => p.id === filters.period_id) || null
+  }, [periods, filters.period_id])
+
+  const availableMonths = useMemo(() => {
+    if (!currentPeriod || !currentPeriod.start_date || !currentPeriod.end_date) return []
+
+    const start = new Date(currentPeriod.start_date)
+    const end = new Date(currentPeriod.end_date)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return []
+
+    const months: Array<{ key: string; name: string; startDate: string; endDate: string }> = []
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1)
+    const last = new Date(end.getFullYear(), end.getMonth(), 1)
+
+    while (cur <= last) {
+      const y = cur.getFullYear()
+      const m = cur.getMonth()
+      const mKey = `${y}-${String(m + 1).padStart(2, '0')}`
+      const mName = `${MONTH_NAMES[m]} ${y}`
+
+      const mStart = `${y}-${String(m + 1).padStart(2, '0')}-01`
+      const lastDayDate = new Date(y, m + 1, 0)
+      const mEnd = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`
+
+      months.push({ key: mKey, name: mName, startDate: mStart, endDate: mEnd })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+
+    return months
+  }, [currentPeriod])
+
+  const handlePeriodSelect = (periodId: string) => {
+    if (!periodId) {
+      onChange({
+        ...filters,
+        period_id: '',
+        month: '',
+        date_from: '',
+        date_to: '',
+      })
+      return
+    }
+
+    const p = periods.find((item) => item.id === periodId)
+    if (p) {
+      onChange({
+        ...filters,
+        period_id: periodId,
+        month: '',
+        date_from: p.start_date,
+        date_to: p.end_date,
+      })
+    } else {
+      onChange({ ...filters, period_id: periodId, month: '' })
+    }
+  }
+
+  const handleMonthSelect = (monthKey: string) => {
+    if (!monthKey) {
+      if (currentPeriod) {
+        onChange({
+          ...filters,
+          month: '',
+          date_from: currentPeriod.start_date,
+          date_to: currentPeriod.end_date,
+        })
+      } else {
+        onChange({ ...filters, month: '', date_from: '', date_to: '' })
+      }
+      return
+    }
+
+    const m = availableMonths.find((item) => item.key === monthKey)
+    if (m) {
+      onChange({
+        ...filters,
+        month: monthKey,
+        date_from: m.startDate,
+        date_to: m.endDate,
+      })
+    } else {
+      onChange({ ...filters, month: monthKey })
+    }
+  }
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== '' && v !== undefined)
 
   const set = (key: keyof FilterValues, value: string) => {
     onChange({ ...filters, [key]: value })
@@ -46,30 +164,45 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
         Filter Data
       </div>
 
+      {/* Periode Semester */}
       <div>
-        <label htmlFor="filter-date-from" className="mb-1 block text-xs text-ink-muted">
-          Dari Tanggal
+        <label htmlFor="filter-period" className="mb-1 block text-xs text-ink-muted">
+          Periode Semester
         </label>
-        <Input
-          id="filter-date-from"
-          type="date"
-          value={filters.date_from}
-          onChange={(e) => set('date_from', e.target.value)}
-          className="w-full sm:w-40 font-normal"
-        />
+        <Select
+          id="filter-period"
+          value={filters.period_id || ''}
+          onChange={(e) => handlePeriodSelect(e.target.value)}
+          className="w-full sm:w-48 font-normal"
+        >
+          <option value="">Semua Periode</option>
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
+            </option>
+          ))}
+        </Select>
       </div>
 
+      {/* Pilih Bulan */}
       <div>
-        <label htmlFor="filter-date-to" className="mb-1 block text-xs text-ink-muted">
-          Sampai Tanggal
+        <label htmlFor="filter-month" className="mb-1 block text-xs text-ink-muted">
+          Pilih Bulan
         </label>
-        <Input
-          id="filter-date-to"
-          type="date"
-          value={filters.date_to}
-          onChange={(e) => set('date_to', e.target.value)}
-          className="w-full sm:w-40 font-normal"
-        />
+        <Select
+          id="filter-month"
+          value={filters.month || ''}
+          onChange={(e) => handleMonthSelect(e.target.value)}
+          disabled={!filters.period_id}
+          className="w-full sm:w-44 font-normal"
+        >
+          <option value="">Semua Bulan di Semester Ini</option>
+          {availableMonths.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.name}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <div>
@@ -153,7 +286,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
             id="filter-status"
             value={filters.status}
             onChange={(e) => set('status', e.target.value)}
-            className="w-full sm:w-44"
+            className="w-full sm:w-44 font-normal"
           >
             <option value="">Semua Status</option>
             <option value="DRAFT">Draft</option>
@@ -179,3 +312,4 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
     </div>
   )
 }
+
