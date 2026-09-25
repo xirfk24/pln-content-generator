@@ -36,6 +36,7 @@ import {
   Filter,
   Sparkles,
   ArrowUpRight,
+  Calculator,
 } from 'lucide-react'
 import { ENGAGEMENT_FORMULA } from '@/constants'
 import { PlatformCluster, PlatformIconOnly } from '@/components/ui/platform-icon'
@@ -254,6 +255,31 @@ export default function PublishingPage() {
     reach: '0',
     recorded_at: new Date().toISOString().split('T')[0],
   })
+
+  const liveMetricsER = useMemo(() => {
+    const vViews = Number(metricsForm.views) || 0
+    const vLikes = Number(metricsForm.likes) || 0
+    const vComments = Number(metricsForm.comments) || 0
+    const vShares = Number(metricsForm.shares) || 0
+    const vSaves = Number(metricsForm.saves) || 0
+    const vReach = Number(metricsForm.reach) || 0
+
+    const totalInteractions = vLikes + vComments + vShares + vSaves
+    const denominator = vReach > 0 ? vReach : vViews
+    const er = denominator > 0 ? (totalInteractions / denominator) * 100 : 0
+
+    return {
+      views: vViews,
+      likes: vLikes,
+      comments: vComments,
+      shares: vShares,
+      saves: vSaves,
+      reach: vReach,
+      totalInteractions,
+      denominator,
+      er,
+    }
+  }, [metricsForm])
 
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const [isEditingSchedule, setIsEditingSchedule] = useState(false)
@@ -2055,9 +2081,36 @@ export default function PublishingPage() {
               />
             </div>
 
-            <p className="text-[11px] text-ink-muted bg-surface-muted p-2 rounded-md">
-              Rumus: {ENGAGEMENT_FORMULA}
-            </p>
+            {/* Live Automatic ER% Calculation Card */}
+            <div className="rounded-xl border border-teal-200 bg-teal-50/80 p-3.5 dark:border-teal-900/60 dark:bg-teal-950/40 space-y-2 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Calculator className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span className="text-xs font-bold text-teal-950 dark:text-teal-100">
+                    Hasil Engagement Rate (ER%):
+                  </span>
+                </div>
+                <span className="text-sm font-black text-teal-700 dark:text-teal-300 bg-white dark:bg-slate-900 px-3 py-0.5 rounded-md border border-teal-200 dark:border-teal-800 shadow-xs">
+                  {liveMetricsER.er.toFixed(2)}%
+                </span>
+              </div>
+
+              <div className="text-[11px] text-teal-900/90 dark:text-teal-200/90 space-y-1 pt-1.5 border-t border-teal-200/70 dark:border-teal-900/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Total Interaksi:</span>
+                  <span className="font-semibold">
+                    {liveMetricsER.likes} (Suka) + {liveMetricsER.comments} (Komentar) + {liveMetricsER.shares} (Bagi) + {liveMetricsER.saves} (Simpan) = {liveMetricsER.totalInteractions.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Pembagi ({liveMetricsER.reach > 0 ? 'Reach' : 'Views'}):</span>
+                  <span className="font-semibold">{liveMetricsER.denominator > 0 ? liveMetricsER.denominator.toLocaleString('id-ID') : 0}</span>
+                </div>
+                <div className="text-[10px] font-mono text-teal-700 dark:text-teal-300 bg-white/90 dark:bg-slate-900/90 p-1.5 rounded mt-1 text-center border border-teal-200/60 dark:border-teal-900/60 font-medium">
+                  ER% = ({liveMetricsER.totalInteractions.toLocaleString('id-ID')} ÷ {liveMetricsER.denominator > 0 ? liveMetricsER.denominator.toLocaleString('id-ID') : 0}) × 100% = {liveMetricsER.er.toFixed(2)}%
+                </div>
+              </div>
+            </div>
             {error && <p className="text-xs font-medium text-danger">{error}</p>}
 
             <DialogFooter className="pt-2 gap-2 sm:gap-0">
