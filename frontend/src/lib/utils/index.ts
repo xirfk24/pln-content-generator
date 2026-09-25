@@ -144,3 +144,39 @@ function toISODate(d: Date): string {
   const day = d.getUTCDate()
   return `${pad4(y)}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
+
+export interface AutoSemesterOption {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  year: number
+  semester: 1 | 2
+}
+
+export function getAutoSemesters(yearsBack = 3, yearsAhead = 1): AutoSemesterOption[] {
+  const currentYear = new Date().getFullYear()
+  const startYear = currentYear + yearsAhead
+  const endYear = currentYear - yearsBack
+
+  const result: AutoSemesterOption[] = []
+  for (let year = startYear; year >= endYear; year--) {
+    result.push({
+      id: `AUTO-S1-${year}`,
+      name: `Semester 1 ${year} (Jan – Jun ${year})`,
+      start_date: `${year}-01-01`,
+      end_date: `${year}-06-30`,
+      year,
+      semester: 1,
+    })
+    result.push({
+      id: `AUTO-S2-${year}`,
+      name: `Semester 2 ${year} (Jul – Des ${year})`,
+      start_date: `${year}-07-01`,
+      end_date: `${year}-12-31`,
+      year,
+      semester: 2,
+    })
+  }
+  return result
+}

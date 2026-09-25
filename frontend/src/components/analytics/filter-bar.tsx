@@ -53,21 +53,50 @@ const MONTH_NAMES = [
   'Desember',
 ]
 
+import { getAutoSemesters } from '@/lib/utils'
+
 export function FilterBar({ filters, onChange, showStatus = true, masterData }: FilterBarProps) {
-  const [periods, setPeriods] = useState<PlanningPeriod[]>([])
+  const [dbPeriods, setDbPeriods] = useState<PlanningPeriod[]>([])
 
   useEffect(() => {
     apiFetch('/api/planning-periods')
       .then((r) => (r.ok ? r.json() : { periods: [] }))
       .then((data) => {
-        setPeriods(data.periods || [])
+        setDbPeriods(data.periods || [])
       })
       .catch((err) => console.error('Failed to load planning periods in FilterBar:', err))
   }, [])
 
+  const allSemesterOptions = useMemo(() => {
+    const autoSems = getAutoSemesters(3, 1)
+    const list: Array<{ id: string; name: string; start_date: string; end_date: string }> = []
+
+    for (const s of autoSems) {
+      list.push({
+        id: s.id,
+        name: s.name,
+        start_date: s.start_date,
+        end_date: s.end_date,
+      })
+    }
+
+    for (const p of dbPeriods) {
+      if (!list.some((item) => item.start_date === p.start_date && item.end_date === p.end_date)) {
+        list.push({
+          id: p.id,
+          name: p.name,
+          start_date: p.start_date,
+          end_date: p.end_date,
+        })
+      }
+    }
+
+    return list
+  }, [dbPeriods])
+
   const currentPeriod = useMemo(() => {
-    return periods.find((p) => p.id === filters.period_id) || null
-  }, [periods, filters.period_id])
+    return allSemesterOptions.find((p) => p.id === filters.period_id) || null
+  }, [allSemesterOptions, filters.period_id])
 
   const availableMonths = useMemo(() => {
     if (!currentPeriod || !currentPeriod.start_date || !currentPeriod.end_date) return []
@@ -109,7 +138,7 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
       return
     }
 
-    const p = periods.find((item) => item.id === periodId)
+    const p = allSemesterOptions.find((item) => item.id === periodId)
     if (p) {
       onChange({
         ...filters,
@@ -176,9 +205,9 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
           className="w-full sm:w-48 font-normal"
         >
           <option value="">Semua Periode</option>
-          {periods.map((p) => (
+          {allSemesterOptions.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
+              {p.name}
             </option>
           ))}
         </Select>

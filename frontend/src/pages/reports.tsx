@@ -27,7 +27,7 @@ import {
   Clock,
   FileEdit,
 } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getAutoSemesters } from '@/lib/utils'
 import { exportContentReportToExcel, type ReportItem } from '@/lib/excel-export'
 import type { PlanningPeriod } from '@/types'
 
@@ -74,6 +74,33 @@ export default function ReportsPage() {
   const [pillarId, setPillarId] = useState<string>('')
   const [status, setStatus] = useState<string>('PUBLISHED')
 
+  const allPeriods = useMemo(() => {
+    const autoSems = getAutoSemesters(3, 1)
+    const list: Array<{ id: string; name: string; start_date: string; end_date: string }> = []
+
+    for (const s of autoSems) {
+      list.push({
+        id: s.id,
+        name: s.name,
+        start_date: s.start_date,
+        end_date: s.end_date,
+      })
+    }
+
+    for (const p of periods) {
+      if (!list.some((item) => item.start_date === p.start_date && item.end_date === p.end_date)) {
+        list.push({
+          id: p.id,
+          name: p.name,
+          start_date: p.start_date,
+          end_date: p.end_date,
+        })
+      }
+    }
+
+    return list
+  }, [periods])
+
   // 1. Load Master Data & Planning Periods on Mount
   useEffect(() => {
     Promise.all([
@@ -91,23 +118,26 @@ export default function ReportsPage() {
           ),
         })
 
-        // Default to the AKTIF period, or the first period
-        const activeP = pList.find((p) => p.status === 'AKTIF') || pList[0]
-        if (activeP) {
-          setSelectedPeriodId(activeP.id)
-          setDateFrom(activeP.start_date)
-          setDateTo(activeP.end_date)
+        const curY = new Date().getFullYear()
+        const curM = new Date().getMonth()
+        const defaultSemId = curM >= 6 ? `AUTO-S2-${curY}` : `AUTO-S1-${curY}`
+
+        const initialP = allPeriods.find((p) => p.id === defaultSemId) || allPeriods[0]
+        if (initialP) {
+          setSelectedPeriodId(initialP.id)
+          setDateFrom(initialP.start_date)
+          setDateTo(initialP.end_date)
         }
       })
       .catch((err) => {
         console.error('Failed to load initial report filters:', err)
       })
-  }, [])
+  }, [allPeriods])
 
   // 2. Compute dynamic months for the selected period
   const currentPeriod = useMemo(() => {
-    return periods.find((p) => p.id === selectedPeriodId) || null
-  }, [periods, selectedPeriodId])
+    return allPeriods.find((p) => p.id === selectedPeriodId) || null
+  }, [allPeriods, selectedPeriodId])
 
   const availableMonths = useMemo<MonthOption[]>(() => {
     if (!currentPeriod || !currentPeriod.start_date || !currentPeriod.end_date) return []
@@ -151,7 +181,7 @@ export default function ReportsPage() {
       setDateFrom('')
       setDateTo('')
     } else {
-      const p = periods.find((item) => item.id === pId)
+      const p = allPeriods.find((item) => item.id === pId)
       if (p) {
         setDateFrom(p.start_date)
         setDateTo(p.end_date)
@@ -460,9 +490,9 @@ export default function ReportsPage() {
                 className="text-xs font-medium"
               >
                 <option value="ALL">Semua Periode</option>
-                {periods.map((p) => (
+                {allPeriods.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} {p.status === 'AKTIF' ? '(Aktif)' : ''}
+                    {p.name}
                   </option>
                 ))}
               </Select>
