@@ -68,30 +68,15 @@ export function FilterBar({ filters, onChange, showStatus = true, masterData }: 
   }, [])
 
   const allSemesterOptions = useMemo(() => {
-    const autoSems = getAutoSemesters(3, 1)
-    const list: Array<{ id: string; name: string; start_date: string; end_date: string }> = []
-
-    for (const s of autoSems) {
-      list.push({
-        id: s.id,
-        name: s.name,
-        start_date: s.start_date,
-        end_date: s.end_date,
-      })
+    if (dbPeriods.length > 0) {
+      return dbPeriods.map((p) => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+      }))
     }
-
-    for (const p of dbPeriods) {
-      if (!list.some((item) => item.start_date === p.start_date && item.end_date === p.end_date)) {
-        list.push({
-          id: p.id,
-          name: p.name,
-          start_date: p.start_date,
-          end_date: p.end_date,
-        })
-      }
-    }
-
-    return list
+    return getAutoSemesters(3, 1)
   }, [dbPeriods])
 
   const currentPeriod = useMemo(() => {

@@ -75,30 +75,15 @@ export default function ReportsPage() {
   const [status, setStatus] = useState<string>('PUBLISHED')
 
   const allPeriods = useMemo(() => {
-    const autoSems = getAutoSemesters(3, 1)
-    const list: Array<{ id: string; name: string; start_date: string; end_date: string }> = []
-
-    for (const s of autoSems) {
-      list.push({
-        id: s.id,
-        name: s.name,
-        start_date: s.start_date,
-        end_date: s.end_date,
-      })
+    if (periods.length > 0) {
+      return periods.map((p) => ({
+        id: p.id,
+        name: p.name,
+        start_date: p.start_date,
+        end_date: p.end_date,
+      }))
     }
-
-    for (const p of periods) {
-      if (!list.some((item) => item.start_date === p.start_date && item.end_date === p.end_date)) {
-        list.push({
-          id: p.id,
-          name: p.name,
-          start_date: p.start_date,
-          end_date: p.end_date,
-        })
-      }
-    }
-
-    return list
+    return getAutoSemesters(3, 1)
   }, [periods])
 
   // 1. Load Master Data & Planning Periods on Mount
@@ -118,21 +103,22 @@ export default function ReportsPage() {
           ),
         })
 
-        const curY = new Date().getFullYear()
-        const curM = new Date().getMonth()
-        const defaultSemId = curM >= 6 ? `AUTO-S2-${curY}` : `AUTO-S1-${curY}`
-
-        const initialP = allPeriods.find((p) => p.id === defaultSemId) || allPeriods[0]
-        if (initialP) {
-          setSelectedPeriodId(initialP.id)
-          setDateFrom(initialP.start_date)
-          setDateTo(initialP.end_date)
+        const activeP = pList.find((p) => p.status === 'AKTIF') || pList[0]
+        if (activeP) {
+          setSelectedPeriodId(activeP.id)
+          setDateFrom(activeP.start_date)
+          setDateTo(activeP.end_date)
+        } else if (allPeriods.length > 0) {
+          const firstP = allPeriods[0]
+          setSelectedPeriodId(firstP.id)
+          setDateFrom(firstP.start_date)
+          setDateTo(firstP.end_date)
         }
       })
       .catch((err) => {
         console.error('Failed to load initial report filters:', err)
       })
-  }, [allPeriods])
+  }, [])
 
   // 2. Compute dynamic months for the selected period
   const currentPeriod = useMemo(() => {
