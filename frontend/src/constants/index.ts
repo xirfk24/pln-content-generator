@@ -121,14 +121,14 @@ export const POSTING_CATEGORIES = [
 
 export const POSTING_CATEGORY_LABELS: Record<string, string> = {
   UID: 'UID',
-  REPOST_ID: 'Repost id',
-  REPOST_MOBILE: 'Repost mobile',
+  REPOST_ID: 'Repost PLN ID',
+  REPOST_MOBILE: 'Repost PLN Mobile',
   REPOST_UP3: 'Repost UP3',
   OTHER: 'Lain-lain',
   // Backward compatibility
   ORIGINAL: 'UID',
-  REPOST_PLN_ID: 'Repost id',
-  REPOST_PLN_MOBILE: 'Repost mobile',
+  REPOST_PLN_ID: 'Repost PLN ID',
+  REPOST_PLN_MOBILE: 'Repost PLN Mobile',
   CAMPAIGN: 'Kampanye / Event',
 }
 

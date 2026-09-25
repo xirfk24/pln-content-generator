@@ -387,7 +387,7 @@ function NewContentForm() {
                     </div>
                   ) : (
                     <p className="text-[11px] text-ink-muted">
-                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Repost UP3, Lain-lain).
+                      Klasifikasi kategori konten (UID, Repost PLN ID, Repost PLN Mobile, Repost UP3, Lain-lain).
                     </p>
                   )}
                 </div>
