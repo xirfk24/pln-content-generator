@@ -553,7 +553,7 @@ export function ContentPlanningCharts({
                         Distribusi Content Pillar
                       </h4>
                       <p className="text-[10px] text-slate-500">
-                        Pilar komunikasi Humas PLN UID Jawa Barat
+                        Pilar komunikasi Bagian Komunikasi PLN UID Jawa Barat
                       </p>
                     </div>
                     {activePillarFilter && (

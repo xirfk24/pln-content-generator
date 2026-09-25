@@ -474,7 +474,7 @@ export default function ContentImportPage() {
                     Sheet 3: Referensi Pilihan
                   </div>
                   <p className="text-purple-700/80 dark:text-purple-300/80 leading-relaxed text-[11px]">
-                    Daftar resmi Content Pillar Humas PLN UID Jawa Barat, Target Platform, dan Format Konten dari database.
+                    Daftar resmi Content Pillar Bagian Komunikasi PLN UID Jawa Barat, Target Platform, dan Format Konten dari database.
                   </p>
                 </div>
               </div>

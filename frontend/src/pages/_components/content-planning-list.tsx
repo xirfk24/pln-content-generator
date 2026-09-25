@@ -643,7 +643,7 @@ export default function ContentPlanningList() {
           <div className="overflow-x-auto min-h-[360px]">
             <table className="w-full">
               <caption className="sr-only">
-                Daftar rencana konten Humas PLN UID Jawa Barat
+                Daftar rencana konten Bagian Komunikasi PLN UID Jawa Barat
               </caption>
               <thead className="border-b border-border bg-surface-muted/50">
                 <tr>

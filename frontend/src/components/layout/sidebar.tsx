@@ -221,7 +221,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Bottom section */}
       <div className={cn('border-t p-3', sidebarBorder)}>
         {!collapsed && (
-          <p className="text-center text-micro text-white/40">&copy; 2026 Humas PLN UID Jabar</p>
+          <p className="text-center text-micro text-white/40">&copy; 2026 Bagian Komunikasi PLN UID Jabar</p>
         )}
       </div>
     </>

@@ -73,7 +73,7 @@ const ROUTE_TITLES: Record<string, string> = {
 }
 
 const ROUTE_SUBTITLES: Record<string, string> = {
-  '/dashboard': 'Ringkasan aktivitas konten, alur kerja, dan performa media sosial Humas PLN UID Jawa Barat.',
+  '/dashboard': 'Ringkasan aktivitas konten, alur kerja, dan performa media sosial Bagian Komunikasi PLN UID Jawa Barat.',
   '/content/planning': 'Modul ini digunakan untuk menyusun, mengelola, mengajukan, dan memantau proses pengelolaan konten sebelum dipublikasikan.',
   '/content/planning/new': 'Form penyusunan rencana konten baru dengan pengelompokan pilar komunikasi dan multi-platform.',
   '/content/tabungan': 'Modul ini digunakan untuk menampung konten yang ditunda, belum memiliki waktu publikasi pasti, atau disimpan untuk periode berikutnya dalam Bank Konten.',
@@ -85,14 +85,14 @@ const ROUTE_SUBTITLES: Record<string, string> = {
   '/notifications': 'Informasi dan aktivitas terbaru yang membutuhkan perhatian Anda.',
   '/analytics': 'Metrik agregat performa dan interaksi konten media sosial lintas platform.',
   '/analytics/performance': 'Peringkat dan efektivitas jangkauan serta engagement konten.',
-  '/analytics/insights': 'Analisis cerdas AI untuk optimasi strategi komunikasi Humas PLN.',
-  '/recap': 'Laporan rekapitulasi data konten bulanan dan semesteran sesuai standar Humas PLN.',
+  '/analytics/insights': 'Analisis cerdas AI untuk optimasi strategi komunikasi Bagian Komunikasi PLN.',
+  '/recap': 'Laporan rekapitulasi data konten bulanan dan semesteran sesuai standar Bagian Komunikasi PLN.',
   '/reports': 'Ekspor dan filter laporan performa publikasi berkala.',
   '/ai': 'Alat bantu AI untuk pembuatan brief, copywriting, dan rekomendasi konten.',
   '/admin/users': 'Kelola akun pengguna, hak akses role Admin dan Staf.',
   '/admin/periods': 'Kelola periode perencanaan konten berdasarkan semester.',
   '/periode-perencanaan': 'Kelola periode perencanaan konten berdasarkan semester.',
-  '/admin/pillars': 'Kelola daftar pilar komunikasi Humas PLN (A-Z).',
+  '/admin/pillars': 'Kelola daftar pilar komunikasi Bagian Komunikasi PLN (A-Z).',
   '/admin/topics': 'Kelola daftar Topik Konten resmi (A-Z); rename ikut memperbarui konten terkait.',
   '/admin/platforms': 'Kelola platform media sosial tujuan publikasi.',
 }

@@ -505,7 +505,7 @@ function populateSheet(
   ws.mergeCells(`A${currentRowIndex}:P${currentRowIndex}`)
   const foot = ws.getCell(`A${currentRowIndex}`)
   foot.value =
-    '* Dokumen ini digenerate secara otomatis oleh Sistem Content Manager – Humas PLN Unit Induk Distribusi Jawa Barat.'
+    '* Dokumen ini digenerate secara otomatis oleh Sistem Content Manager – Bagian Komunikasi PLN Unit Induk Distribusi Jawa Barat.'
   foot.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '94A3B8' } }
   foot.alignment = { vertical: 'middle', horizontal: 'left' }
 
@@ -526,7 +526,7 @@ export async function exportContentReportToExcel(
   options: ExportReportOptions
 ) {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Humas PLN UID Jawa Barat'
+  wb.creator = 'Bagian Komunikasi PLN UID Jawa Barat'
   wb.lastModifiedBy = 'Content Manager PLN'
   wb.created = new Date()
   wb.modified = new Date()

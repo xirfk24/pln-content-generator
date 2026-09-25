@@ -434,7 +434,7 @@ export default function DashboardPage() {
 
       <PageHeader
         title="Dashboard Utama"
-        description="Ringkasan aktivitas konten, alur kerja publikasi, dan performa komunikasi humas."
+        description="Ringkasan aktivitas konten, alur kerja publikasi, dan performa Bagian Komunikasi PLN."
       />
 
       {/* Filter Bar */}

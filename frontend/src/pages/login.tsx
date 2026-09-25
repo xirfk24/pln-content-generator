@@ -111,7 +111,7 @@ export default function LoginPage() {
 
           {/* Bottom subtle note */}
           <div className="pt-2 text-[11px] font-medium text-slate-400">
-            Humas & Komunikasi Publik &bull; PLN UID Jabar
+            Bagian Komunikasi &bull; PLN UID Jabar
           </div>
         </div>
 
@@ -227,7 +227,7 @@ export default function LoginPage() {
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => alert('Akun dibuat oleh Admin. Silakan hubungi tim IT/Humas PLN.')}
+                  onClick={() => alert('Akun dibuat oleh Admin. Silakan hubungi tim IT/Bagian Komunikasi PLN.')}
                   className="font-bold text-[#00A3A6] hover:underline dark:text-teal-400"
                 >
                   Register
