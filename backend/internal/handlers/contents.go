@@ -443,8 +443,8 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		return
 	}
 
-	// ATURAN PENGUNCIAN: Form edit umum hanya diizinkan saat status DRAFT
-	if currentStatus != "DRAFT" {
+	// ATURAN PENGUNCIAN: Form edit umum diizinkan saat status DRAFT atau REVISION_REQUIRED
+	if currentStatus != "DRAFT" && currentStatus != "REVISION_REQUIRED" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "Konten dengan status '" + currentStatus + "' terkunci dari pengeditan form umum. Perubahan hanya dapat dilakukan melalui aksi workflow resmi.",
 		})
