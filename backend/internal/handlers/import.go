@@ -40,8 +40,8 @@ var validPostingCats = map[string]string{
 	"REPOST MOBILE":     "REPOST_MOBILE",
 	"REPOST_PLN_MOBILE": "REPOST_MOBILE",
 	"REPOST PLN MOBILE": "REPOST_MOBILE",
-	"REPOST_UP3":        "REPOST_MOBILE",
-	"REPOST UP3":        "REPOST_MOBILE",
+	"REPOST_UP3":        "REPOST_UP3",
+	"REPOST UP3":        "REPOST_UP3",
 	"CAMPAIGN":          "UID",
 	"KAMPANYE":          "UID",
 	"OTHER":             "LAINNYA",
@@ -643,9 +643,9 @@ func (h *Handler) ImportContents(c *gin.Context) {
 			historyAction = "MARK_PUBLISHED"
 			historyComment = "Data arsip/lama diimpor langsung sebagai konten publikasi"
 		} else if isRepostPostingCategory(postingCategory) {
-			initialStatus = "APPROVED"
+			initialStatus = "READY_TO_PUBLISH"
 			historyAction = "AUTO_APPROVED"
-			historyComment = "Konten Repost otomatis disetujui (Approved) saat impor"
+			historyComment = "Konten Repost otomatis disetujui & siap publikasi saat impor"
 		}
 
 		var insertedID string

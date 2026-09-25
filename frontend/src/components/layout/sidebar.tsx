@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   BarChart3,
   FileBarChart,
-  Bot,
   Settings,
   Users,
   ChevronLeft,
@@ -67,14 +66,9 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     children: [
       { name: 'Ringkasan Analisis', href: '/analytics', icon: BarChart3 },
       { name: 'Performa Konten', href: '/analytics/performance', icon: BarChart3 },
-      { name: 'Wawasan AI', href: '/analytics/insights', icon: Bot },
       { name: 'Rekap Konten', href: '/recap', icon: CalendarRange },
       { name: 'Laporan Berkala', href: '/reports', icon: FileBarChart },
     ],
-  },
-  {
-    name: 'Kecerdasan Buatan',
-    children: [{ name: 'Asisten AI', href: '/ai', icon: Bot }],
   },
   {
     name: 'Administrasi',

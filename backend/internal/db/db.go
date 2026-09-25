@@ -90,6 +90,14 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 			('Twitter/X', 'twitter')
 		ON CONFLICT (name) DO UPDATE SET icon = EXCLUDED.icon`,
 
+		// Repost content auto-workflow: convert existing Repost contents to READY_TO_PUBLISH & sync publications
+		`UPDATE contents SET status = 'READY_TO_PUBLISH' WHERE (LOWER(posting_category) LIKE 'repost%' OR posting_category IN ('REPOST_ID', 'REPOST_MOBILE', 'REPOST_UP3')) AND status IN ('DRAFT', 'PENDING_REVIEW', 'APPROVED')`,
+		`INSERT INTO publications (content_id, platform_id, planned_publish_date, status, notes)
+		 SELECT c.id, unnest(CASE WHEN array_length(c.platform_ids, 1) > 0 THEN c.platform_ids ELSE ARRAY[c.platform_id::text] END)::uuid, c.planned_date::date, 'PLANNED', 'Otomatis disinkronisasi untuk konten Siap Publikasi'
+		 FROM contents c
+		 WHERE c.status = 'READY_TO_PUBLISH' AND (c.platform_id IS NOT NULL OR array_length(c.platform_ids, 1) > 0)
+		 ON CONFLICT DO NOTHING`,
+
 
 
 		// Planning Periods (Semester-based planning)

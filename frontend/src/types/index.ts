@@ -49,11 +49,15 @@ export type ContentPurpose =
   | 'INFORMATION'
 
 export type PostingCategory =
+  | 'UID'
+  | 'REPOST_ID'
+  | 'REPOST_MOBILE'
+  | 'REPOST_UP3'
+  | 'OTHER'
   | 'ORIGINAL'
   | 'REPOST_PLN_ID'
-  | 'REPOST_UP3'
+  | 'REPOST_PLN_MOBILE'
   | 'CAMPAIGN'
-  | 'OTHER'
 
 export interface User {
   id: string

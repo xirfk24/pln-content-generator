@@ -50,13 +50,52 @@ func canModifyContent(role string, createdBy *string, userID string) bool {
 }
 
 // isRepostPostingCategory returns true if the given category represents a repost.
-// Repost contents are automatically approved without needing gatekeeper workflow review.
+// Repost contents are automatically approved and marked ready to publish without needing gatekeeper workflow review.
 func isRepostPostingCategory(cat *string) bool {
 	if cat == nil {
 		return false
 	}
 	c := strings.ToUpper(strings.TrimSpace(*cat))
-	return strings.HasPrefix(c, "REPOST") || c == "REPOST_ID" || c == "REPOST_MOBILE" || c == "REPOST ID" || c == "REPOST MOBILE"
+	return strings.HasPrefix(c, "REPOST") || c == "REPOST_ID" || c == "REPOST_MOBILE" || c == "REPOST_UP3" || c == "REPOST ID" || c == "REPOST MOBILE" || c == "REPOST UP3"
+}
+
+// syncPublicationsForContent auto-creates or updates entries in the publications table for contents with READY_TO_PUBLISH status.
+func (h *Handler) syncPublicationsForContent(ctx context.Context, contentID string) {
+	var plannedDate *string
+	var singlePlatID *string
+	var multiPlatIDs []string
+	_ = h.Pool.QueryRow(ctx, `
+		SELECT planned_date::TEXT, platform_id, COALESCE(platform_ids, '{}') FROM contents WHERE id = $1
+	`, contentID).Scan(&plannedDate, &singlePlatID, &multiPlatIDs)
+
+	targetPlatforms := multiPlatIDs
+	if len(targetPlatforms) == 0 && singlePlatID != nil && *singlePlatID != "" {
+		targetPlatforms = []string{*singlePlatID}
+	}
+
+	for _, pid := range targetPlatforms {
+		if strings.TrimSpace(pid) == "" {
+			continue
+		}
+		var exists bool
+		_ = h.Pool.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM publications WHERE content_id = $1 AND platform_id = $2)
+		`, contentID, pid).Scan(&exists)
+		if !exists {
+			_, errInsert := h.Pool.Exec(ctx, `
+				INSERT INTO publications (content_id, platform_id, planned_publish_date, status, notes)
+				VALUES ($1, $2, $3, 'PLANNED', 'Otomatis dibuat untuk konten Siap Publikasi')
+			`, contentID, pid, plannedDate)
+			if errInsert != nil {
+				log.Printf("Auto-create publication error: %v", errInsert)
+			}
+		} else {
+			_, _ = h.Pool.Exec(ctx, `
+				UPDATE publications SET planned_publish_date = $1, updated_at = now()
+				WHERE content_id = $2 AND platform_id = $3 AND status != 'PUBLISHED'
+			`, plannedDate, contentID, pid)
+		}
+	}
 }
 
 // requireContentAccess enforces ownership on the content row with the given
@@ -347,9 +386,9 @@ func (h *Handler) CreateContent(c *gin.Context) {
 	historyAction := "CREATED"
 	historyComment := "Konten baru dibuat sebagai Draft"
 	if isRepostPostingCategory(postingCat) {
-		initialStatus = "APPROVED"
+		initialStatus = "READY_TO_PUBLISH"
 		historyAction = "AUTO_APPROVED"
-		historyComment = "Konten Repost otomatis disetujui (Approved)"
+		historyComment = "Konten Repost otomatis disetujui & siap publikasi (Ready to Publish)"
 	}
 
 	var id string
@@ -373,6 +412,10 @@ func (h *Handler) CreateContent(c *gin.Context) {
 		INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
 		VALUES ($1, $2, NULL, $3, $4, $5)
 	`, id, historyAction, initialStatus, historyComment, user.ID)
+
+	if initialStatus == "READY_TO_PUBLISH" {
+		h.syncPublicationsForContent(c.Request.Context(), id)
+	}
 
 	contents, err := h.queryContents(c.Request.Context(), contentSelect+" WHERE c.id = $1", id)
 	if err != nil || len(contents) == 0 {
@@ -494,11 +537,11 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		if isRepostPostingCategory(cleanPC) {
 			var currentStatus string
 			_ = h.Pool.QueryRow(c.Request.Context(), "SELECT status FROM contents WHERE id = $1", id).Scan(&currentStatus)
-			if currentStatus == "DRAFT" || currentStatus == "REVISION_REQUIRED" {
-				add("status", "APPROVED")
+			if currentStatus == "DRAFT" || currentStatus == "REVISION_REQUIRED" || currentStatus == "APPROVED" || currentStatus == "PENDING_REVIEW" {
+				add("status", "READY_TO_PUBLISH")
 				_, _ = h.Pool.Exec(c.Request.Context(), `
 					INSERT INTO approval_histories (content_id, action, from_status, to_status, comment, performed_by)
-					VALUES ($1, 'AUTO_APPROVED', $2, 'APPROVED', 'Konten Repost otomatis disetujui (Approved)', $3)
+					VALUES ($1, 'AUTO_APPROVED', $2, 'READY_TO_PUBLISH', 'Konten Repost otomatis disetujui & siap publikasi (Ready to Publish)', $3)
 				`, id, currentStatus, user.ID)
 			}
 		}

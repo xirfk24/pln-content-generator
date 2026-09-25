@@ -383,11 +383,11 @@ function NewContentForm() {
                   </Select>
                   {form.posting_category?.startsWith('REPOST') ? (
                     <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-md border border-emerald-200 dark:border-emerald-800/50">
-                      <span>✓ Konten Repost otomatis langsung berstatus <strong>APPROVED</strong> (Disetujui).</span>
+                      <span>✓ Konten Repost otomatis langsung disetujui &amp; berstatus <strong>Siap Publikasi (READY_TO_PUBLISH)</strong>.</span>
                     </div>
                   ) : (
                     <p className="text-[11px] text-ink-muted">
-                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Lain-lain).
+                      Klasifikasi kategori konten (UID, Repost id, Repost mobile, Repost UP3, Lain-lain).
                     </p>
                   )}
                 </div>
