@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://GANTI-INI.onrender.com/api/$1"
+      "destination": "https://plncontentgenerator-6opzwl9b.b4a.run/api/$1"
     },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
