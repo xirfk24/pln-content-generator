@@ -32,3 +32,4 @@ backend/server.exe
 
 # legacy
 .next/
+deploy.sh

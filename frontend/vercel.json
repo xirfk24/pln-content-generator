@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://plncontentgenerator-6opzwl9b.b4a.run/api/$1"
+      "destination": "http://13.212.187.26:8080/api/$1"
     },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
