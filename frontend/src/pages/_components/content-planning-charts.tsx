@@ -512,21 +512,19 @@ export function ContentPlanningCharts({
                       key={item.id}
                       type="button"
                       onClick={item.onClick}
-                      className={`flex flex-col justify-between p-3 rounded-lg border text-left transition-all ${
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left transition-all ${
                         item.active
                           ? 'border-primary bg-white shadow-xs ring-2 ring-primary/20 dark:bg-slate-800'
                           : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/80'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1 mb-1.5">
-                        <div className={`p-1 rounded-md ${item.color}`}>
-                          <Icon className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="text-base font-bold text-slate-900 dark:text-white">
-                          {item.count}
-                        </span>
+                      <div className={`p-1 rounded-md shrink-0 ${item.color}`}>
+                        <Icon className="h-3.5 w-3.5" />
                       </div>
-                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 truncate">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white shrink-0">
+                        {item.count}
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 truncate min-w-0">
                         {item.name}
                       </span>
                     </button>
