@@ -12,10 +12,8 @@ import {
   ChevronUp,
   Loader2,
   Calendar as CalendarIcon,
-  BookmarkPlus,
   Filter,
   Flag,
-  Plus,
   Clock,
   CalendarDays,
   X,
@@ -24,7 +22,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { ImportantEvent } from '@/types'
-import { useRouter } from '@/compat/next'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { PlatformBadge, PlatformIconOnly } from '@/components/ui/platform-icon'
 
@@ -171,7 +168,6 @@ const FIXED_PUBLIC_HOLIDAYS = [
 export type CalendarFilterType = 'ALL' | 'PLN' | 'UMUM'
 
 export default function ContentCalendarPage() {
-  const router = useRouter()
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([])
   const [userContents, setUserContents] = useState<UserContentPlanItem[]>([])
   const [calendarFilter, setCalendarFilter] = useState<CalendarFilterType>('ALL')
@@ -443,32 +439,6 @@ export default function ContentCalendarPage() {
 
   const today = new Date()
   const isToday = (date: Date) => date.toDateString() === today.toDateString()
-
-  function handleCreateContentForAgenda(item: DayAgendaItem, dateStr: string) {
-    setSelectedDateDrawer(null)
-    const title =
-      item.type === 'PLN'
-        ? `Konten Rutin: ${item.name}`
-        : item.type === 'JAWA_BARAT'
-        ? `Konten Event Jabar: ${item.name}`
-        : `Peringatan ${item.name}`
-    const brief = item.contentBrief || item.description || ''
-    const topic = item.topic || 'Z - Lain-Lain'
-
-    const query = new URLSearchParams({
-      title,
-      planned_date: dateStr,
-      brief,
-      topic,
-      posting_category: 'UID',
-    })
-    router.push(`/content/planning/new?${query.toString()}`)
-  }
-
-  function handleCreateGeneralContent(dateStr: string) {
-    setSelectedDateDrawer(null)
-    router.push(`/content/planning/new?planned_date=${dateStr}`)
-  }
 
   function openDateDrawer(date: Date, dateStr: string, dayAgendas: DayAgendaItem[]) {
     const dayNum = date.getDate()
@@ -760,8 +730,6 @@ export default function ContentCalendarPage() {
                           const visibleAgendas = dayAgendas.slice(0, maxCellPreview)
                           const remainingSlots = Math.max(0, maxCellPreview - visibleAgendas.length)
                           const visiblePlans = dayPlans.slice(0, remainingSlots)
-                          const totalVisible = visibleAgendas.length + visiblePlans.length
-                          const hiddenCount = totalItemsCount - totalVisible
 
                           return (
                             <div
@@ -867,15 +835,6 @@ export default function ContentCalendarPage() {
                                   ))}
                                 </div>
                               </div>
-
-                              {/* Indicator "+N lainnya" jika overflow */}
-                              {hiddenCount > 0 && (
-                                <div className="mt-0.5 shrink-0">
-                                  <span className="w-full inline-flex items-center justify-center py-0.2 text-[9px] font-semibold text-[#0072B2] bg-sky-50 rounded border border-sky-200 hover:bg-sky-100 transition">
-                                    +{hiddenCount} agenda lainnya
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           )
                         })}
@@ -975,15 +934,6 @@ export default function ContentCalendarPage() {
                             {item.description}
                           </p>
                         )}
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            handleCreateContentForAgenda(item, selectedDateDrawer.dateStr)
-                          }
-                          className="h-7 text-[11px] font-semibold bg-[#0072B2] hover:bg-[#005a8d] text-white w-full shadow-2xs mt-1"
-                        >
-                          <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" /> Buat Rencana Konten
-                        </Button>
                       </div>
                     ))}
                   </div>
@@ -997,22 +947,11 @@ export default function ContentCalendarPage() {
                     <FileText className="h-3.5 w-3.5 text-[#0072B2]" />
                     Rencana Konten Tersusun ({selectedDateDrawer.contentPlans.length})
                   </h4>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCreateGeneralContent(selectedDateDrawer.dateStr)}
-                    className="h-6 text-[10px] font-semibold px-2"
-                  >
-                    <Plus className="mr-1 h-3 w-3" /> Buat Baru
-                  </Button>
                 </div>
 
                 {selectedDateDrawer.contentPlans.length === 0 ? (
                   <div className="p-4 text-center border border-dashed rounded-xl bg-surface-muted/40 text-ink-muted space-y-1">
                     <p className="font-medium text-xs">Belum ada rencana konten untuk tanggal ini.</p>
-                    <p className="text-[11px] text-ink-muted">
-                      Klik tombol di bawah untuk menjadwalkan ide konten baru.
-                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1071,7 +1010,7 @@ export default function ContentCalendarPage() {
             </div>
 
             {/* Footer Drawer */}
-            <div className="p-3.5 border-t border-border bg-surface-muted/40 flex items-center justify-between gap-2 shrink-0">
+            <div className="p-3.5 border-t border-border bg-surface-muted/40 flex items-center justify-end gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
@@ -1079,13 +1018,6 @@ export default function ContentCalendarPage() {
                 className="h-8 text-xs rounded-lg"
               >
                 Tutup
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => handleCreateGeneralContent(selectedDateDrawer.dateStr)}
-                className="h-8 text-xs font-semibold rounded-lg bg-[#0072B2] hover:bg-[#005a8d] text-white shadow-2xs"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Rencana Konten
               </Button>
             </div>
           </div>
