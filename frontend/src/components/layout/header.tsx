@@ -20,6 +20,14 @@ import {
   CheckCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ROLE_LABELS } from '@/constants'
 import type { UserRole } from '@/types'
@@ -131,6 +139,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const [notifOpen, setNotifOpen] = React.useState(false)
   const [notifications, setNotifications] = React.useState<AppNotification[]>([])
   const [notifLoading, setNotifLoading] = React.useState(false)
+  const [logoutOpen, setLogoutOpen] = React.useState(false)
   const notifRef = React.useRef<HTMLDivElement>(null)
 
   const pageTitle = usePageTitle(pathname)
@@ -221,6 +230,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   }
 
   async function handleLogout() {
+    setLogoutOpen(false)
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' })
     } catch {
@@ -472,7 +482,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           title="Logout"
           className="hidden sm:inline-flex"
         >
@@ -482,7 +492,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           title="Logout"
           aria-label="Logout"
           className="sm:hidden"
@@ -490,6 +500,27 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
           <LogOut className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
+
+      {/* Konfirmasi sebelum logout biar ga ke-klik nyasar */}
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Yakin mau logout?</DialogTitle>
+            <DialogDescription>
+              Sesi lo bakal berakhir dan lo harus login lagi buat lanjut kerja.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setLogoutOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Ya, Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 
@@ -35,7 +36,10 @@ const Dialog = ({ open, onOpenChange, children }: {
 
   if (!open) return null
 
-  return (
+  // Portal ke <body>: kalau dialog di-render di dalam ancestor yang punya
+  // transform/filter (mis. header dengan backdrop-blur), position:fixed
+  // nge-refer ke ancestor itu, bukan ke viewport — dialog jadi kegeser.
+  return createPortal(
     <DialogContext.Provider value={{ onOpenChange }}>
       <div className="fixed inset-0 z-50" role="presentation">
         <div
@@ -50,7 +54,8 @@ const Dialog = ({ open, onOpenChange, children }: {
           <div className="pointer-events-auto">{children}</div>
         </div>
       </div>
-    </DialogContext.Provider>
+    </DialogContext.Provider>,
+    document.body
   )
 }
 
