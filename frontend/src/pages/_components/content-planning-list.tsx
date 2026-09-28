@@ -445,8 +445,9 @@ export default function ContentPlanningList() {
             )}
           </div>
 
-          {/* BARIS 2: [Status] [Content Pillar] [Platform] [Rentang Tanggal] [Sort By] */}
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 items-center">
+          {/* BARIS 2: [Status] [Topik] [Platform] [Periode] [Rentang Tanggal] [Sort] — satu baris di desktop.
+              Rentang tanggal dapat 2fr karena berisi dua date input. */}
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-[1fr_1fr_1fr_1fr_2fr_1fr] items-center">
             {/* 1. Status */}
             <div>
               <Select
@@ -535,8 +536,8 @@ export default function ContentPlanningList() {
             </div>
 
             {/* 4. Rentang Tanggal (Dari s/d Sampai) */}
-            <div className="flex items-center gap-1.5 w-full col-span-1 sm:col-span-2 md:col-span-1 lg:col-span-2">
-              <div className="relative flex-1">
+            <div className="flex items-center gap-1 w-full min-w-0">
+              <div className="relative flex-1 min-w-0">
                 <Input
                   type="date"
                   value={dateFrom}
@@ -547,7 +548,7 @@ export default function ContentPlanningList() {
                 />
               </div>
               <span className="text-xs font-medium text-ink-muted shrink-0">s/d</span>
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <Input
                   type="date"
                   value={dateTo}
