@@ -168,28 +168,13 @@ const FIXED_PUBLIC_HOLIDAYS = [
   { month: 12, day: 25, name: 'Hari Raya Natal' },
 ]
 
-export type CalendarFilterType = 'ALL' | 'PLN' | 'JAWA_BARAT' | 'NASIONAL'
-
-const CATEGORY_FILTER_OPTIONS = [
-  { id: 'PLN', label: 'Agenda PLN', color: 'bg-[#0072B2]' },
-  { id: 'JAWA_BARAT', label: 'Event Jawa Barat', color: 'bg-purple-600' },
-  { id: 'LIBUR_NASIONAL', label: 'Libur Nasional', color: 'bg-rose-600' },
-  { id: 'INTERNASIONAL', label: 'Lingkungan & Internasional', color: 'bg-emerald-500' },
-  { id: 'NASIONAL', label: 'Hari Besar Nasional', color: 'bg-amber-500' },
-]
+export type CalendarFilterType = 'ALL' | 'PLN' | 'UMUM'
 
 export default function ContentCalendarPage() {
   const router = useRouter()
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([])
   const [userContents, setUserContents] = useState<UserContentPlanItem[]>([])
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([
-    'PLN',
-    'JAWA_BARAT',
-    'LIBUR_NASIONAL',
-    'INTERNASIONAL',
-    'NASIONAL',
-  ])
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [calendarFilter, setCalendarFilter] = useState<CalendarFilterType>('ALL')
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'day'>('month')
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -313,8 +298,8 @@ export default function ContentCalendarPage() {
       map.set(d, [])
     }
 
-    // 1. Libur Nasional Tetap
-    if (selectedCategories.includes('LIBUR_NASIONAL')) {
+    // 1. Libur Nasional Tetap (Tampil jika filter ALL atau UMUM)
+    if (calendarFilter === 'ALL' || calendarFilter === 'UMUM') {
       FIXED_PUBLIC_HOLIDAYS.forEach((fh) => {
         if (fh.month === month) {
           map.get(fh.day)?.push({
@@ -336,8 +321,8 @@ export default function ContentCalendarPage() {
       })
     }
 
-    // 2. Agenda Rutin PLN Tanggal Spesifik (Tgl 3 Tagihan Terbit & Tgl 20 Batas Akhir)
-    if (selectedCategories.includes('PLN')) {
+    // 2. Agenda Rutin PLN Tanggal Spesifik (Tgl 3 Tagihan Terbit & Tgl 20 Batas Akhir) jika filter ALL atau PLN
+    if (calendarFilter === 'ALL' || calendarFilter === 'PLN') {
       PLN_MONTHLY_ROUTINES.filter((r) => r.isExactDay).forEach((routine) => {
         map.get(routine.dayStart)?.push({
           id: `${routine.id}-${routine.dayStart}`,
@@ -370,32 +355,13 @@ export default function ContentCalendarPage() {
         ev.name.toLowerCase().includes('tasikmalaya') ||
         ev.name.toLowerCase().includes('angklung')
       const isPLNEvent =
-        (ev.name.toLowerCase().includes('pln') ||
-          ev.name.toLowerCase().includes('listrik') ||
-          (ev.category === 'HUT_INSTANSI' && ev.name.toLowerCase().includes('pln'))) &&
-        !isJabarEvent
+        ev.name.toLowerCase().includes('pln') ||
+        ev.name.toLowerCase().includes('listrik') ||
+        (ev.category === 'HUT_INSTANSI' && ev.name.toLowerCase().includes('pln'))
 
-      // Filter kategori terdistribusi
-      if (isJabarEvent && !selectedCategories.includes('JAWA_BARAT')) return
-      if (isPLNEvent && !selectedCategories.includes('PLN')) return
-      if (isPublicHoliday && !selectedCategories.includes('LIBUR_NASIONAL')) return
-      if (
-        !isJabarEvent &&
-        !isPLNEvent &&
-        !isPublicHoliday &&
-        (ev.category === 'INTERNASIONAL' || ev.category === 'LINGKUNGAN') &&
-        !selectedCategories.includes('INTERNASIONAL')
-      )
-        return
-      if (
-        !isJabarEvent &&
-        !isPLNEvent &&
-        !isPublicHoliday &&
-        ev.category !== 'INTERNASIONAL' &&
-        ev.category !== 'LINGKUNGAN' &&
-        !selectedCategories.includes('NASIONAL')
-      )
-        return
+      // Filter: Kalender PLN vs Kalender Umum
+      if (calendarFilter === 'PLN' && !isPLNEvent) return
+      if (calendarFilter === 'UMUM' && isPLNEvent) return
 
       const existingList = map.get(ev.day) || []
       const duplicateIndex = existingList.findIndex(
@@ -412,18 +378,18 @@ export default function ContentCalendarPage() {
       let borderClass = ''
       let categoryLabel = 'Hari Besar Nasional'
 
-      if (isJabarEvent || ev.category === 'JAWA_BARAT') {
-        itemType = 'JAWA_BARAT'
-        categoryLabel = 'Event Jawa Barat'
-        badgeClass =
-          'bg-purple-100 text-purple-950 border-purple-300 dark:bg-purple-950/80 dark:text-purple-200 dark:border-purple-700 font-semibold'
-        borderClass = 'border-l-4 border-l-purple-600'
-      } else if (isPLNEvent) {
+      if (isPLNEvent) {
         itemType = 'PLN'
         categoryLabel = 'Agenda PLN'
         badgeClass =
           'bg-sky-100 text-sky-950 border-sky-300 dark:bg-sky-950/80 dark:text-sky-200 dark:border-sky-700 font-semibold'
         borderClass = 'border-l-4 border-l-[#0072B2]'
+      } else if (isJabarEvent || ev.category === 'JAWA_BARAT') {
+        itemType = 'JAWA_BARAT'
+        categoryLabel = 'Event Jawa Barat'
+        badgeClass =
+          'bg-purple-100 text-purple-950 border-purple-300 dark:bg-purple-950/80 dark:text-purple-200 dark:border-purple-700 font-semibold'
+        borderClass = 'border-l-4 border-l-purple-600'
       } else if (isPublicHoliday) {
         itemType = 'LIBUR_NASIONAL'
         categoryLabel = 'Hari Libur Nasional'
@@ -461,7 +427,7 @@ export default function ContentCalendarPage() {
     })
 
     return map
-  }, [importantEvents, selectedCategories, currentDate])
+  }, [importantEvents, calendarFilter, currentDate])
 
   function goToPrevMonth() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
@@ -510,9 +476,12 @@ export default function ContentCalendarPage() {
     const isHoliday = dayAgendas.some((a) => a.isPublicHoliday)
 
     // Cek apakah tanggal ini berada dalam periode aman bayar (3-19) atau SwaCAM (23-27)
-    const activeRoutines = PLN_MONTHLY_ROUTINES.filter(
-      (r) => !r.isExactDay && dayNum >= r.dayStart && dayNum <= r.dayEnd
-    )
+    const activeRoutines =
+      calendarFilter === 'UMUM'
+        ? []
+        : PLN_MONTHLY_ROUTINES.filter(
+            (r) => !r.isExactDay && dayNum >= r.dayStart && dayNum <= r.dayEnd
+          )
 
     const totalCount = dayAgendas.length + contentPlans.length
 
@@ -532,71 +501,73 @@ export default function ContentCalendarPage() {
       {/* ========================================================================= */}
       {/* 1. JADWAL KONTEN RUTIN BULANAN PLN (COMPACT & COLLAPSIBLE BANNER)          */}
       {/* ========================================================================= */}
-      <div className="shrink-0 rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50/70 via-white to-sky-50/40 p-2.5 shadow-2xs dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/30">
-        <div
-          className="flex items-center justify-between cursor-pointer select-none"
-          onClick={toggleRoutineCollapsed}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#0072B2] text-white shadow-2xs">
-              <CalendarDays className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0 flex items-center gap-2">
-              <h4 className="text-xs font-bold text-[#0072B2] dark:text-sky-300 truncate">
-                Jadwal Konten Rutin Bulanan PLN
-              </h4>
-              <span className="hidden md:inline text-[11px] text-ink-muted truncate">
-                · Siklus agenda tetap setiap bulan untuk edukasi & pelayanan pelanggan
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Aktif
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleRoutineCollapsed()
-              }}
-              title={isRoutineCollapsed ? 'Tampilkan detail agenda rutin' : 'Sembunyikan agenda rutin'}
-              className="h-6 w-6 text-[#0072B2] hover:bg-[#0072B2]/10"
-            >
-              {isRoutineCollapsed ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronUp className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {!isRoutineCollapsed && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2.5 pt-2.5 border-t border-sky-100/70">
-            {PLN_MONTHLY_ROUTINES.map((routine) => (
-              <div
-                key={routine.id}
-                className={`p-2 rounded-lg border bg-white dark:bg-slate-900/90 shadow-2xs space-y-1 ${routine.borderClass}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-50 text-sky-900 border border-sky-200">
-                    <Clock className="h-2.5 w-2.5 text-[#0072B2]" />
-                    {routine.tag}
-                  </span>
-                </div>
-                <h5 className="text-xs font-bold text-ink truncate">{routine.name}</h5>
-                <p className="text-[11px] text-ink-muted leading-tight line-clamp-1">
-                  {routine.description}
-                </p>
+      {calendarFilter !== 'UMUM' && (
+        <div className="shrink-0 rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50/70 via-white to-sky-50/40 p-2.5 shadow-2xs dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/30">
+          <div
+            className="flex items-center justify-between cursor-pointer select-none"
+            onClick={toggleRoutineCollapsed}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#0072B2] text-white shadow-2xs">
+                <CalendarDays className="h-3.5 w-3.5" />
               </div>
-            ))}
+              <div className="min-w-0 flex items-center gap-2">
+                <h4 className="text-xs font-bold text-[#0072B2] dark:text-sky-300 truncate">
+                  Jadwal Konten Rutin Bulanan PLN
+                </h4>
+                <span className="hidden md:inline text-[11px] text-ink-muted truncate">
+                  · Siklus agenda tetap setiap bulan untuk edukasi & pelayanan pelanggan
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                Aktif
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleRoutineCollapsed()
+                }}
+                title={isRoutineCollapsed ? 'Tampilkan detail agenda rutin' : 'Sembunyikan agenda rutin'}
+                className="h-6 w-6 text-[#0072B2] hover:bg-[#0072B2]/10"
+              >
+                {isRoutineCollapsed ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+
+          {!isRoutineCollapsed && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2.5 pt-2.5 border-t border-sky-100/70">
+              {PLN_MONTHLY_ROUTINES.map((routine) => (
+                <div
+                  key={routine.id}
+                  className={`p-2 rounded-lg border bg-white dark:bg-slate-900/90 shadow-2xs space-y-1 ${routine.borderClass}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-50 text-sky-900 border border-sky-200">
+                      <Clock className="h-2.5 w-2.5 text-[#0072B2]" />
+                      {routine.tag}
+                    </span>
+                  </div>
+                  <h5 className="text-xs font-bold text-ink truncate">{routine.name}</h5>
+                  <p className="text-[11px] text-ink-muted leading-tight line-clamp-1">
+                    {routine.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. CALENDAR CARD (TOOLBAR COMPACT & GRID KALENDER OVERVIEW)              */}
@@ -638,94 +609,22 @@ export default function ContentCalendarPage() {
               </Button>
             </div>
 
-            {/* Right Side Controls: Popover Filter & View Switcher */}
+            {/* Right Side Controls: Dropdown Filter & View Switcher */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Dropdown Popover Filter Kategori */}
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                  className="h-7 text-xs font-semibold px-2.5 flex items-center gap-1.5 bg-surface border-border hover:bg-surface-muted"
+              {/* Dropdown Filter Kategori Kalender */}
+              <div className="flex items-center gap-1.5 bg-surface px-2.5 py-0.5 rounded-lg border border-border shadow-2xs hover:border-border-strong transition">
+                <Filter className="h-3.5 w-3.5 text-[#0072B2] shrink-0" />
+                <span className="text-xs font-semibold text-ink-muted hidden sm:inline">Kategori:</span>
+                <select
+                  value={calendarFilter}
+                  onChange={(e) => setCalendarFilter(e.target.value as CalendarFilterType)}
+                  className="h-7 text-xs font-bold text-ink bg-transparent border-0 focus:ring-0 cursor-pointer pr-2 outline-none"
+                  aria-label="Pilih Kategori Kalender"
                 >
-                  <Filter className="h-3.5 w-3.5 text-[#0072B2] shrink-0" />
-                  <span>
-                    {selectedCategories.length === 5
-                      ? 'Filter: Semua Kategori'
-                      : `Filter (${selectedCategories.length})`}
-                  </span>
-                  <ChevronDown className="h-3 w-3 text-ink-muted" />
-                </Button>
-
-                {isFilterOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setIsFilterOpen(false)} />
-                    <div className="absolute right-0 mt-1 z-40 w-56 p-2 rounded-xl border border-border bg-surface shadow-lg space-y-1 text-xs animate-in fade-in zoom-in-95 duration-100">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedCategories([
-                            'PLN',
-                            'JAWA_BARAT',
-                            'LIBUR_NASIONAL',
-                            'INTERNASIONAL',
-                            'NASIONAL',
-                          ])
-                        }
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-surface-muted text-ink font-bold transition"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className={`h-4 w-4 rounded flex items-center justify-center border transition ${
-                              selectedCategories.length === 5
-                                ? 'bg-[#0072B2] border-[#0072B2] text-white'
-                                : 'border-border'
-                            }`}
-                          >
-                            {selectedCategories.length === 5 && <Check className="h-3 w-3" />}
-                          </span>
-                          Semua Kategori
-                        </span>
-                      </button>
-                      <div className="h-px bg-border my-1" />
-                      {CATEGORY_FILTER_OPTIONS.map((cat) => {
-                        const isSelected = selectedCategories.includes(cat.id)
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                if (selectedCategories.length > 1) {
-                                  setSelectedCategories(
-                                    selectedCategories.filter((c) => c !== cat.id)
-                                  )
-                                }
-                              } else {
-                                setSelectedCategories([...selectedCategories, cat.id])
-                              }
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-surface-muted text-ink transition"
-                          >
-                            <span className="flex items-center gap-2">
-                              <span
-                                className={`h-4 w-4 rounded flex items-center justify-center border transition ${
-                                  isSelected
-                                    ? 'bg-[#0072B2] border-[#0072B2] text-white'
-                                    : 'border-border'
-                                }`}
-                              >
-                                {isSelected && <Check className="h-3 w-3" />}
-                              </span>
-                              <span className={`h-2 w-2 rounded-full ${cat.color}`} />
-                              {cat.label}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
+                  <option value="ALL">Semua Kategori</option>
+                  <option value="PLN">Kalender PLN</option>
+                  <option value="UMUM">Kalender Umum (Nasional & Daerah)</option>
+                </select>
               </div>
 
               {/* View Switcher: Bulan | Minggu | Hari */}
@@ -804,16 +703,17 @@ export default function ContentCalendarPage() {
               >
                 {calendar.weeks.map((weekDays, weekIdx) => {
                   // Cek apakah ada agenda rutin multi-day (Periode Aman Bayar Tgl 3-19 atau SwaCAM Tgl 23-27) yang aktif di minggu ini
-                  const weekActiveRoutines = selectedCategories.includes('PLN')
-                    ? PLN_MONTHLY_ROUTINES.filter((r) => {
-                        if (r.isExactDay) return false
-                        return weekDays.some((d) => {
-                          if (!d.isCurrentMonth) return false
-                          const dayNum = d.date.getDate()
-                          return dayNum >= r.dayStart && dayNum <= r.dayEnd
+                  const weekActiveRoutines =
+                    calendarFilter !== 'UMUM'
+                      ? PLN_MONTHLY_ROUTINES.filter((r) => {
+                          if (r.isExactDay) return false
+                          return weekDays.some((d) => {
+                            if (!d.isCurrentMonth) return false
+                            const dayNum = d.date.getDate()
+                            return dayNum >= r.dayStart && dayNum <= r.dayEnd
+                          })
                         })
-                      })
-                    : []
+                      : []
 
                   return (
                     <div key={weekIdx} className="flex flex-col border-b min-h-0 overflow-hidden">
