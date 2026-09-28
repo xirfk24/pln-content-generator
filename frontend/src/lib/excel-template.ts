@@ -4,6 +4,7 @@ import {
   CONTENT_PURPOSES,
   POSTING_CATEGORIES,
   CONTENT_PILLAR_OPTIONS,
+  PLN_TOPIC_OPTIONS,
 } from '@/constants'
 
 export interface MasterDataInfo {
@@ -187,6 +188,133 @@ function applyColorfulWorksheetStyles(
 }
 
 /**
+ * Helper untuk menerapkan Dropdown (Data Validation List) pada baris data template.
+ * Membantu pengguna memilih opsi resmi langsung dari sel Excel agar tidak salah ketik (typo).
+ */
+function applyTemplateDropdowns(
+  ws: ExcelJS.Worksheet,
+  isLegacy: boolean,
+  ranges: {
+    pillarsRange: string
+    topicsRange: string
+    platformsRange: string
+    formatsRange: string
+    purposesRange: string
+    postingCategoriesRange: string
+  },
+  maxRow = 300
+) {
+  for (let row = 2; row <= maxRow; row++) {
+    // Kolom C (3): Topik Konten (Pilihan 17 Topik Resmi PLN, atau ketik topik/subtema khusus)
+    ws.getCell(`C${row}`).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: [ranges.topicsRange],
+      showErrorMessage: false,
+      promptTitle: 'Topik Konten PLN',
+      prompt: 'Pilih dari 17 Topik Konten resmi PLN atau ketik topik/subtema khusus.',
+    }
+
+    if (isLegacy) {
+      // Kolom D (4): Content Pillar
+      ws.getCell(`D${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.pillarsRange],
+        showErrorMessage: true,
+        errorTitle: 'Pilar Tidak Valid',
+        error: 'Silakan pilih Content Pillar resmi dari daftar dropdown.',
+      }
+      // Kolom E (5): Format
+      ws.getCell(`E${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.formatsRange],
+        showErrorMessage: true,
+        errorTitle: 'Format Tidak Valid',
+        error: 'Silakan pilih Format konten resmi dari daftar dropdown.',
+      }
+      // Kolom F (6): Tujuan Konten
+      ws.getCell(`F${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.purposesRange],
+        showErrorMessage: true,
+        errorTitle: 'Tujuan Konten Tidak Valid',
+        error: 'Silakan pilih Tujuan Konten resmi dari daftar dropdown.',
+      }
+      // Kolom G (7): Kategori Posting
+      ws.getCell(`G${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.postingCategoriesRange],
+        showErrorMessage: true,
+        errorTitle: 'Kategori Posting Tidak Valid',
+        error: 'Silakan pilih Kategori Posting resmi dari daftar dropdown.',
+      }
+      // Kolom H (8): Status Konten (Data lama selalu PUBLISHED)
+      ws.getCell(`H${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: ['"PUBLISHED"'],
+        showErrorMessage: true,
+        errorTitle: 'Status Konten',
+        error: 'Status konten pada template data lama adalah PUBLISHED.',
+      }
+    } else {
+      // PLAN MODE:
+      // Kolom D (4): Content Pillar
+      ws.getCell(`D${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.pillarsRange],
+        showErrorMessage: true,
+        errorTitle: 'Pilar Tidak Valid',
+        error: 'Silakan pilih Content Pillar resmi dari daftar dropdown.',
+      }
+      // Kolom E (5): Format Konten
+      ws.getCell(`E${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.formatsRange],
+        showErrorMessage: true,
+        errorTitle: 'Format Tidak Valid',
+        error: 'Silakan pilih Format konten resmi dari daftar dropdown.',
+      }
+      // Kolom F (6): Target Platform
+      // showErrorMessage: false agar user bisa memilih single platform dari dropdown
+      // ATAU mengetik multi-platform yang dipisah koma (misal: "Instagram, TikTok")
+      ws.getCell(`F${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.platformsRange],
+        showErrorMessage: false,
+        promptTitle: 'Pilihan Platform',
+        prompt: 'Pilih platform dari dropdown, atau ketik beberapa platform dipisah koma (contoh: Instagram, TikTok).',
+      }
+      // Kolom G (7): Content Purpose
+      ws.getCell(`G${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.purposesRange],
+        showErrorMessage: true,
+        errorTitle: 'Tujuan Konten Tidak Valid',
+        error: 'Silakan pilih Content Purpose resmi dari daftar dropdown.',
+      }
+      // Kolom H (8): Posting Category
+      ws.getCell(`H${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [ranges.postingCategoriesRange],
+        showErrorMessage: true,
+        errorTitle: 'Kategori Posting Tidak Valid',
+        error: 'Silakan pilih Posting Category resmi dari daftar dropdown.',
+      }
+    }
+  }
+}
+
+/**
  * Generate dan download file Template Excel (.xlsx) Berwarna & Lengkap
  * Tanggal diletakkan pada Kolom 1 (Paling Kiri).
  * Mendukung mode 'LEGACY_PUBLISHED' (Pemindahan Data Lama) dan 'PLAN' (Rencana Konten Baru).
@@ -194,6 +322,7 @@ function applyColorfulWorksheetStyles(
 export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: string) {
   const wb = new ExcelJS.Workbook()
   const isLegacy = mode === 'LEGACY_PUBLISHED'
+  let wsTemplate: ExcelJS.Worksheet
 
   const pillar1 =
     masterData?.pillars?.[0]?.name ||
@@ -209,7 +338,7 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     // SHEET 1: TEMPLATE IMPORT DATA LAMA (LEGACY)
     // Struktur Kolom disamakan persis dengan Hasil Ekspor Excel
     // ==========================================
-    const wsTemplate = wb.addWorksheet('Template Data Lama')
+    wsTemplate = wb.addWorksheet('Template Data Lama')
 
     const headers = [
       'Tanggal Terbit (Flexible: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY)',
@@ -265,8 +394,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         'R - PLN Mobile',
         pillar1,
         'Carousel',
-        'EDUCATION',
-        'ORIGINAL',
+        'EDUKASI',
+        'UID',
         'PUBLISHED',
         // Instagram
         'https://www.instagram.com/p/C123456789/',
@@ -298,8 +427,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         'D - Energi Baru Terbarukan/REC',
         pillar2,
         'Vid/Reels/Shorts',
-        'INFORMATION',
-        'ORIGINAL',
+        'INFORMASI',
+        'UID',
         'PUBLISHED',
         // Instagram
         'https://www.instagram.com/reel/C987654321/',
@@ -360,12 +489,12 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     const guideRows = [
       [1, 'Tanggal Terbit (Kolom 1)', 'Wajib (Biru)', 'Tanggal Fleksibel', '2026-09-20 atau 20/09/2026', 'Diletakkan di Kolom 1. Mendukung pemisah strip (-), garis miring (/), titik (.), atau koma (,)', 'Tahun tidak 4 digit.'],
       [2, 'Judul Konten', 'Wajib (Cyan)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul resmi konten yang telah terbit', 'Jangan dikosongkan.'],
-      [3, 'Topik / Subtema', 'Wajib (Cyan)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
-      [4, 'Content Pillar', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
-      [5, 'Format', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
-      [6, 'Tujuan Konten', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
-      [7, 'Kategori Posting', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi', 'ORIGINAL', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
-      [8, 'Status Konten', 'Otomatis (Dark Cyan)', 'Teks', 'PUBLISHED', 'Otomatis berstatus PUBLISHED untuk arsip data lama', 'Tidak perlu diubah.'],
+      [3, 'Topik / Subtema', 'Wajib (Cyan)', 'Pilihan Resmi (Dropdown / Bebas)', 'R - PLN Mobile', 'Pilih dari dropdown 17 Topik resmi PLN pada sel, atau ketik topik/subtema khusus', 'Jangan dikosongkan.'],
+      [4, 'Content Pillar', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi (Dropdown)', pillar1, 'Pilih langsung dari dropdown sel, atau lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
+      [5, 'Format', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi (Dropdown)', 'Carousel', CONTENT_FORMATS.join(', '), 'Pilih langsung dari dropdown sel. Jika kosong, default ke "Carousel".'],
+      [6, 'Tujuan Konten', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi (Dropdown)', 'EDUKASI', CONTENT_PURPOSES.join(', '), 'Pilih langsung dari dropdown sel.'],
+      [7, 'Kategori Posting', 'Pilihan Sistem (Cyan)', 'Pilihan Resmi (Dropdown)', 'UID', POSTING_CATEGORIES.join(', '), 'Pilih langsung dari dropdown sel.'],
+      [8, 'Status Konten', 'Otomatis (Dark Cyan)', 'Pilihan Resmi (Dropdown)', 'PUBLISHED', 'Otomatis berstatus PUBLISHED untuk arsip data lama', 'Tidak perlu diubah.'],
       [9, 'Link [Platform] (Instagram, Facebook, TikTok, YouTube, Twitter/X)', 'Opsional (Hijau Emerald)', 'URL Web', 'https://www.instagram.com/p/C123456789/', 'Tautan resmi postingan pada platform bersangkutan', 'Penulisan URL tidak lengkap.'],
       [10, 'Insight Per Platform (Reach, Views, Likes, Komen, Saves, Shares)', 'Insight Opsional (Ungu Violet)', 'Angka Bulat', '12500', 'Statistik performa konten per platform', 'Menggunakan huruf/koma.'],
       [11, 'Brief / Keterangan', 'Opsional (Slate)', 'Teks Paragraf', 'Arsip postingan penanganan gangguan', 'Catatan tambahan terkait arsip konten', 'Boleh dikosongkan.'],
@@ -381,7 +510,7 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     // SHEET 1: TEMPLATE IMPORT RENCANA KONTEN (PLAN)
     // Tanggal Rencana Publikasi diletakkan di Kolom 1 (Paling Kiri)
     // ==========================================
-    const wsTemplate = wb.addWorksheet('Template Import Rencana')
+    wsTemplate = wb.addWorksheet('Template Import Rencana')
 
     const headers = [
       'Tanggal Rencana Publikasi (YYYY-MM-DD / Flexible)',
@@ -405,8 +534,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         pillar1,
         'Carousel',
         'Instagram, TikTok',
-        'EDUCATION',
-        'ORIGINAL',
+        'EDUKASI',
+        'UID',
         'Edukasi tips hemat listrik bagi pelanggan rumah tangga di wilayah Jawa Barat.',
         'Pelanggan Rumah Tangga',
         'https://pln.co.id',
@@ -418,8 +547,8 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
         pillar2,
         'Vid/Reels/Shorts',
         'Instagram, YouTube, TikTok',
-        'INFORMATION',
-        'ORIGINAL',
+        'INFORMASI',
+        'UID',
         'Highlight komitmen EBT PLN UID Jawa Barat menyongsong Net Zero Emission.',
         'Masyarakat Umum & Stakeholder',
         '',
@@ -461,12 +590,12 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
     const guideRows = [
       [1, 'Tanggal Rencana Publikasi (Kolom 1)', 'Wajib (Biru)', 'Tanggal Fleksibel', '2026-09-20 atau 20/09/2026', 'Diletakkan di Kolom 1. Mendukung pemisah strip (-), garis miring (/), titik (.), atau koma (,)', 'Tahun tidak 4 digit.'],
       [2, 'Judul Konten', 'Wajib (Biru Navy)', 'Teks Bebas', 'Tips Hemat Listrik Bersama PLN Mobile', 'Judul singkat, menarik, dan informatif', 'Jangan dikosongkan.'],
-      [3, 'Topik Konten', 'Wajib (Biru Navy)', 'Teks Bebas', 'PLN Mobile & Pelayanan', 'Fokus topik bahasan konten', 'Jangan dikosongkan.'],
-      [4, 'Content Pillar', 'Pilihan Sistem (Teal)', 'Pilihan Resmi', pillar1, 'Lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
-      [5, 'Format Konten', 'Pilihan Sistem (Teal)', 'Pilihan Resmi', 'Carousel', CONTENT_FORMATS.join(', '), 'Jika dikosongkan, otomatis default ke "Carousel".'],
-      [6, 'Target Platform', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Bisa Multi)', 'Instagram, TikTok, YouTube', 'Pisahkan dengan tanda koma (,) jika konten tayang di lebih dari 1 platform', 'Nama platform tidak sesuai (misal: "IG" tanpa keterangan).'],
-      [7, 'Content Purpose', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Opsional)', 'EDUCATION', CONTENT_PURPOSES.join(', '), 'Nilai di luar daftar tujuan konten resmi.'],
-      [8, 'Posting Category', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Opsional)', 'ORIGINAL', POSTING_CATEGORIES.join(', '), 'Nilai di luar kategori posting resmi.'],
+      [3, 'Topik Konten', 'Wajib (Biru Navy)', 'Pilihan Resmi (Dropdown / Bebas)', 'R - PLN Mobile', 'Pilih dari dropdown 17 Topik resmi PLN pada sel, atau ketik topik khusus', 'Jangan dikosongkan.'],
+      [4, 'Content Pillar', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Dropdown)', pillar1, 'Pilih langsung dari dropdown sel, atau lihat daftar lengkap pada Sheet 3 (Referensi Pilihan)', 'Nama pilar salah eja atau tidak terdaftar di sistem.'],
+      [5, 'Format Konten', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Dropdown)', 'Carousel', CONTENT_FORMATS.join(', '), 'Pilih langsung dari dropdown sel. Jika kosong, default ke "Carousel".'],
+      [6, 'Target Platform', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Dropdown / Multi)', 'Instagram, TikTok, YouTube', 'Pilih dari dropdown sel, atau pisahkan dengan tanda koma (,) jika konten tayang di lebih dari 1 platform', 'Nama platform tidak sesuai (misal: "IG" tanpa keterangan).'],
+      [7, 'Content Purpose', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Dropdown)', 'EDUKASI', CONTENT_PURPOSES.join(', '), 'Pilih langsung dari dropdown sel.'],
+      [8, 'Posting Category', 'Pilihan Sistem (Teal)', 'Pilihan Resmi (Dropdown)', 'UID', POSTING_CATEGORIES.join(', '), 'Pilih langsung dari dropdown sel.'],
       [9, 'Brief / Keterangan', 'Opsional (Slate)', 'Teks Paragraf', 'Penjelasan narasi dan visual slide 1-5', 'Arahan ringkas produksi konten', 'Boleh dikosongkan.'],
       [10, 'Target Audience', 'Opsional (Slate)', 'Teks', 'Pelanggan Rumah Tangga & Milenial', 'Segmen audiens sasaran', 'Boleh dikosongkan.'],
       [11, 'Link Referensi', 'Opsional (Slate)', 'URL Web', 'https://pln.co.id/press-release', 'Tautan rujukan berita atau materi', 'Boleh dikosongkan.'],
@@ -497,16 +626,18 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
 
   const maxRows = Math.max(
     refPillars.length,
-    refPlatforms.length,
+    PLN_TOPIC_OPTIONS.length,
     CONTENT_FORMATS.length,
+    refPlatforms.length,
     CONTENT_PURPOSES.length,
     POSTING_CATEGORIES.length
   )
 
   const refHeaders = [
     'Content Pillar (Resmi)',
-    'Target Platform (Dapat Digabung)',
+    'Topik Konten (17 Topik Resmi)',
     'Format Konten',
+    'Target Platform (Dapat Digabung)',
     'Content Purpose',
     'Posting Category',
   ]
@@ -515,17 +646,31 @@ export async function downloadExcelTemplate(masterData?: MasterDataInfo, mode?: 
   for (let i = 0; i < maxRows; i++) {
     refRows.push([
       refPillars[i] || '',
-      refPlatforms[i] || '',
+      PLN_TOPIC_OPTIONS[i] || '',
       CONTENT_FORMATS[i] || '',
+      refPlatforms[i] || '',
       CONTENT_PURPOSES[i] || '',
       POSTING_CATEGORIES[i] || '',
     ])
   }
 
   addAoA(wsRef, [refHeaders, ...refRows])
-  const refFills = Array(5).fill('FF0F766E')
-  const refWidths = [46, 30, 22, 22, 22]
+  const refFills = Array(6).fill('FF0F766E')
+  const refWidths = [44, 38, 22, 30, 22, 22]
   applyColorfulWorksheetStyles(wsRef, refFills, refWidths)
+
+  // ==========================================
+  // TERAPKAN DROPDOWN (DATA VALIDATION) KE SHEET TEMPLATE
+  // ==========================================
+  const ranges = {
+    pillarsRange: `'Referensi Pilihan'!$A$2:$A$${refPillars.length + 1}`,
+    topicsRange: `'Referensi Pilihan'!$B$2:$B$${PLN_TOPIC_OPTIONS.length + 1}`,
+    formatsRange: `'Referensi Pilihan'!$C$2:$C$${CONTENT_FORMATS.length + 1}`,
+    platformsRange: `'Referensi Pilihan'!$D$2:$D$${refPlatforms.length + 1}`,
+    purposesRange: `'Referensi Pilihan'!$E$2:$E$${CONTENT_PURPOSES.length + 1}`,
+    postingCategoriesRange: `'Referensi Pilihan'!$F$2:$F$${POSTING_CATEGORIES.length + 1}`,
+  }
+  applyTemplateDropdowns(wsTemplate, isLegacy, ranges, 300)
 
   // ==========================================
   // SHEET 4: INFORMASI PILAR & TOPIK KONTEN RESMI
