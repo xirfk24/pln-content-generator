@@ -226,6 +226,7 @@ export type ImportantEventCategory =
   | 'KESEHATAN'
   | 'PROFESI'
   | 'KEAGAMAAN'
+  | 'JAWA_BARAT'
 
 export interface ImportantEvent {
   id: string

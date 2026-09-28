@@ -194,7 +194,27 @@ INSERT INTO important_events (name, day, month, category, status, description) V
 ('Hari Bela Negara', 19, 12, 'NASIONAL', 'RESMI', 'Peringatan berdirinya Pemerintah Darurat RI (PDRI) 1948 di Bukittinggi.'),
 ('Hari Kesetiakawanan Sosial Nasional (HKSN)', 20, 12, 'NASIONAL', 'RESMI', 'Peringatan gotong royong dan kepedulian sosial masyarakat.'),
 ('Hari Ibu', 22, 12, 'NASIONAL', 'RESMI', 'Peringatan Kongres Perempuan Indonesia I 1928 dan apresiasi kaum ibu.'),
-('Hari Natal', 25, 12, 'KEAGAMAAN', 'LIBUR_NASIONAL', 'Peringatan Hari Raya Natal bagi umat Kristiani.')
+('Hari Natal', 25, 12, 'KEAGAMAAN', 'LIBUR_NASIONAL', 'Peringatan Hari Raya Natal bagi umat Kristiani.'),
+
+-- EVENT JAWA BARAT & KELISTRIKAN PLN UID JABAR
+('Hari Kesadaran Budaya & Bahasa Sunda', 17, 1, 'JAWA_BARAT', 'RESMI', 'Peringatan pelestarian budaya, seni, dan aksara Sunda di Jawa Barat.'),
+('Hari Bahasa Sunda & Bahasa Ibu', 21, 2, 'JAWA_BARAT', 'RESMI', 'Peringatan pemeliharaan bahasa Sunda sebagai bahasa daerah utama Jawa Barat.'),
+('Hari Peringatan Bandung Lautan Api (Jabar)', 24, 3, 'JAWA_BARAT', 'RESMI', 'Peringatan peristiwa sejarah patriotisme rakyat Jawa Barat membakar kota Bandung 1946 demi mempertahankan kemerdekaan.'),
+('Hari Jadi Kabupaten Sumedang', 28, 3, 'JAWA_BARAT', 'HUT', 'Peringatan sejarah dan hari jadi Kabupaten Sumedang Larang.'),
+('Peringatan Konferensi Asia Afrika (KAA)', 18, 4, 'JAWA_BARAT', 'RESMI', 'Peringatan bersejarah pembukaan Konferensi Asia Afrika 1955 di Gedung Merdeka Bandung, Jawa Barat.'),
+('Hari Jadi Kota Depok', 27, 4, 'JAWA_BARAT', 'HUT', 'Dirgahayu Pembentukan Pemerintah Kota Depok, Jawa Barat.'),
+('Hari Kebudayaan & Kesenian Jawa Barat', 22, 5, 'JAWA_BARAT', 'RESMI', 'Peringatan ragam seni kebudayaan Pasundan (Jaipong, Sisingaan, Tarawangsa).'),
+('Hari Jadi Kota Bogor (Helaran Budaya)', 3, 6, 'JAWA_BARAT', 'HUT', 'Peringatan berdirinya Kota Bogor (Penobatan Prabu Siliwangi 1482).'),
+('Hari Pelestarian Alam Gunung Ciremai & Jabar', 21, 6, 'JAWA_BARAT', 'RESMI', 'Kampanye edukasi keselamatan kelistrikan & pelestarian kawasan wisata gunung Jawa Barat.'),
+('Hari Jadi Kabupaten Tasikmalaya', 26, 7, 'JAWA_BARAT', 'HUT', 'Peringatan berdirinya Kabupaten Tasikmalaya pusat kerajinan & kelistrikan Jabar Selatan.'),
+('HUT Provinsi Jawa Barat', 19, 8, 'JAWA_BARAT', 'HUT', 'Dirgahayu Pembentukan Pemerintah Provinsi Jawa Barat (19 Agustus 1945).'),
+('West Java Festival & Semarak Budaya', 28, 8, 'JAWA_BARAT', 'RESMI', 'Event tahunan festival kebudayaan, pariwisata, UMKM, dan transisi energi bersih Jawa Barat.'),
+('Hari Jadi Kota Bandung (HJKB)', 25, 9, 'JAWA_BARAT', 'HUT', 'Dirgahayu berdirinya Kota Bandung (25 September 1810).'),
+('HUT PLN Unit Induk Distribusi (UID) Jawa Barat', 26, 10, 'JAWA_BARAT', 'HUT', 'Peringatan hari jadi dan dedikasi pelayanan kelistrikan PT PLN (Persero) Unit Induk Distribusi Jawa Barat.'),
+('Semarak Hari Listrik Nasional PLN UID Jabar', 27, 10, 'JAWA_BARAT', 'HUT', 'Pesta edukasi kelistrikan & peringatan Hari Listrik Nasional Ke-81 di wilayah PLN UID Jawa Barat.'),
+('Hari Angklung Sedunia (UNESCO)', 16, 11, 'JAWA_BARAT', 'INTERNASIONAL', 'Peringatan penetapan Angklung khas Jawa Barat sebagai Warisan Budaya Takbenda Dunia oleh UNESCO.'),
+('Hari Bakti PU (Tragedi Gedung Sate 1945)', 3, 12, 'JAWA_BARAT', 'RESMI', 'Peringatan perjuangan 7 pemuda PU mempertahankan Gedung Sate Bandung, Jawa Barat.'),
+('Hari Pencak Silat Jawa Barat (UNESCO)', 12, 12, 'JAWA_BARAT', 'RESMI', 'Peringatan Pencak Silat sebagai Warisan Budaya Takbenda UNESCO asal Jawa Barat.')
 ON CONFLICT DO NOTHING;
 
 -- Hari Libur / Hari Raya Keagamaan Dinamis (2025 - 2028)
