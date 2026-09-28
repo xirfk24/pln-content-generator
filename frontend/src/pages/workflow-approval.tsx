@@ -573,15 +573,15 @@ export default function ApprovalPage() {
         </Card>
       </div>
 
-      {/* Tabs Sub-modul Navigasi */}
-      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800">
+      {/* Tabs Sub-modul Navigasi — selalu satu baris (tanpa wrap) */}
+      <div className="flex flex-nowrap items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 [scrollbar-width:thin]">
         <button
           type="button"
           onClick={() => {
             setActiveTab('ALL')
             setCurrentPage(1)
           }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
             activeTab === 'ALL'
               ? 'border-primary text-primary font-semibold'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -606,7 +606,7 @@ export default function ApprovalPage() {
             setActiveTab('CONCEPT')
             setCurrentPage(1)
           }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
             activeTab === 'CONCEPT'
               ? 'border-purple-600 text-purple-700 font-semibold dark:border-purple-400 dark:text-purple-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -631,7 +631,7 @@ export default function ApprovalPage() {
             setActiveTab('PRODUCTION')
             setCurrentPage(1)
           }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
             activeTab === 'PRODUCTION'
               ? 'border-indigo-600 text-indigo-700 font-semibold dark:border-indigo-400 dark:text-indigo-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -656,7 +656,7 @@ export default function ApprovalPage() {
             setActiveTab('REVISION')
             setCurrentPage(1)
           }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
             activeTab === 'REVISION'
               ? 'border-rose-600 text-rose-700 font-semibold dark:border-rose-400 dark:text-rose-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -681,7 +681,7 @@ export default function ApprovalPage() {
             setActiveTab('APPROVED')
             setCurrentPage(1)
           }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors ${
             activeTab === 'APPROVED'
               ? 'border-emerald-600 text-emerald-700 font-semibold dark:border-emerald-400 dark:text-emerald-300'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'

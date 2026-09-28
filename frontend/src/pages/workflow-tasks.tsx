@@ -382,12 +382,12 @@ export default function MyTasksPage() {
         </div>
       </div>
 
-      {/* Tab Navigasi Horizontal */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+      {/* Tab Navigasi Horizontal — selalu satu baris (tanpa wrap) */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto border-b border-border pb-3 [scrollbar-width:thin]">
         <button
           type="button"
           onClick={() => setActiveTab('ALL')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'ALL'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'ALL'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -408,7 +408,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('REVISION')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'REVISION'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'REVISION'
               ? 'bg-rose-600 text-white shadow-xs'
               : tasks.revisions.length > 0
                 ? 'border-2 border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
@@ -432,7 +432,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('DRAFT')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'DRAFT'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'DRAFT'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -452,7 +452,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PENDING')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'PENDING'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'PENDING'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -472,7 +472,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PRODUCTION')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'PRODUCTION'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'PRODUCTION'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -492,7 +492,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('READY')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'READY'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'READY'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -512,7 +512,7 @@ export default function MyTasksPage() {
         <button
           type="button"
           onClick={() => setActiveTab('PUBLISHED')}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${activeTab === 'PUBLISHED'
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${activeTab === 'PUBLISHED'
               ? 'bg-[#1A3A6B] text-white shadow-xs'
               : 'bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink border border-border'
             }`}
@@ -563,35 +563,51 @@ export default function MyTasksPage() {
                   </p>
                 ) : (
                   <div className="divide-y divide-border">
-                    {group.items.map((content) => (
+                    {group.items.map((content, idx) => (
                       <div
                         key={content.id}
-                        className={`flex flex-col gap-3 p-4 sm:px-5 hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors ${group.key === 'revisions' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
-                          }`}
+                        className={`flex flex-col gap-3 p-4 sm:px-5 transition-colors ${
+                          // Zebra striping: baris genap diberi shade tipis;
+                          // kategori Perlu Revisi tetap pakai tint merahnya.
+                          group.key === 'revisions'
+                            ? 'bg-rose-50/20 dark:bg-rose-950/10'
+                            : idx % 2 === 1
+                              ? 'bg-slate-50/70 dark:bg-slate-900/30'
+                              : ''
+                        }`}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="space-y-1.5 min-w-0">
-                            <Link
-                              href={`/content/${content.id}`}
-                              className="block text-sm font-semibold leading-snug text-ink hover:text-primary transition-colors"
+                          <div className="flex min-w-0 items-start gap-3">
+                            {/* Nomor urut item dalam grup — biar gampang dipindai */}
+                            <span
+                              aria-hidden="true"
+                              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${group.chip}`}
                             >
-                              {content.title}
-                            </Link>
-                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
-                              {content.pillar?.name && (
+                              {idx + 1}
+                            </span>
+                            <div className="space-y-1.5 min-w-0">
+                              <Link
+                                href={`/content/${content.id}`}
+                                className="block text-sm font-semibold leading-snug text-ink hover:text-primary transition-colors"
+                              >
+                                {content.title}
+                              </Link>
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
+                                {content.pillar?.name && (
+                                  <span>
+                                    Pilar: <strong className="font-semibold text-ink-secondary">{content.pillar.name}</strong>
+                                  </span>
+                                )}
                                 <span>
-                                  Pilar: <strong className="font-semibold text-ink-secondary">{content.pillar.name}</strong>
+                                  Format: <strong className="font-semibold text-ink-secondary">{content.format}</strong>
                                 </span>
-                              )}
-                              <span>
-                                Format: <strong className="font-semibold text-ink-secondary">{content.format}</strong>
-                              </span>
-                              {content.planned_date && (
-                                <span className="inline-flex items-center gap-x-2.5">
-                                  <span aria-hidden="true" className="h-0.5 w-0.5 rounded-full bg-ink-muted/60" />
-                                  Target: <strong className="font-semibold text-ink-secondary">{formatDate(content.planned_date)}</strong>
-                                </span>
-                              )}
+                                {content.planned_date && (
+                                  <span className="inline-flex items-center gap-x-2.5">
+                                    <span aria-hidden="true" className="h-0.5 w-0.5 rounded-full bg-ink-muted/60" />
+                                    Target: <strong className="font-semibold text-ink-secondary">{formatDate(content.planned_date)}</strong>
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
