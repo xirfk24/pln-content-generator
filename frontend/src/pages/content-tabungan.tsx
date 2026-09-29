@@ -304,19 +304,19 @@ export default function ContentTabunganPage() {
           }
         />
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-border bg-surface-muted">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+          <div className="overflow-x-auto min-h-[300px]">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Topik &amp; Judul Konten</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Tanggal Rencana</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Target Platform</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">Alasan Bank Konten</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-secondary">Aksi</th>
+                  <th className="min-w-[260px] px-5 py-3.5 text-left">Topik &amp; Judul Konten</th>
+                  <th className="min-w-[160px] px-5 py-3.5 text-left">Tanggal Rencana</th>
+                  <th className="min-w-[180px] px-5 py-3.5 text-left">Target Platform</th>
+                  <th className="min-w-[240px] px-5 py-3.5 text-left">Alasan Bank Konten</th>
+                  <th className="min-w-[140px] px-5 py-3.5 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayedContents.map((content) => {
                   const displayPlatforms: string[] = []
                   if (content.platform?.name) displayPlatforms.push(content.platform.name)
@@ -330,84 +330,80 @@ export default function ContentTabunganPage() {
                   }
 
                   return (
-                    <tr key={content.id} className="transition-colors hover:bg-surface-muted/60">
-                      <td className="px-4 py-3 text-sm max-w-sm">
-                        <div className="text-xs font-semibold text-primary mb-0.5">
+                    <tr key={content.id} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <td className="px-5 py-4 text-sm max-w-sm">
+                        <div className="text-xs font-bold text-primary dark:text-sky-400 mb-1">
                           {content.topic || content.pillar?.name || 'Topik Umum'}
                         </div>
-                        <Link href={`/content/${content.id}`} className="font-medium text-ink hover:text-primary line-clamp-2">
+                        <Link href={`/content/${content.id}`} className="font-semibold text-slate-900 hover:text-primary dark:text-slate-100 line-clamp-2 transition-colors">
                           {content.title}
                         </Link>
                         {content.category?.name && (
-                          <div className="text-[11px] text-ink-muted mt-0.5">{content.category.name}</div>
+                          <div className="inline-flex items-center mt-1.5 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            {content.category.name}
+                          </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap text-slate-700 dark:text-slate-300">
-                        <div className="font-medium text-ink">
-                          {content.planned_date ? formatDate(content.planned_date) : 'dd/mm/yyyy'}
+                      <td className="px-5 py-4 text-sm whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>{content.planned_date ? formatDate(content.planned_date) : '-'}</span>
                         </div>
                         {content.saved_at && (
-                          <div className="text-[11px] text-ink-muted mt-0.5">
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 pl-5">
                             Disimpan: {formatDate(content.saved_at)}
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-5 py-4 text-sm">
                         {displayPlatforms.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {displayPlatforms.map((plat) => (
                               <PlatformBadge key={plat} platform={plat} size="sm" />
                             ))}
                           </div>
                         ) : (
-                          <span className="text-ink-muted">-</span>
+                          <span className="text-slate-400 text-xs italic">Tidak ada platform</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-ink-secondary max-w-xs">
-                        <span className="italic text-slate-600 dark:text-slate-400">
-                          {content.savings_reason || 'Disimpan tanpa catatan khusus'}
-                        </span>
+                      <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300 max-w-xs">
+                        <div className="rounded-lg bg-amber-50/80 border border-amber-200/70 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-200">
+                          <p className="line-clamp-2 italic">
+                            {content.savings_reason || 'Disimpan tanpa catatan khusus'}
+                          </p>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap text-right">
+                      <td className="px-5 py-4 text-sm whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Link href={`/content/${content.id}`}>
-                            <Button variant="ghost" size="icon" title="Lihat Detail Konten">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg"
+                              title="Lihat Detail Konten"
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
 
                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setMoveModal({ open: true, content })
-                              setMoveDate(content.planned_date || '')
-                            }}
-                            className="text-xs h-8 text-primary border-primary/30 hover:bg-primary/5"
-                          >
-                            <ArrowRight className="mr-1 h-3.5 w-3.5" />
-                            Jadikan Rencana
-                          </Button>
-
-                          <Button
-                            variant="outline"
                             size="sm"
                             onClick={() => {
                               setRescheduleModal({ open: true, content })
                               setRescheduleDate(content.planned_date || '')
                             }}
-                            className="text-xs h-8"
+                            className="h-8 px-3 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow transition-all rounded-lg shrink-0"
                           >
-                            <Clock className="mr-1 h-3.5 w-3.5" />
+                            <Clock className="mr-1.5 h-3.5 w-3.5 text-blue-100" />
                             Jadwalkan Ulang
                           </Button>
 
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() => openDeleteModal(content)}
                             title="Hapus dari Bank Konten"
-                            className="text-danger hover:bg-danger-soft hover:text-danger"
+                            className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-400 dark:hover:bg-rose-950/40 rounded-lg"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -419,7 +415,7 @@ export default function ContentTabunganPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Dialog: Masukkan Kembali ke Rencana Konten */}

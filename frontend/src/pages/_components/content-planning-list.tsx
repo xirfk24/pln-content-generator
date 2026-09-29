@@ -60,6 +60,21 @@ function getPublishedUrl(content: Content): string | null {
 const TH_BASE =
   'whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary'
 
+const MONTH_NAMES = [
+  { value: '1', label: 'Januari' },
+  { value: '2', label: 'Februari' },
+  { value: '3', label: 'Maret' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'Mei' },
+  { value: '6', label: 'Juni' },
+  { value: '7', label: 'Juli' },
+  { value: '8', label: 'Agustus' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'Oktober' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'Desember' },
+]
+
 export default function ContentPlanningList() {
   const topics = useTopics()
   const [contents, setContents] = useState<Content[]>([])
@@ -71,6 +86,8 @@ export default function ContentPlanningList() {
   const [platformFilter, setPlatformFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [monthFilter, setMonthFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState('DESC')
   const [specialFilter, setSpecialFilter] = useState<string | null>(null)
@@ -88,6 +105,75 @@ export default function ContentPlanningList() {
   }>({ pillars: [], platforms: [] })
   const [planningPeriods, setPlanningPeriods] = useState<PlanningPeriod[]>([])
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('')
+
+  // Hitung daftar tahun yang tersedia dari data konten dan periode
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<number>()
+    const currentYear = new Date().getFullYear()
+    yearsSet.add(currentYear)
+    yearsSet.add(currentYear - 1)
+    yearsSet.add(currentYear + 1)
+
+    contents.forEach((c) => {
+      if (c.planned_date) {
+        const y = new Date(c.planned_date).getFullYear()
+        if (!isNaN(y)) yearsSet.add(y)
+      }
+      if (c.created_at) {
+        const y = new Date(c.created_at).getFullYear()
+        if (!isNaN(y)) yearsSet.add(y)
+      }
+    })
+
+    planningPeriods.forEach((p) => {
+      if (p.start_date) {
+        const y = new Date(p.start_date).getFullYear()
+        if (!isNaN(y)) yearsSet.add(y)
+      }
+      if (p.end_date) {
+        const y = new Date(p.end_date).getFullYear()
+        if (!isNaN(y)) yearsSet.add(y)
+      }
+    })
+
+    return Array.from(yearsSet).sort((a, b) => b - a)
+  }, [contents, planningPeriods])
+
+  // Handler pergantian filter Bulan & Tahun
+  const handleDateFilterChange = (newMonth: string, newYear: string) => {
+    let finalMonth = newMonth
+    let finalYear = newYear
+
+    // Jika user mengosongkan tahun saat bulan masih terisi, kosongkan keduanya
+    if (!newYear && yearFilter && newMonth) {
+      finalMonth = ''
+      finalYear = ''
+    } else if (newMonth && !newYear) {
+      // Jika user memilih bulan pertama kali tanpa tahun, otomatis pilih tahun aktif
+      finalYear = new Date().getFullYear().toString()
+    }
+
+    setMonthFilter(finalMonth)
+    setYearFilter(finalYear)
+    setSelectedPeriodId('') // Reset dropdown semester agar tidak bentrok
+
+    if (finalYear && finalMonth) {
+      const m = parseInt(finalMonth, 10)
+      const y = parseInt(finalYear, 10)
+      const lastDay = new Date(y, m, 0).getDate()
+      const start = `${y}-${String(m).padStart(2, '0')}-01`
+      const end = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      setDateFrom(start)
+      setDateTo(end)
+    } else if (finalYear && !finalMonth) {
+      const y = parseInt(finalYear, 10)
+      setDateFrom(`${y}-01-01`)
+      setDateTo(`${y}-12-31`)
+    } else {
+      setDateFrom('')
+      setDateTo('')
+    }
+  }
 
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -168,8 +254,11 @@ export default function ContentPlanningList() {
     setTopicFilter('')
     setPillarFilter('')
     setPlatformFilter('')
+    setMonthFilter('')
+    setYearFilter('')
     setDateFrom('')
     setDateTo('')
+    setSelectedPeriodId('')
     setSortBy('created_at')
     setSortOrder('DESC')
     setSpecialFilter(null)
@@ -245,12 +334,20 @@ export default function ContentPlanningList() {
       )
     }
 
-    // 5. Date Range
+    // 5. Date Range (dari Filter Bulan & Tahun atau Periode)
     if (dateFrom) {
-      list = list.filter((item) => item.planned_date && item.planned_date >= dateFrom)
+      const fromStr = dateFrom.slice(0, 10)
+      list = list.filter((item) => {
+        if (!item.planned_date) return false
+        return item.planned_date.slice(0, 10) >= fromStr
+      })
     }
     if (dateTo) {
-      list = list.filter((item) => item.planned_date && item.planned_date <= dateTo)
+      const toStr = dateTo.slice(0, 10)
+      list = list.filter((item) => {
+        if (!item.planned_date) return false
+        return item.planned_date.slice(0, 10) <= toStr
+      })
     }
 
     // 6. Sorting
@@ -373,11 +470,14 @@ export default function ContentPlanningList() {
     Boolean(topicFilter) ||
     Boolean(pillarFilter) ||
     Boolean(platformFilter) ||
+    Boolean(selectedPeriodId) ||
+    Boolean(monthFilter) ||
+    Boolean(yearFilter) ||
     Boolean(dateFrom) ||
     Boolean(dateTo) ||
     Boolean(specialFilter) ||
-    sortBy !== 'planned_date' ||
-    sortOrder !== 'ASC'
+    sortBy !== 'created_at' ||
+    sortOrder !== 'DESC'
 
   return (
     <div className="space-y-6">
@@ -514,6 +614,8 @@ export default function ContentPlanningList() {
                 onChange={(e) => {
                   const val = e.target.value
                   setSelectedPeriodId(val)
+                  setMonthFilter('')
+                  setYearFilter('')
                   const p = planningPeriods.find((item) => item.id === val)
                   if (p) {
                     setDateFrom(p.start_date)
@@ -535,28 +637,37 @@ export default function ContentPlanningList() {
               </Select>
             </div>
 
-            {/* 4. Rentang Tanggal (Dari s/d Sampai) */}
-            <div className="flex items-center gap-1 w-full min-w-0">
+            {/* 4. Filter Bulan & Tahun */}
+            <div className="flex items-center gap-1.5 w-full min-w-0">
               <div className="relative flex-1 min-w-0">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full text-xs bg-white dark:bg-slate-900"
-                  title="Dari Tanggal"
-                  aria-label="Dari Tanggal"
-                />
+                <Select
+                  value={monthFilter}
+                  onChange={(e) => handleDateFilterChange(e.target.value, yearFilter)}
+                  className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
+                  aria-label="Filter Bulan"
+                >
+                  <option value="">Semua Bulan</option>
+                  {MONTH_NAMES.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
-              <span className="text-xs font-medium text-ink-muted shrink-0">s/d</span>
               <div className="relative flex-1 min-w-0">
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full text-xs bg-white dark:bg-slate-900"
-                  title="Sampai Tanggal"
-                  aria-label="Sampai Tanggal"
-                />
+                <Select
+                  value={yearFilter}
+                  onChange={(e) => handleDateFilterChange(monthFilter, e.target.value)}
+                  className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
+                  aria-label="Filter Tahun"
+                >
+                  <option value="">Semua Tahun</option>
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr.toString()}>
+                      {yr}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
 

@@ -30,6 +30,7 @@ import {
   Share2,
   Users,
   Bookmark,
+  Trash2,
 } from 'lucide-react'
 import Link from '@/compat/next'
 import {
@@ -116,6 +117,7 @@ export default function ContentImportPage() {
   async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0]
     if (!selected) return
+    e.target.value = ''
 
     setFile(selected)
     setFileError(null)
@@ -152,6 +154,16 @@ export default function ContentImportPage() {
       })
       .finally(() => setIsReadingFile(false))
   }
+
+  function handleRemoveFile() {
+    setFile(null)
+    setParsedRows([])
+    setFileError(null)
+  }
+
+  const hasExampleRows = useMemo(() => {
+    return parsedRows.some((r) => r.is_example || r.title.toUpperCase().startsWith('[CONTOH'))
+  }, [parsedRows])
 
   // Trigger Validation on Backend
   async function handleStartValidation() {
@@ -288,7 +300,7 @@ export default function ContentImportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 pb-16">
       {/* Header & Breadcrumb */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
@@ -490,24 +502,59 @@ export default function ContentImportPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
+              {/* Dropzone Upload File */}
               <label
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
-                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 text-center transition-all hover:border-primary hover:bg-blue-50/20 dark:hover:bg-blue-950/10"
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-all ${
+                  file && parsedRows.length > 0
+                    ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-600/50 dark:bg-emerald-950/10'
+                    : file && parsedRows.length === 0 && !isReadingFile
+                    ? 'border-amber-400 bg-amber-50/20 dark:border-amber-600/50 dark:bg-amber-950/10'
+                    : 'border-slate-300 dark:border-slate-700 hover:border-primary hover:bg-blue-50/20 dark:hover:bg-blue-950/10'
+                }`}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-xs ${
+                    isReadingFile
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                      : file && parsedRows.length > 0
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                      : file && parsedRows.length === 0
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                      : 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                  }`}
+                >
                   {isReadingFile ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : file && parsedRows.length > 0 ? (
+                    <CheckCircle2 className="h-6 w-6" />
+                  ) : file && parsedRows.length === 0 ? (
+                    <AlertTriangle className="h-6 w-6" />
                   ) : (
                     <Upload className="h-6 w-6" />
                   )}
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm font-semibold text-ink">
-                    {file ? file.name : 'Klik untuk memilih file atau seret file ke sini'}
+                    {file ? file.name : 'Klik untuk memilih file Excel atau seret file ke sini'}
                   </p>
-                  <p className="mt-1 text-xs text-ink-muted">
-                    Mendukung format file <strong>.xlsx</strong> (Excel) dan <strong>.csv</strong> (Maksimal 500 baris per upload)
+                  <p className="text-xs text-ink-muted">
+                    {file && parsedRows.length > 0 ? (
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                        {(file.size / 1024).toFixed(1)} KB • {parsedRows.length} baris data siap divalidasi • Klik untuk mengganti file
+                      </span>
+                    ) : file && parsedRows.length === 0 && !isReadingFile ? (
+                      <span className="text-amber-700 dark:text-amber-400 font-medium">
+                        0 baris data terdeteksi • Klik untuk memilih file lain
+                      </span>
+                    ) : isReadingFile ? (
+                      'Sedang membaca dan menganalisis baris file Excel...'
+                    ) : (
+                      <>
+                        Mendukung format file <strong>.xlsx</strong> (Excel) dan <strong>.csv</strong> (Maksimal 500 baris per upload)
+                      </>
+                    )}
                   </p>
                 </div>
                 <input
@@ -518,30 +565,78 @@ export default function ContentImportPage() {
                 />
               </label>
 
+              {/* File Error Notice */}
               {fileError && (
                 <div className="flex items-start gap-2.5 rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-400">
                   <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>{fileError}</span>
+                  <div className="flex-1">
+                    <p className="font-semibold">Terjadi Kesalahan Pembacaan File</p>
+                    <p className="mt-0.5">{fileError}</p>
+                  </div>
                 </div>
               )}
 
-              {/* File Information & Start Validation Action */}
+              {/* Zero Rows Warning */}
+              {file && !isReadingFile && parsedRows.length === 0 && !fileError && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div className="space-y-1.5 flex-1">
+                    <p className="font-semibold text-sm">Tidak Ditemukan Baris Data Konten</p>
+                    <p className="text-amber-800 dark:text-amber-300 leading-relaxed">
+                      File <strong>{file.name}</strong> tidak memiliki baris data di bawah judul kolom (header). Pastikan Anda telah mengisi data pada baris Sheet 1 sebelum mengunggah.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <label className="inline-flex items-center text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors dark:bg-amber-900/50 dark:text-amber-200">
+                        Pilih File Lain
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls, .csv"
+                          className="sr-only"
+                          onChange={handleFileInput}
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { void downloadExcelTemplate(masterData, importMode) }}
+                        className="text-xs h-7 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
+                      >
+                        <Download className="mr-1 h-3 w-3" />
+                        Download Template Excel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* File Info Card (When file is loaded and has rows) */}
               {file && parsedRows.length > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/60 shadow-xs">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
                       <FileSpreadsheet className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-ink">{file.name}</p>
-                      <p className="text-[11px] text-ink-muted">
-                        {(file.size / 1024).toFixed(1)} KB • Terdeteksi <strong>{parsedRows.length} baris</strong> data konten ({importMode === 'LEGACY_PUBLISHED' ? 'Arsip Terbit' : 'Rencana Konten'})
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-bold text-ink">{file.name}</p>
+                        <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] py-0 font-semibold">
+                          {parsedRows.length} Baris Data
+                        </Badge>
+                        {hasExampleRows && (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 text-[10px] py-0 font-medium">
+                            Mode Uji Coba Template
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        {(file.size / 1024).toFixed(1)} KB • Mode Impor: <strong>{importMode === 'LEGACY_PUBLISHED' ? 'Arsip Terbit (Legacy)' : 'Rencana Konten'}</strong>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <label className="text-xs font-semibold text-slate-600 hover:text-ink cursor-pointer px-3 py-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <label className="text-xs font-medium text-slate-600 hover:text-ink cursor-pointer px-3 py-1.5 rounded-lg hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-colors">
                       Ganti File
                       <input
                         type="file"
@@ -551,25 +646,67 @@ export default function ContentImportPage() {
                       />
                     </label>
                     <Button
-                      onClick={handleStartValidation}
-                      disabled={isValidating || parsedRows.length === 0}
-                      className="w-full sm:w-auto text-xs"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                      className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 h-8 px-2.5"
                     >
-                      {isValidating ? (
-                        <>
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Memvalidasi...
-                        </>
-                      ) : (
-                        <>
-                          Mulai Validasi Data
-                          <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                        </>
-                      )}
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Hapus
                     </Button>
                   </div>
                 </div>
               )}
+
+              {/* Bottom Action Footer (CTA) - ALWAYS VISIBLE! */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-ink-muted text-center sm:text-left">
+                  {!file && (
+                    <span>Silakan pilih atau seret file template Excel di atas untuk memulai validasi data.</span>
+                  )}
+                  {file && isReadingFile && (
+                    <span className="flex items-center gap-1.5 text-primary font-medium">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Membaca dan menganalisis struktur data file Excel...
+                    </span>
+                  )}
+                  {file && !isReadingFile && parsedRows.length > 0 && (
+                    <span className="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" />
+                      File siap divalidasi. Klik tombol untuk memulai pemeriksaan format &amp; relasi data.
+                    </span>
+                  )}
+                  {file && !isReadingFile && parsedRows.length === 0 && (
+                    <span className="text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4" />
+                      File tidak memiliki baris data. Silakan isi template atau ganti file.
+                    </span>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleStartValidation}
+                  disabled={!file || isReadingFile || isValidating || parsedRows.length === 0}
+                  size="default"
+                  className={`w-full sm:w-auto px-6 font-semibold text-xs transition-all shadow-sm ${
+                    file && parsedRows.length > 0 && !isValidating
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                      : 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed'
+                  }`}
+                >
+                  {isValidating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Memvalidasi Data...
+                    </>
+                  ) : (
+                    <>
+                      Mulai Validasi Data {parsedRows.length > 0 ? `(${parsedRows.length} Baris)` : ''}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

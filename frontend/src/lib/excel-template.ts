@@ -45,6 +45,7 @@ export interface ParsedImportRow {
   brief: string
   target_audience: string
   reference: string
+  is_example?: boolean
   // Additional fields for LEGACY_PUBLISHED mode
   post_url?: string
   reach?: number
@@ -912,6 +913,13 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     )
   }
 
+  // Cek apakah terdapat baris data riil selain contoh
+  const hasRealRows = rawData.slice(1).some((r) => {
+    if (!r || r.every((cell) => cell.trim() === '')) return false
+    const t = (r[idxTitle] || '').trim()
+    return t !== '' && !t.toUpperCase().startsWith('[CONTOH')
+  })
+
   const parsedRows: ParsedImportRow[] = []
 
   for (let i = 1; i < rawData.length; i++) {
@@ -921,8 +929,12 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
     }
 
     const titleVal = (r[idxTitle] || '').trim()
-    // Skip baris contoh yang diawali [CONTOH
-    if (titleVal.toUpperCase().startsWith('[CONTOH')) {
+    const isExample = titleVal.toUpperCase().startsWith('[CONTOH')
+
+    // Lewati baris contoh jika terdapat baris data riil lain di dalam file.
+    // Jika HANYA ada baris contoh (user sedang menguji coba file template bawaan),
+    // tetap proses baris contoh agar alur validasi dapat diuji coba!
+    if (isExample && hasRealRows) {
       continue
     }
 
@@ -996,6 +1008,7 @@ export async function parseUploadedFile(file: File): Promise<ParsedImportRow[]> 
       brief: idxBrief !== -1 ? (r[idxBrief] || '').trim() : '',
       target_audience: idxAudience !== -1 ? (r[idxAudience] || '').trim() : '',
       reference: idxRef !== -1 ? (r[idxRef] || '').trim() : '',
+      is_example: isExample,
       post_url: aggregatedPostURL || undefined,
       reach: aggregatedReach,
       views: aggregatedViews,
