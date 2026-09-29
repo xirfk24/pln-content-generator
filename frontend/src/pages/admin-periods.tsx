@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   Loader2,
-  Plus,
   CalendarRange,
   Calendar,
   CheckCircle2,
@@ -230,7 +229,7 @@ export default function AdminPeriodsPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setFormError(data.error || 'Gagal menyimpan periode perencanaan.')
+        setFormError(data.error || 'Gagal menyimpan periode semester.')
         return
       }
 
@@ -355,7 +354,7 @@ export default function AdminPeriodsPage() {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-slate-500">Memuat periode perencanaan...</p>
+        <p className="text-sm font-medium text-slate-500">Memuat periode semester...</p>
       </div>
     )
   }
@@ -363,22 +362,13 @@ export default function AdminPeriodsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Periode Perencanaan
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Kelola periode perencanaan konten berdasarkan semester.
-          </p>
-        </div>
-
-        {userRole === 'ADMIN' && (
-          <Button onClick={handleOpenCreate} size="sm" className="self-start sm:self-auto">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Buat Periode
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Periode Semester
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Kelola periode semester konten.
+        </p>
       </div>
 
       {/* List of Periods */}
@@ -388,17 +378,11 @@ export default function AdminPeriodsPage() {
             <CalendarRange className="h-7 w-7" />
           </div>
           <h3 className="mt-4 font-semibold text-slate-900 dark:text-white">
-            Belum ada periode perencanaan
+            Belum ada periode semester
           </h3>
           <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
-            Admin dapat membuat periode untuk mulai mengelola perencanaan konten semester.
+            Belum ada data periode semester yang terdaftar.
           </p>
-          {userRole === 'ADMIN' && (
-            <Button onClick={handleOpenCreate} size="sm" className="mt-4">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Buat Periode
-            </Button>
-          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -515,7 +499,7 @@ export default function AdminPeriodsPage() {
           <form onSubmit={handleFormSubmit}>
             <DialogHeader>
               <DialogTitle className="text-base font-semibold">
-                {editingPeriod ? 'Edit Periode Perencanaan' : 'Buat Periode Perencanaan'}
+                {editingPeriod ? 'Edit Periode Semester' : 'Buat Periode Semester'}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
                 Tentukan rentang semester untuk perencanaan dan pengelompokan konten.
@@ -714,7 +698,7 @@ export default function AdminPeriodsPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Hapus Periode Perencanaan?</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Hapus Periode Semester?</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               Periode yang belum memiliki data konten dapat dihapus secara permanen.
             </DialogDescription>

@@ -73,7 +73,7 @@ type ImportMode = 'PLAN' | 'LEGACY_PUBLISHED'
 
 export default function ContentImportPage() {
   const [currentStep, setCurrentStep] = useState<StepperStep>(1)
-  const [importMode, setImportMode] = useState<ImportMode>('PLAN')
+  const [importMode, setImportMode] = useState<ImportMode>('LEGACY_PUBLISHED')
   const [masterData, setMasterData] = useState<MasterDataInfo>({ pillars: [], platforms: [] })
 
   // Step 1: File Selection
@@ -307,7 +307,7 @@ export default function ContentImportPage() {
           Import Konten Massal
         </h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          Impor draf rencana konten baru atau pemindahan arsip data terbit lama beserta statistik insight.
+          Pemindahan arsip data terbit lama beserta statistik insight menggunakan template Excel resmi.
         </p>
       </div>
 
@@ -315,7 +315,7 @@ export default function ContentImportPage() {
       <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {[
-            { num: 1, label: 'Pilih Mode & File' },
+            { num: 1, label: 'Upload & Template' },
             { num: 2, label: 'Validasi' },
             { num: 3, label: 'Preview & Analisis' },
             { num: 4, label: 'Konfirmasi' },
@@ -353,58 +353,57 @@ export default function ContentImportPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* STEP 1: PILIH MODE, UPLOAD FILE & DOWNLOAD TEMPLATE       */}
+      {/* STEP 1: UPLOAD FILE & DOWNLOAD TEMPLATE                   */}
       {/* ========================================================= */}
       {currentStep === 1 && (
         <div className="space-y-5">
-          {/* Section Mode Switcher */}
+          {/* Section Mode Switcher - Mode 1 (Rencana Konten Baru) di-hide sementara */}
           <Card className="border-border shadow-xs">
             <CardHeader className="pb-3 border-b bg-surface-muted/30">
               <CardTitle className="text-sm font-semibold text-ink flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" />
-                1. Pilih Mode Impor Data Konten
+                1. Mode Impor Data Konten
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Mode 1: Rencana Konten */}
-                <div
-                  onClick={() => setImportMode('PLAN')}
-                  className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                    importMode === 'PLAN'
-                      ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20 dark:border-blue-700 dark:bg-blue-950/30'
-                      : 'border-slate-200 hover:border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-ink">Import Rencana Konten Baru</h4>
-                        {importMode === 'PLAN' && (
-                          <Badge className="bg-blue-600 text-white text-[10px]">Aktif</Badge>
-                        )}
+              <div className="grid grid-cols-1 gap-4">
+                {/* 
+                  [HIDDEN SEMENTARA DARI UI] Mode 1: Import Rencana Konten Baru
+                  Untuk mengaktifkan kembali, hapus komentar blok di bawah ini dan ubah grid wrapper menjadi md:grid-cols-2:
+
+                  <div
+                    onClick={() => setImportMode('PLAN')}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                      importMode === 'PLAN'
+                        ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20 dark:border-blue-700 dark:bg-blue-950/30'
+                        : 'border-slate-200 hover:border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
+                        <FileText className="h-5 w-5" />
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Gunakan untuk mengimpor draf ide/rencana konten baru yang akan diproses melalui alur kerja (Status: <strong>DRAFT</strong>).
-                      </p>
-                      <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium pt-1">
-                        ✓ Judul • Topik • Pilar • Format • Platform • Tanggal Rencana • PIC
-                      </p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-ink">Import Rencana Konten Baru</h4>
+                          {importMode === 'PLAN' && (
+                            <Badge className="bg-blue-600 text-white text-[10px]">Aktif</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Gunakan untuk mengimpor draf ide/rencana konten baru yang akan diproses melalui alur kerja (Status: <strong>DRAFT</strong>).
+                        </p>
+                        <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium pt-1">
+                          ✓ Judul • Topik • Pilar • Format • Platform • Tanggal Rencana • PIC
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                */}
 
                 {/* Mode 2: Pemindahan Data Lama / Terbit */}
                 <div
-                  onClick={() => setImportMode('LEGACY_PUBLISHED')}
-                  className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                    importMode === 'LEGACY_PUBLISHED'
-                      ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 dark:border-emerald-700 dark:bg-emerald-950/30'
-                      : 'border-slate-200 hover:border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900'
-                  }`}
+                  className="rounded-xl border border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20 dark:border-emerald-700 dark:bg-emerald-950/30 p-4 transition-all"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
@@ -413,9 +412,7 @@ export default function ContentImportPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-ink">Pemindahan Data Lama / Arsip Terbit</h4>
-                        {importMode === 'LEGACY_PUBLISHED' && (
-                          <Badge className="bg-emerald-600 text-white text-[10px]">Aktif</Badge>
-                        )}
+                        <Badge className="bg-emerald-600 text-white text-[10px]">Aktif</Badge>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                         Gunakan untuk mengimpor arsip konten historis yang pernah tayang. Konten langsung berstatus <strong>DIPUBLIKASIKAN (PUBLISHED)</strong> beserta tautan postingan &amp; insight.
@@ -440,7 +437,7 @@ export default function ContentImportPage() {
                     2. Download Template Excel Resmi ({importMode === 'LEGACY_PUBLISHED' ? 'Mode Data Lama' : 'Mode Rencana Konten'})
                   </CardTitle>
                   <p className="text-xs text-ink-muted mt-0.5">
-                    Gunakan template Excel berpenanda warna yang telah disesuaikan dengan mode impor pilihan Anda
+                    Gunakan template Excel berpenanda warna yang telah disesuaikan untuk impor arsip data terbit
                   </p>
                 </div>
                 <Button

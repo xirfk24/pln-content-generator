@@ -7,7 +7,7 @@ import {
   POSTING_CATEGORY_LABELS,
   CONTENT_PRIORITY_LABELS,
 } from '@/constants'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -628,12 +628,18 @@ export default function ReportsPage() {
                       Status
                     </th>
                     {masterData.platforms.map((plat) => (
-                      <th
-                        key={plat.id}
-                        className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 min-w-[200px]"
-                      >
-                        {plat.name} (Tautan & Insight)
-                      </th>
+                      <Fragment key={plat.id}>
+                        <th
+                          className="px-3 py-3 text-left font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 min-w-[200px]"
+                        >
+                          {plat.name} (Tautan & Insight)
+                        </th>
+                        <th
+                          className="px-3 py-3 text-center font-semibold uppercase tracking-wider text-teal-800 dark:text-teal-300 min-w-[100px] whitespace-nowrap"
+                        >
+                          ER% {plat.name}
+                        </th>
+                      </Fragment>
                     ))}
                   </tr>
                 </thead>
@@ -675,56 +681,79 @@ export default function ReportsPage() {
 
                       {masterData.platforms.map((plat) => {
                         const pm = row.platform_publications?.[plat.name]
-                        return (
-                          <td key={plat.id} className="px-3 py-3 text-xs space-y-1 min-w-[180px]">
-                            {pm?.url ? (
-                              <a
-                                href={pm.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[#00A2B9] hover:underline font-mono text-[11px] truncate max-w-[170px]"
-                              >
-                                Tautan {plat.name}
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">-</span>
-                            )}
+                        const reach = pm?.reach || 0
+                        const views = pm?.views || 0
+                        const likes = pm?.likes || 0
+                        const comments = pm?.comments || 0
+                        const saves = pm?.saves || 0
+                        const shares = pm?.shares || 0
+                        const totalInteractions = likes + comments + saves + shares
+                        const denominator = reach > 0 ? reach : views
+                        const er = denominator > 0 ? (totalInteractions / denominator) * 100 : 0
+                        const hasMetrics = reach > 0 || views > 0 || likes > 0 || comments > 0 || saves > 0 || shares > 0
 
-                            {pm && (pm.reach > 0 || pm.views > 0 || pm.likes > 0 || pm.comments > 0 || pm.saves > 0 || pm.shares > 0) && (
-                              <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-700 dark:text-slate-300 mt-1">
-                                {pm.reach ? (
-                                  <span className="inline-block bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-mono">
-                                    Reach: {pm.reach.toLocaleString()}
-                                  </span>
-                                ) : null}
-                                {pm.views ? (
-                                  <span className="inline-block bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-mono">
-                                    Views: {pm.views.toLocaleString()}
-                                  </span>
-                                ) : null}
-                                {pm.likes ? (
-                                  <span className="inline-block bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800 font-mono">
-                                    Likes: {pm.likes.toLocaleString()}
-                                  </span>
-                                ) : null}
-                                {pm.comments ? (
-                                  <span className="inline-block bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 font-mono">
-                                    Komen: {pm.comments.toLocaleString()}
-                                  </span>
-                                ) : null}
-                                {pm.saves ? (
-                                  <span className="inline-block bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-mono">
-                                    Saves: {pm.saves.toLocaleString()}
-                                  </span>
-                                ) : null}
-                                {pm.shares ? (
-                                  <span className="inline-block bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 font-mono">
-                                    Shares: {pm.shares.toLocaleString()}
-                                  </span>
-                                ) : null}
-                              </div>
-                            )}
-                          </td>
+                        return (
+                          <Fragment key={plat.id}>
+                            <td className="px-3 py-3 text-xs space-y-1 min-w-[180px]">
+                              {pm?.url ? (
+                                <a
+                                  href={pm.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[#00A2B9] hover:underline font-mono text-[11px] truncate max-w-[170px]"
+                                >
+                                  Tautan {plat.name}
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">-</span>
+                              )}
+
+                              {hasMetrics && (
+                                <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-700 dark:text-slate-300 mt-1">
+                                  {reach > 0 && (
+                                    <span className="inline-block bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800 font-mono">
+                                      Reach: {reach.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {views > 0 && (
+                                    <span className="inline-block bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-mono">
+                                      Views: {views.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {likes > 0 && (
+                                    <span className="inline-block bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800 font-mono">
+                                      Likes: {likes.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {comments > 0 && (
+                                    <span className="inline-block bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 font-mono">
+                                      Komen: {comments.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {saves > 0 && (
+                                    <span className="inline-block bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 font-mono">
+                                      Saves: {saves.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {shares > 0 && (
+                                    <span className="inline-block bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 font-mono">
+                                      Shares: {shares.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-3 py-3 text-xs text-center font-mono min-w-[100px]">
+                              {hasMetrics ? (
+                                <span className="inline-block bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 px-2 py-1 rounded-md border border-teal-300 dark:border-teal-700 font-bold text-xs">
+                                  {er.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">-</span>
+                              )}
+                            </td>
+                          </Fragment>
                         )
                       })}
                     </tr>

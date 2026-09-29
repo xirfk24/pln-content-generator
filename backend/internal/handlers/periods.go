@@ -78,7 +78,7 @@ func (h *Handler) ListPlanningPeriods(c *gin.Context) {
 		GROUP BY p.id
 		ORDER BY p.start_date DESC`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat daftar periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat daftar periode semester"})
 		return
 	}
 	defer rows.Close()
@@ -132,7 +132,7 @@ func (h *Handler) GetPlanningPeriod(c *gin.Context) {
 		&p.PendingCount, &p.ApprovedCount, &p.ProductionCount,
 	)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Periode perencanaan tidak ditemukan"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Periode semester tidak ditemukan"})
 		return
 	}
 	p.Description = desc
@@ -219,7 +219,7 @@ func (h *Handler) CreatePlanningPeriod(c *gin.Context) {
 		return
 	}
 	if user.Role != "ADMIN" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Administrator yang dapat mengelola periode perencanaan"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Administrator yang dapat mengelola periode semester"})
 		return
 	}
 
@@ -279,13 +279,13 @@ func (h *Handler) CreatePlanningPeriod(c *gin.Context) {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id::TEXT`, in.Name, in.StartDate, in.EndDate, status, in.Description, user.ID).Scan(&newID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan periode semester"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
-		"message": "Periode perencanaan berhasil dibuat",
+		"message": "Periode semester berhasil dibuat",
 		"id":      newID,
 	})
 }
@@ -297,7 +297,7 @@ func (h *Handler) UpdatePlanningPeriod(c *gin.Context) {
 		return
 	}
 	if user.Role != "ADMIN" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Administrator yang dapat mengubah periode perencanaan"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Administrator yang dapat mengubah periode semester"})
 		return
 	}
 
@@ -343,11 +343,11 @@ func (h *Handler) UpdatePlanningPeriod(c *gin.Context) {
 		SET name = $1, start_date = $2, end_date = $3, status = $4, description = $5, updated_at = now()
 		WHERE id = $6`, in.Name, in.StartDate, in.EndDate, status, in.Description, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui periode semester"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Periode perencanaan berhasil diperbarui"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Periode semester berhasil diperbarui"})
 }
 
 // POST /api/planning-periods/:id/activate
@@ -372,7 +372,7 @@ func (h *Handler) ActivatePlanningPeriod(c *gin.Context) {
 		UPDATE planning_periods SET status = 'AKTIF', updated_at = now() WHERE id = $1
 	`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaktifkan periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaktifkan periode semester"})
 		return
 	}
 
@@ -395,7 +395,7 @@ func (h *Handler) ArchivePlanningPeriod(c *gin.Context) {
 		UPDATE planning_periods SET status = 'DIARSIPKAN', updated_at = now() WHERE id = $1
 	`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengarsipkan periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengarsipkan periode semester"})
 		return
 	}
 
@@ -421,7 +421,7 @@ func (h *Handler) DeletePlanningPeriod(c *gin.Context) {
 		SELECT start_date::TEXT, end_date::TEXT FROM planning_periods WHERE id = $1
 	`, id).Scan(&sDate, &eDate)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Periode perencanaan tidak ditemukan"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Periode semester tidak ditemukan"})
 		return
 	}
 
@@ -441,9 +441,9 @@ func (h *Handler) DeletePlanningPeriod(c *gin.Context) {
 
 	_, err = h.Pool.Exec(c.Request.Context(), "DELETE FROM planning_periods WHERE id = $1", id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus periode perencanaan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus periode semester"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Periode perencanaan berhasil dihapus"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Periode semester berhasil dihapus"})
 }

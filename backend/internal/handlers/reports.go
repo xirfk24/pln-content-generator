@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -199,12 +200,21 @@ func (h *Handler) Reports(c *gin.Context) {
 	}
 
 	if c.Query("format") == "csv" {
-		headers := []string{"Tanggal Rencana/Terbit", "Judul Konten", "Topik Konten", "Content Pillar", "Platform", "Format", "Tujuan Konten", "Kategori Posting", "Status", "Link Post", "Reach", "Views", "Likes", "Comments", "Saves", "Shares"}
+		headers := []string{"Tanggal Rencana/Terbit", "Judul Konten", "Topik Konten", "Content Pillar", "Platform", "Format", "Tujuan Konten", "Kategori Posting", "Status", "Link Post", "Reach", "Views", "Likes", "Comments", "Saves", "Shares", "ER%"}
 		var sb strings.Builder
 		sb.WriteString("\uFEFF") // BOM for Excel
 		sb.WriteString(strings.Join(headers, ","))
 		sb.WriteString("\n")
 		for _, r := range out {
+			totalInteractions := r.Likes + r.Comments + r.Saves + r.Shares
+			denom := r.Reach
+			if denom <= 0 {
+				denom = r.Views
+			}
+			erStr := "0.00%"
+			if denom > 0 {
+				erStr = fmt.Sprintf("%.2f%%", float64(totalInteractions)/float64(denom)*100)
+			}
 			cells := []string{
 				derefString(r.PlannedDate),
 				r.Title,
@@ -222,6 +232,7 @@ func (h *Handler) Reports(c *gin.Context) {
 				itoa(r.Comments),
 				itoa(r.Saves),
 				itoa(r.Shares),
+				erStr,
 			}
 			for j, cell := range cells {
 				if j > 0 {

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { PageHeader } from '@/components/ui/page-header'
-import { Loader2, Download, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart, FileSpreadsheet } from 'lucide-react'
+import { Loader2, CalendarRange, CheckCircle2, AlertCircle, BarChart3, FileBarChart, FileSpreadsheet } from 'lucide-react'
 import { formatDate, getPeriodDateRange, type PeriodMode } from '@/lib/utils'
 import { exportContentReportToExcel } from '@/lib/excel-export'
 import { CONTENT_PILLAR_OPTIONS, isPlatformActive } from '@/constants'
@@ -228,33 +228,6 @@ export default function RecapPage() {
     }
   }
 
-  async function handleExportCsv() {
-    try {
-      const params = new URLSearchParams()
-      params.set('year', String(year))
-      params.set('mode', mode)
-      params.set('period', String(period))
-      if (platformID) params.set('platform_id', platformID)
-      if (pillarID) params.set('pillar_id', pillarID)
-      if (topicFilter) params.set('topic', topicFilter)
-      params.set('format', 'csv')
-
-      const res = await apiFetch(`/api/recap?${params.toString()}`)
-      if (!res.ok) {
-        console.error('CSV export failed:', res.status)
-        return
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('CSV export error:', err)
-    }
-  }
-
   function handleModeChange(newMode: PeriodMode) {
     setMode(newMode)
     setPeriod(1) // reset to period 1 on mode change
@@ -271,7 +244,7 @@ export default function RecapPage() {
           📑 Modul Rekapitulasi Konten & Laporan Periode
         </p>
         <p className="mt-1 text-xs text-indigo-700">
-          Menyajikan ringkasan realisasi rencana konten per bulan dan semester, rasio ketercapaian publikasi per pilar dan platform, serta fitur ekspor data CSV untuk pelaporan manajemen.
+          Menyajikan ringkasan realisasi rencana konten per bulan dan semester, rasio ketercapaian publikasi per pilar dan platform, serta fitur ekspor data Excel (.xlsx) untuk pelaporan manajemen.
         </p>
       </div>
 
@@ -400,17 +373,6 @@ export default function RecapPage() {
             <div className="flex-1" />
 
             <div className="flex items-center gap-2 self-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCsv}
-                disabled={loading || !data || data.total === 0}
-                className="text-xs"
-              >
-                <Download className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
-                Ekspor CSV
-              </Button>
-
               <Button
                 size="sm"
                 onClick={handleExportExcel}

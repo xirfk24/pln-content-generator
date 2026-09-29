@@ -75,7 +75,7 @@ const navigation: Array<NavItem | (NavGroup & { children: NavItem[] })> = [
     roles: ['ADMIN'],
     children: [
       { name: 'Kelola Pengguna', href: '/admin/users', icon: Users },
-      { name: 'Periode Perencanaan', href: '/admin/periods', icon: CalendarRange },
+      { name: 'Periode Semester', href: '/admin/periods', icon: CalendarRange },
           { name: 'Pilar Konten', href: '/admin/pillars', icon: Settings },
           { name: 'Topik Konten', href: '/admin/topics', icon: FileText },
           { name: 'Platform Media', href: '/admin/platforms', icon: Settings },

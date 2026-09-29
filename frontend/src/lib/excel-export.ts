@@ -315,6 +315,8 @@ function populateSheet(
     headerFills.push('FF5B21B6')
     headers.push(`Shares ${pName}`)
     headerFills.push('FF5B21B6')
+    headers.push(`ER% ${pName}`)
+    headerFills.push('FF0E7490') // Dark Cyan/Teal for ER%
   })
 
   const headerRow = ws.getRow(9)
@@ -359,6 +361,7 @@ function populateSheet(
     cols.push({ key: `comments_${pName}`, width: 14 })
     cols.push({ key: `saves_${pName}`, width: 12 })
     cols.push({ key: `shares_${pName}`, width: 12 })
+    cols.push({ key: `er_${pName}`, width: 14 })
   })
 
   ws.columns = cols
@@ -397,13 +400,25 @@ function populateSheet(
 
     MASTER_PLATFORMS.forEach((pName) => {
       const pm = item.platform_publications?.[pName]
+      const reach = pm?.reach || 0
+      const views = pm?.views || 0
+      const likes = pm?.likes || 0
+      const comments = pm?.comments || 0
+      const saves = pm?.saves || 0
+      const shares = pm?.shares || 0
+
+      const totalInteractions = likes + comments + saves + shares
+      const denominator = reach > 0 ? reach : views
+      const er = denominator > 0 ? (totalInteractions / denominator) * 100 : 0
+
       rowValues.push(pm?.url || '-')
-      rowValues.push(pm?.reach || 0)
-      rowValues.push(pm?.views || 0)
-      rowValues.push(pm?.likes || 0)
-      rowValues.push(pm?.comments || 0)
-      rowValues.push(pm?.saves || 0)
-      rowValues.push(pm?.shares || 0)
+      rowValues.push(reach)
+      rowValues.push(views)
+      rowValues.push(likes)
+      rowValues.push(comments)
+      rowValues.push(saves)
+      rowValues.push(shares)
+      rowValues.push(er > 0 ? `${er.toFixed(2)}%` : '0%')
     })
 
     rowValues.forEach((val, cIdx) => {
@@ -431,6 +446,9 @@ function populateSheet(
       } else if (typeof val === 'number') {
         cell.alignment = { vertical: 'middle', horizontal: 'right' }
         cell.numFmt = '#,##0'
+      } else if (typeof val === 'string' && val.endsWith('%')) {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '0E7490' } }
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'left' }
       }
@@ -511,8 +529,8 @@ function populateSheet(
 
   // Auto-filter on the header row
   ws.autoFilter = {
-    from: 'A9',
-    to: 'P9',
+    from: { row: 9, column: 1 },
+    to: { row: 9, column: headers.length },
   }
 }
 

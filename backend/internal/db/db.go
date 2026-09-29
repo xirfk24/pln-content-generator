@@ -117,19 +117,19 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool) {
 
 		// Seed initial planning periods if table is empty
 		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
-		SELECT 'Semester 2 2026', '2026-07-01'::DATE, '2026-12-31'::DATE, 'AKTIF', 'Periode perencanaan konten Semester 2 Tahun 2026'
+		SELECT 'Semester 2 2026', '2026-07-01'::DATE, '2026-12-31'::DATE, 'AKTIF', 'Periode semester konten Semester 2 Tahun 2026'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2026')`,
 		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
-		SELECT 'Semester 1 2026', '2026-01-01'::DATE, '2026-06-30'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 1 Tahun 2026'
+		SELECT 'Semester 1 2026', '2026-01-01'::DATE, '2026-06-30'::DATE, 'SELESAI', 'Periode semester konten Semester 1 Tahun 2026'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 1 2026')`,
 		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
-		SELECT 'Semester 2 2025', '2025-07-01'::DATE, '2025-12-31'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 2 Tahun 2025'
+		SELECT 'Semester 2 2025', '2025-07-01'::DATE, '2025-12-31'::DATE, 'SELESAI', 'Periode semester konten Semester 2 Tahun 2025'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2025')`,
 		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
-		SELECT 'Semester 1 2025', '2025-01-01'::DATE, '2025-06-30'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 1 Tahun 2025'
+		SELECT 'Semester 1 2025', '2025-01-01'::DATE, '2025-06-30'::DATE, 'SELESAI', 'Periode semester konten Semester 1 Tahun 2025'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 1 2025')`,
 		`INSERT INTO planning_periods (name, start_date, end_date, status, description)
-		SELECT 'Semester 2 2024', '2024-07-01'::DATE, '2024-12-31'::DATE, 'SELESAI', 'Periode perencanaan konten Semester 2 Tahun 2024'
+		SELECT 'Semester 2 2024', '2024-07-01'::DATE, '2024-12-31'::DATE, 'SELESAI', 'Periode semester konten Semester 2 Tahun 2024'
 		WHERE NOT EXISTS (SELECT 1 FROM planning_periods WHERE name = 'Semester 2 2024')`,
 
 		// Topics (Topik Konten resmi A-Z, dikelola dari halaman admin).

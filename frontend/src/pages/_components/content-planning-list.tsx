@@ -607,7 +607,7 @@ export default function ContentPlanningList() {
               </Select>
             </div>
 
-            {/* 3.5. Periode Perencanaan (Semester) */}
+            {/* 3.5. Periode Semester */}
             <div>
               <Select
                 value={selectedPeriodId}
@@ -626,7 +626,7 @@ export default function ContentPlanningList() {
                   }
                 }}
                 className="w-full text-xs bg-white dark:bg-slate-900 font-medium"
-                aria-label="Filter Periode Perencanaan"
+                aria-label="Filter Periode Semester"
               >
                 <option value="">Semua Periode</option>
                 {planningPeriods.map((pp) => (

@@ -387,7 +387,7 @@ export default function AnalyticsOverviewPage() {
             </h1>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Analisis performa dan efektivitas konten berdasarkan periode perencanaan.
+            Analisis performa dan efektivitas konten berdasarkan periode semester.
           </p>
         </div>
 
@@ -412,7 +412,7 @@ export default function AnalyticsOverviewPage() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
               <Filter className="h-3.5 w-3.5 text-[#00A2B9]" />
-              <span>Filter Periode Perencanaan & Kriteria Analisis</span>
+              <span>Filter Periode Semester & Kriteria Analisis</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -439,10 +439,10 @@ export default function AnalyticsOverviewPage() {
 
           {/* Quick Select Filter Row */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-            {/* 1. Periode Rencana */}
+            {/* 1. Periode Semester */}
             <div className="space-y-1">
               <label htmlFor="analytics-period" className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                Periode Master
+                Periode Semester
               </label>
               <Select
                 id="analytics-period"
@@ -649,7 +649,7 @@ export default function AnalyticsOverviewPage() {
             Belum ada data pada periode ini.
           </h3>
           <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
-            Silakan pilih periode perencanaan lain atau sesuaikan kriteria filter data.
+            Silakan pilih periode semester lain atau sesuaikan kriteria filter data.
           </p>
         </div>
       ) : (
@@ -742,7 +742,7 @@ export default function AnalyticsOverviewPage() {
             </div>
           </div>
 
-          {/* Tren Bulanan: Rencana vs Realisasi Terbit (Mengikuti Periode Perencanaan) */}
+          {/* Tren Bulanan: Rencana vs Realisasi Terbit (Mengikuti Periode Semester) */}
           <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
             <CardHeader className="border-b border-slate-100 py-3.5 px-5 dark:border-slate-800">
               <div className="flex flex-wrap items-center justify-between gap-3">
