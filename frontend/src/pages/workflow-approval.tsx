@@ -789,7 +789,7 @@ export default function ApprovalPage() {
 
       {/* Main Table Container */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="overflow-x-auto min-h-[240px]">
+        <div className="overflow-x-auto min-h-[340px]">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
               <tr>
@@ -806,7 +806,7 @@ export default function ApprovalPage() {
                 <th className="min-w-[160px] px-4 py-3">Pilar & Platform</th>
                 <th className="min-w-[140px] px-4 py-3">Target & PIC</th>
                 <th className="min-w-[150px] px-4 py-3">Status</th>
-                <th className="min-w-[200px] px-4 py-3 text-right">Aksi</th>
+                <th className="w-20 px-4 py-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -827,7 +827,8 @@ export default function ApprovalPage() {
                   const isSelected = selectedIds.includes(content.id)
                   const isPendingConcept = content.status === 'PENDING_REVIEW'
                   const isPendingProd = content.status === 'PENDING_PRODUCTION_REVIEW'
-                  const isLastRow = idx >= paginatedContents.length - 2 || paginatedContents.length <= 3
+                  const isMenuOpen = activeMenuId === content.id
+                  const isLastRow = paginatedContents.length > 2 && idx >= paginatedContents.length - 2
 
                   const platformsList = content.platforms?.length
                     ? content.platforms.map((p) => p.name).join(', ')
@@ -957,118 +958,132 @@ export default function ApprovalPage() {
                         )}
                       </td>
 
-                      {/* AKSI TOMBOL LANGSUNG (TANPA DROPDOWN) */}
-                      <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {isPendingConcept && role === 'ADMIN' && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
-                                className="h-8 text-xs font-semibold px-2.5 bg-purple-600 hover:bg-purple-700 text-white shadow-2xs rounded-lg shrink-0"
-                                title="Setujui Konsep & Lanjut ke Produksi"
-                              >
-                                <Check className="mr-1 h-3.5 w-3.5" />
-                                Setujui Konsep
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'REVISION')}
-                                className="h-8 text-xs font-semibold px-2 border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-lg shrink-0"
-                                title="Minta Revisi Konsep"
-                              >
-                                <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                                Revisi
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
-                                className="h-8 text-xs font-semibold px-2 border-cyan-300 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300 rounded-lg shrink-0"
-                                title="Langsung Siap Publikasi"
-                              >
-                                <Send className="mr-1 h-3.5 w-3.5" />
-                                Siap Publikasi
-                              </Button>
-                            </>
-                          )}
+                      {/* AKSI (Menu Titik 3 / Dropdown) */}
+                      <td className="px-4 py-4 text-center relative">
+                        <div className="inline-block text-left" ref={isMenuOpen ? menuRef : undefined}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setActiveMenuId(isMenuOpen ? null : content.id)
+                            }}
+                            className={`h-8 w-8 p-0 rounded-lg transition-colors ${
+                              isMenuOpen
+                                ? 'bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+                            }`}
+                            title="Pilihan Aksi"
+                            aria-label={`Menu aksi ${content.title}`}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
 
-                          {isPendingProd && role === 'ADMIN' && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
-                                className="h-8 text-xs font-semibold px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs rounded-lg shrink-0"
-                                title="Setujui Hasil Produksi & Siap Publikasi"
-                              >
-                                <Check className="mr-1 h-3.5 w-3.5" />
-                                Setujui Produksi
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openActionDialog(content, 'REVISION')}
-                                className="h-8 text-xs font-semibold px-2 border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-lg shrink-0"
-                                title="Minta Revisi Produksi"
-                              >
-                                <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                                Revisi
-                              </Button>
-                            </>
-                          )}
-
-                          {content.status === 'REVISION_REQUIRED' && (
-                            <Link href={`/content/${content.id}`}>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 text-xs font-semibold px-2.5 border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg shrink-0"
-                              >
-                                <Eye className="mr-1 h-3.5 w-3.5" />
-                                Detail Revisi
-                              </Button>
-                            </Link>
-                          )}
-
-                          {['APPROVED', 'READY_TO_PUBLISH', 'PUBLISHED'].includes(content.status) && (
-                            <Link href={`/content/${content.id}`}>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 text-xs font-medium px-2.5 text-slate-700 hover:bg-slate-100 rounded-lg shrink-0"
-                              >
-                                <Eye className="mr-1 h-3.5 w-3.5 text-slate-400" />
-                                Lihat Detail
-                              </Button>
-                            </Link>
-                          )}
-
-                          {/* Link Produksi jika ada */}
-                          {content.production_link && (
-                            <a
-                              href={content.production_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
-                              title="Buka Link Produksi"
+                          {/* Popover Menu Dropdown Aksi */}
+                          {isMenuOpen && (
+                            <div
+                              className={`absolute right-4 ${
+                                isLastRow ? 'bottom-10' : 'top-10'
+                              } z-50 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in-0 zoom-in-95 text-left`}
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          )}
+                              <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1">
+                                Pilihan Aksi
+                              </div>
 
-                          {/* Tombol Detail untuk Akses Cepat */}
-                          {!['APPROVED', 'READY_TO_PUBLISH', 'PUBLISHED', 'REVISION_REQUIRED'].includes(content.status) && (
-                            <Link href={`/content/${content.id}`}>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
-                                title="Lihat Detail Lengkap"
+                              {/* Opsi 1: Lihat Detail */}
+                              <Link
+                                href={`/content/${content.id}`}
+                                onClick={() => setActiveMenuId(null)}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors"
                               >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
+                                <Eye className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                <span>{content.status === 'REVISION_REQUIRED' ? 'Detail & Revisi' : 'Lihat Detail'}</span>
+                              </Link>
+
+                              {/* Opsi: Buka Link Produksi jika ada */}
+                              {content.production_link && (
+                                <a
+                                  href={content.production_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setActiveMenuId(null)}
+                                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition-colors"
+                                >
+                                  <ExternalLink className="h-4 w-4 text-indigo-500" />
+                                  <span>Buka Link Produksi</span>
+                                </a>
+                              )}
+
+                              {/* AKSI APPROVAL KONSEP (KHUSUS ADMIN) */}
+                              {isPendingConcept && role === 'ADMIN' && (
+                                <>
+                                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'APPROVE_CONCEPT')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 dark:text-purple-300 dark:hover:bg-purple-950/40 transition-colors"
+                                  >
+                                    <Check className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                    <span>Setujui Konsep</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'REVISION')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40 transition-colors"
+                                  >
+                                    <RotateCcw className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                    <span>Minta Revisi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'READY_TO_PUBLISH')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-cyan-700 hover:bg-cyan-50 dark:text-cyan-300 dark:hover:bg-cyan-950/40 transition-colors"
+                                  >
+                                    <Send className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                    <span>Siap Publikasi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'REJECT')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                                  >
+                                    <XCircle className="h-4 w-4 text-rose-500" />
+                                    <span>Tolak Pengajuan</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* AKSI APPROVAL PRODUKSI (KHUSUS ADMIN) */}
+                              {isPendingProd && role === 'ADMIN' && (
+                                <>
+                                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'APPROVE_PRODUCTION')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-950/40 transition-colors"
+                                  >
+                                    <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                    <span>Setujui Produksi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'REVISION')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40 transition-colors"
+                                  >
+                                    <RotateCcw className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                    <span>Minta Revisi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openActionDialog(content, 'REJECT')}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
+                                  >
+                                    <XCircle className="h-4 w-4 text-rose-500" />
+                                    <span>Tolak Pengajuan</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
