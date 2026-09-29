@@ -548,41 +548,18 @@ type topicPerfRow struct {
 func (h *Handler) topicPerformance(f analyticsFilters) []topicPerfRow {
 	all := h.loadFilteredContents(f, false)
 
-	// Kode topik resmi diambil dari tabel topics (kolom code terpisah),
-	// dipetakan lewat label lengkap "CODE - Name" atau nama polos. Fallback
-	// ke parsing prefix untuk topik lama yang tidak ada di tabel topics.
-	topicCodeMap := map[string]string{}
-	if tRows, err := h.Pool.Query(h.ctx(), "SELECT COALESCE(code, ''), name FROM topics"); err == nil {
-		for tRows.Next() {
-			var code, name string
-			if tRows.Scan(&code, &name) == nil {
-				if code != "" {
-					topicCodeMap[code+" - "+name] = code
-				}
-				topicCodeMap[name] = code
-			}
-		}
-		tRows.Close()
-	}
-	codeOf := func(topic string) string {
-		if c, ok := topicCodeMap[topic]; ok && c != "" {
-			return c
-		}
-		if len(topic) >= 3 && topic[1] == ' ' && topic[2] == '-' {
-			return string(topic[0])
-		}
-		return ""
-	}
+	// Konten dikelompokkan per topik resmi dari tabel topics (label kanonik
+	// ditampilkan, kode di chip). Nilai topic bebas di contents yang bukan
+	// topik resmi — mis. caption judul — digabung ke topik resmi "Lain-Lain".
+	canon, fallback, codes := h.loadTopicCanon()
+	canonical := func(raw string) string { return canonicalTopic(raw, canon, fallback) }
 
 	rows := map[string]*topicPerfRow{}
 	order := []string{}
 	for _, r := range all {
-		name := "Lain-Lain"
-		if strings.TrimSpace(r.Topic) != "" {
-			name = strings.TrimSpace(r.Topic)
-		}
+		name := canonical(r.Topic)
 		if _, ok := rows[name]; !ok {
-			rows[name] = &topicPerfRow{Topic: name, TopicCode: codeOf(name)}
+			rows[name] = &topicPerfRow{Topic: name, TopicCode: codes[name]}
 			order = append(order, name)
 		}
 		rows[name].ContentCount++
@@ -609,11 +586,7 @@ func (h *Handler) topicPerformance(f analyticsFilters) []topicPerfRow {
 
 	contentTopic := map[string]string{}
 	for _, r := range all {
-		name := "Lain-Lain"
-		if strings.TrimSpace(r.Topic) != "" {
-			name = strings.TrimSpace(r.Topic)
-		}
-		contentTopic[r.ID] = name
+		contentTopic[r.ID] = canonical(r.Topic)
 	}
 
 	for _, r := range all {
@@ -1005,6 +978,7 @@ func (h *Handler) TopicRecap(c *gin.Context) {
 	}
 	defer rows.Close()
 
+	canon, fallback, _ := h.loadTopicCanon()
 	counts := map[string]int{}
 	for rows.Next() {
 		var name *string
@@ -1014,7 +988,7 @@ func (h *Handler) TopicRecap(c *gin.Context) {
 		if name == nil || *name == "" {
 			continue
 		}
-		counts[*name]++
+		counts[canonicalTopic(*name, canon, fallback)]++
 	}
 
 	recap := buildTopicRecap(counts)

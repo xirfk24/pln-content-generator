@@ -167,6 +167,50 @@ func periodLabel(year int, mode string, period int) string {
 	}
 }
 
+// loadTopicCanon menyiapkan pemetaan topik resmi dari tabel topics:
+// canon memetakan semua ejaan yang diterima (label "R - PLN Mobile",
+// nama polos, kode; semuanya lowercase) ke label resmi, codes memetakan
+// label resmi ke kode, dan fallback adalah label topik resmi "Lain-Lain"
+// — tempat nilai topic bebas di contents (mis. caption) digabungkan.
+func (h *Handler) loadTopicCanon() (canon map[string]string, fallback string, codes map[string]string) {
+	canon = map[string]string{}
+	codes = map[string]string{}
+	fallback = "Lain-Lain"
+	if rows, err := h.Pool.Query(h.ctx(), "SELECT COALESCE(code, ''), name FROM topics"); err == nil {
+		for rows.Next() {
+			var code, name string
+			if rows.Scan(&code, &name) == nil {
+				addTopicCanon(canon, codes, &fallback, code, name)
+			}
+		}
+		rows.Close()
+	}
+	return canon, fallback, codes
+}
+
+// addTopicCanon mendaftarkan satu topik resmi ke lookup kanonik.
+func addTopicCanon(canon, codes map[string]string, fallback *string, code, name string) {
+	label := labelTopic(code, name)
+	codes[label] = code
+	for _, key := range [...]string{label, name, code} {
+		if key != "" {
+			canon[strings.ToLower(strings.TrimSpace(key))] = label
+		}
+	}
+	if strings.EqualFold(name, "Lain-Lain") {
+		*fallback = label
+	}
+}
+
+// canonicalTopic memetakan nilai topic mentah ke label topik resmi;
+// nilai yang bukan topik resmi jatuh ke topik fallback ("Lain-Lain").
+func canonicalTopic(raw string, canon map[string]string, fallback string) string {
+	if v, ok := canon[strings.ToLower(strings.TrimSpace(raw))]; ok {
+		return v
+	}
+	return fallback
+}
+
 var monthLabelsFull = []string{
 	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
 	"Juli", "Agustus", "September", "Oktober", "November", "Desember",

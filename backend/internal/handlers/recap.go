@@ -479,13 +479,13 @@ func (h *Handler) Recap(c *gin.Context) {
 	})
 
 	// --- Per-topic breakdown ---
+	// Konten dikelompokkan per topik resmi (tabel topics); nilai topic
+	// bebas yang bukan topik resmi digabung ke "Lain-Lain".
+	canon, fallback, _ := h.loadTopicCanon()
 	topicMap := map[string]*topicBreakdownRow{}
 	topicOrder := []string{}
 	for _, ct := range contents {
-		tName := strings.TrimSpace(ct.Topic)
-		if tName == "" {
-			tName = "Z - Lain-Lain"
-		}
+		tName := canonicalTopic(ct.Topic, canon, fallback)
 		tCode, cleanName := parseTopicCodeAndName(tName)
 		if _, ok := topicMap[tName]; !ok {
 			topicMap[tName] = &topicBreakdownRow{
@@ -502,10 +502,7 @@ func (h *Handler) Recap(c *gin.Context) {
 	for _, p := range pubResolved {
 		for _, ct := range contents {
 			if ct.ID == p.ContentID {
-				tName := strings.TrimSpace(ct.Topic)
-				if tName == "" {
-					tName = "Z - Lain-Lain"
-				}
+				tName := canonicalTopic(ct.Topic, canon, fallback)
 				if !p.Verified {
 					if row, ok := topicMap[tName]; ok {
 						row.Unverified++
