@@ -159,7 +159,7 @@ export async function fetchNotifications(
             contentTitle,
             description: pub.cancel_reason ? `Alasan: ${pub.cancel_reason}` : 'Publikasi konten dibatalkan',
             timestamp: updatedAt,
-            actionUrl: `/publishing`,
+            actionUrl: `/content/${contentId}`,
             needsAction: false,
             read: readIds.has(id),
           })
@@ -180,7 +180,7 @@ export async function fetchNotifications(
             contentTitle,
             description: pub.actual_publish_date ? `Ditayangkan pada ${formatDate(pub.actual_publish_date)}` : 'Konten telah ditayangkan',
             timestamp: pub.actual_publish_date || updatedAt,
-            actionUrl: `/publishing`,
+            actionUrl: `/content/${contentId}`,
             needsAction: false,
             read: readIds.has(id),
           })
@@ -204,7 +204,7 @@ export async function fetchNotifications(
               contentTitle,
               description: `Jadwal (${formatDate(plannedDate)}) telah terlewati`,
               timestamp: updatedAt,
-              actionUrl: `/publishing`,
+              actionUrl: `/content/${contentId}`,
               needsAction: true,
               read: readIds.has(id),
             })
@@ -223,7 +223,7 @@ export async function fetchNotifications(
               contentTitle,
               description: 'Dijadwalkan tayang hari ini, pastikan siap publikasi',
               timestamp: updatedAt,
-              actionUrl: `/publishing`,
+              actionUrl: `/content/${contentId}`,
               needsAction: true,
               read: readIds.has(id),
             })
@@ -242,7 +242,7 @@ export async function fetchNotifications(
               contentTitle,
               description: `Dijadwalkan ${formatDate(plannedDate)}`,
               timestamp: updatedAt,
-              actionUrl: `/publishing`,
+              actionUrl: `/content/${contentId}`,
               needsAction: false,
               read: readIds.has(id),
             })
